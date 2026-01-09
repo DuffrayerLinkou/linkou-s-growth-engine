@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+const leadSchema = z.object({
+  name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
+  email: z.string().trim().email("Email inválido").max(255),
+  phone: z.string().trim().min(10, "Telefone inválido").max(20),
+  segment: z.string().min(1, "Selecione um segmento"),
+  investment: z.string().optional(),
+  objective: z.string().max(1000).optional(),
+});
 
 const segments = [
   "Construtora / Incorporadora",
@@ -47,15 +58,58 @@ export function ContactForm() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call - will be replaced with Supabase
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Validate form data
+      const result = leadSchema.safeParse(formData);
+      if (!result.success) {
+        const firstError = result.error.errors[0];
+        toast({
+          variant: "destructive",
+          title: "Erro no formulário",
+          description: firstError.message,
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    toast({
-      title: "Formulário enviado!",
-      description: "Entraremos em contato em breve.",
-    });
+      // Insert lead into Supabase
+      const { error } = await supabase.from("leads").insert({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        segment: formData.segment,
+        investment: formData.investment || null,
+        objective: formData.objective.trim() || null,
+        status: "new",
+        source: "landing_page",
+      });
+
+      if (error) {
+        console.error("Error inserting lead:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao enviar",
+          description: "Tente novamente mais tarde.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSubmitted(true);
+      toast({
+        title: "Formulário enviado!",
+        description: "Entraremos em contato em breve.",
+      });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao enviar",
+        description: "Tente novamente mais tarde.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
