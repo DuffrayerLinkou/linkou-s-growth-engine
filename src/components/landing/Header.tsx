@@ -52,7 +52,7 @@ export function Header() {
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
-            <Link to="/login">
+            <Link to="/auth">
               <Button variant="ghost" size="sm">
                 Login
               </Button>
@@ -101,7 +101,7 @@ export function Header() {
                 </button>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t">
-                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
                     Login
                   </Button>
