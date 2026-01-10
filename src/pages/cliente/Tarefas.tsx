@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Clock, AlertCircle, CheckCircle2, Circle, Loader2, Ban, Route, Filter } from "lucide-react";
+import { Clock, AlertCircle, CheckCircle2, Circle, Loader2, Ban, Route, Filter, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
@@ -16,6 +18,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
 type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
@@ -31,6 +43,7 @@ interface Task {
   created_at: string | null;
   journey_phase: string | null;
   visible_to_client: boolean | null;
+  executor_type: string | null;
 }
 
 const statusConfig: Record<TaskStatus, { label: string; color: string; icon: typeof Circle }> = {
@@ -58,9 +71,12 @@ const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: string; o
 const allPhases: JourneyPhase[] = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
 
 export default function ClienteTarefas() {
-  const { clientInfo } = useAuth();
+  const { clientInfo, user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [taskToComplete, setTaskToComplete] = useState<Task | null>(null);
 
   const currentClientPhase = clientInfo?.phase as JourneyPhase || "diagnostico";
 
@@ -81,6 +97,41 @@ export default function ClienteTarefas() {
     },
     enabled: !!clientInfo?.id,
   });
+
+  // Complete task mutation
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "completed" })
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-tasks"] });
+      toast({
+        title: "Tarefa concluída!",
+        description: "A tarefa foi marcada como concluída com sucesso.",
+      });
+      setTaskToComplete(null);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao concluir tarefa",
+        description: error.message,
+      });
+    },
+  });
+
+  // Check if user can complete a task
+  const canCompleteTask = (task: Task) => {
+    return (
+      task.executor_type === "client" &&
+      task.assigned_to === user?.id &&
+      task.status !== "completed"
+    );
+  };
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
@@ -251,6 +302,7 @@ export default function ClienteTarefas() {
                         const taskStatus = (task.status || "backlog") as TaskStatus;
                         const StatusIcon = statusConfig[taskStatus].icon;
                         const isCompleted = taskStatus === "completed";
+                        const isMyTask = canCompleteTask(task);
 
                         return (
                           <motion.div
@@ -259,16 +311,28 @@ export default function ClienteTarefas() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
                             className={`flex items-start gap-3 p-3 rounded-lg border ${
-                              isCompleted ? "bg-green-500/5 border-green-500/20" : "bg-card"
+                              isCompleted 
+                                ? "bg-green-500/5 border-green-500/20" 
+                                : isMyTask 
+                                  ? "bg-amber-500/5 border-amber-500/30" 
+                                  : "bg-card"
                             }`}
                           >
                             <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
                               <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                                {task.title}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                                  {task.title}
+                                </p>
+                                {isMyTask && (
+                                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
+                                    <Star className="h-3 w-3 mr-1 fill-current" />
+                                    Sua Tarefa
+                                  </Badge>
+                                )}
+                              </div>
                               {task.description && (
                                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                   {task.description}
@@ -291,6 +355,16 @@ export default function ClienteTarefas() {
                                   </span>
                                 )}
                               </div>
+                              {isMyTask && (
+                                <Button
+                                  size="sm"
+                                  className="mt-3"
+                                  onClick={() => setTaskToComplete(task)}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Marcar como Concluída
+                                </Button>
+                              )}
                             </div>
                           </motion.div>
                         );
@@ -325,6 +399,7 @@ export default function ClienteTarefas() {
                     const taskStatus = (task.status || "backlog") as TaskStatus;
                     const StatusIcon = statusConfig[taskStatus].icon;
                     const isCompleted = taskStatus === "completed";
+                    const isMyTask = canCompleteTask(task);
 
                     return (
                       <motion.div
@@ -333,16 +408,28 @@ export default function ClienteTarefas() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
                         className={`flex items-start gap-3 p-3 rounded-lg border ${
-                          isCompleted ? "bg-green-500/5 border-green-500/20" : "bg-card"
+                          isCompleted 
+                            ? "bg-green-500/5 border-green-500/20" 
+                            : isMyTask 
+                              ? "bg-amber-500/5 border-amber-500/30" 
+                              : "bg-card"
                         }`}
                       >
                         <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
                           <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                            {task.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                              {task.title}
+                            </p>
+                            {isMyTask && (
+                              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
+                                <Star className="h-3 w-3 mr-1 fill-current" />
+                                Sua Tarefa
+                              </Badge>
+                            )}
+                          </div>
                           {task.description && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                               {task.description}
@@ -365,6 +452,16 @@ export default function ClienteTarefas() {
                               </span>
                             )}
                           </div>
+                          {isMyTask && (
+                            <Button
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => setTaskToComplete(task)}
+                            >
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Marcar como Concluída
+                            </Button>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -388,6 +485,28 @@ export default function ClienteTarefas() {
           </CardContent>
         </Card>
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!taskToComplete} onOpenChange={() => setTaskToComplete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar tarefa como concluída?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está marcando a tarefa "{taskToComplete?.title}" como concluída. 
+              Esta ação notificará a equipe sobre a conclusão.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => taskToComplete && completeTaskMutation.mutate(taskToComplete.id)}
+              disabled={completeTaskMutation.isPending}
+            >
+              {completeTaskMutation.isPending ? "Concluindo..." : "Confirmar Conclusão"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
