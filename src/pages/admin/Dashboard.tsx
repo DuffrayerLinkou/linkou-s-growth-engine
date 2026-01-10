@@ -25,7 +25,7 @@ import {
   ChevronRight,
   Calendar,
   ListTodo,
-  FlaskConical,
+  Megaphone,
   CalendarClock,
   AlertCircle,
   FileCheck,
@@ -190,12 +190,12 @@ export default function AdminDashboard() {
     },
   });
 
-  // KPI 6: Experimentos ativos
-  const { data: activeExperiments, isLoading: loadingActiveExperiments } = useQuery({
-    queryKey: ["experiments-active"],
+  // KPI 6: Campanhas ativas
+  const { data: activeCampaigns, isLoading: loadingActiveCampaigns } = useQuery({
+    queryKey: ["campaigns-active"],
     queryFn: async () => {
       const { count } = await supabase
-        .from("experiments")
+        .from("campaigns")
         .select("*", { count: "exact", head: true })
         .eq("status", "running");
       return count || 0;
@@ -461,9 +461,9 @@ export default function AdminDashboard() {
       case "task_created":
       case "task_completed":
         return <ListTodo className="h-4 w-4 text-blue-500" />;
-      case "experiment_started":
-      case "experiment_completed":
-        return <FlaskConical className="h-4 w-4 text-purple-500" />;
+      case "campaign_started":
+      case "campaign_completed":
+        return <Megaphone className="h-4 w-4 text-purple-500" />;
       case "file_uploaded":
         return <FileUp className="h-4 w-4 text-cyan-500" />;
       case "approval_received":
@@ -527,7 +527,7 @@ export default function AdminDashboard() {
   };
 
   const isLoadingKPIs = loadingLeadsPeriod || loadingQualified || loadingActiveClients || loadingOperacao || 
-                        loadingOverdueTasks || loadingActiveExperiments || loadingAppointmentsToday || loadingPendingTasks;
+                        loadingOverdueTasks || loadingActiveCampaigns || loadingAppointmentsToday || loadingPendingTasks;
 
   // Componente de variação percentual
   const PercentageChange = ({ current, previous }: { current: number; previous: number }) => {
@@ -559,7 +559,7 @@ export default function AdminDashboard() {
       clientesAtivos: activeClients || 0,
       clientesEmOperacao: clientsOperacao || 0,
       tarefasVencidas: overdueTasks || 0,
-      experimentosAtivos: activeExperiments || 0,
+      campanhasAtivas: activeCampaigns || 0,
       agendamentosHoje: appointmentsToday || 0,
       tarefasPendentesTotal: pendingTasksTotal || 0,
     },
@@ -607,7 +607,7 @@ export default function AdminDashboard() {
     },
   }), [
     leadsInPeriod, qualifiedLeads, activeClients, clientsOperacao,
-    overdueTasks, activeExperiments, appointmentsToday, pendingTasksTotal,
+    overdueTasks, activeCampaigns, appointmentsToday, pendingTasksTotal,
     leadsByStatus, clientsJourneyData, tasksByClient, staleLeads, clientsWithoutFocal,
     clientsOverduePhase, severeOverdueTasks, weekAppointments, dateRange
   ]);
@@ -764,23 +764,23 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Experimentos ativos */}
+        {/* Campanhas ativas */}
         <Card 
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-          onClick={() => navigate("/admin/experimentos")}
+          onClick={() => navigate("/admin/campanhas")}
         >
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Exp. Ativos</p>
-                {loadingActiveExperiments ? (
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Campanhas</p>
+                {loadingActiveCampaigns ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold text-foreground">{activeExperiments}</p>
+                  <p className="text-2xl font-bold text-foreground">{activeCampaigns}</p>
                 )}
               </div>
               <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <FlaskConical className="h-5 w-5 text-purple-500" />
+                <Megaphone className="h-5 w-5 text-purple-500" />
               </div>
             </div>
           </CardContent>

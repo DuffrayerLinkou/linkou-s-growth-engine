@@ -95,7 +95,7 @@ interface Campaign {
   objective: string | null;
   objective_detail: string | null;
   strategy: string | null;
-  targeting: Record<string, unknown> | null;
+  targeting: unknown;
   placements: string[] | null;
   headline: string | null;
   ad_copy: string | null;
@@ -269,7 +269,10 @@ export default function AdminCampaigns() {
       if (clientsRes.error) throw clientsRes.error;
       if (projectsRes.error) throw projectsRes.error;
 
-      setCampaigns(campaignsRes.data || []);
+      setCampaigns((campaignsRes.data || []).map(c => ({
+        ...c,
+        placements: Array.isArray(c.placements) ? c.placements as string[] : null,
+      })));
       setClients(clientsRes.data || []);
       setProjects(projectsRes.data || []);
     } catch (error) {

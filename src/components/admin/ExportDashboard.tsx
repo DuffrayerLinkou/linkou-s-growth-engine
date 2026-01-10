@@ -13,7 +13,7 @@ interface ExportData {
     clientesAtivos: number;
     clientesEmOperacao: number;
     tarefasVencidas: number;
-    experimentosAtivos: number;
+    campanhasAtivas: number;
     agendamentosHoje: number;
     tarefasPendentesTotal: number;
   };
@@ -57,7 +57,7 @@ export function ExportDashboard({ data, isLoading }: ExportDashboardProps) {
         ["Clientes Ativos", data.kpis.clientesAtivos],
         ["Clientes em Operação Guiada", data.kpis.clientesEmOperacao],
         ["Tarefas Vencidas", data.kpis.tarefasVencidas],
-        ["Experimentos Ativos", data.kpis.experimentosAtivos],
+        ["Campanhas Ativas", data.kpis.campanhasAtivas],
         ["Agendamentos Hoje", data.kpis.agendamentosHoje],
         ["Total Tarefas Pendentes", data.kpis.tarefasPendentesTotal],
       ];
