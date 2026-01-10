@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Clock, AlertCircle, CheckCircle2, Circle, Loader2, Ban, Route, Filter, Star } from "lucide-react";
+import { Clock, AlertCircle, CheckCircle2, Loader2, Ban, Route, Filter, Star, Circle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,9 +28,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
-type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
+import { cn } from "@/lib/utils";
+import {
+  TaskStatus,
+  JourneyPhase,
+  statusConfig,
+  priorityConfig,
+  journeyPhaseConfig,
+  allPhases,
+  isTaskOverdue,
+} from "@/lib/task-config";
 
 interface Task {
   id: string;
@@ -45,30 +52,6 @@ interface Task {
   visible_to_client: boolean | null;
   executor_type: string | null;
 }
-
-const statusConfig: Record<TaskStatus, { label: string; color: string; icon: typeof Circle }> = {
-  todo: { label: "A Fazer", color: "bg-slate-500/20 text-slate-600", icon: Circle },
-  backlog: { label: "Backlog", color: "bg-muted text-muted-foreground", icon: Circle },
-  in_progress: { label: "Em Andamento", color: "bg-blue-500/20 text-blue-600", icon: Loader2 },
-  blocked: { label: "Bloqueado", color: "bg-red-500/20 text-red-600", icon: Ban },
-  completed: { label: "Concluído", color: "bg-green-500/20 text-green-600", icon: CheckCircle2 },
-};
-
-const priorityConfig: Record<string, { label: string; color: string }> = {
-  low: { label: "Baixa", color: "text-muted-foreground" },
-  medium: { label: "Média", color: "text-yellow-600" },
-  high: { label: "Alta", color: "text-orange-600" },
-  urgent: { label: "Urgente", color: "text-red-600" },
-};
-
-const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: string; order: number }> = {
-  diagnostico: { label: "Diagnóstico", color: "bg-purple-500/20 text-purple-600 border-purple-500/30", order: 1 },
-  estruturacao: { label: "Estruturação", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", order: 2 },
-  operacao_guiada: { label: "Operação Guiada", color: "bg-orange-500/20 text-orange-600 border-orange-500/30", order: 3 },
-  transferencia: { label: "Transferência", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 4 },
-};
-
-const allPhases: JourneyPhase[] = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
 
 export default function ClienteTarefas() {
   const { clientInfo, user } = useAuth();
@@ -163,6 +146,18 @@ export default function ClienteTarefas() {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
   const overallPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Get status icon
+  const getStatusIcon = (status: TaskStatus) => {
+    const icons: Record<TaskStatus, typeof Circle> = {
+      todo: Circle,
+      backlog: Circle,
+      in_progress: Loader2,
+      blocked: Ban,
+      completed: CheckCircle2,
+    };
+    return icons[status] || Circle;
+  };
 
   if (isLoading) {
     return (
@@ -300,9 +295,10 @@ export default function ClienteTarefas() {
                     <div className="grid gap-3">
                       {phaseTasks.map((task, index) => {
                         const taskStatus = (task.status || "backlog") as TaskStatus;
-                        const StatusIcon = statusConfig[taskStatus].icon;
+                        const StatusIcon = getStatusIcon(taskStatus);
                         const isCompleted = taskStatus === "completed";
                         const isMyTask = canCompleteTask(task);
+                        const overdue = isTaskOverdue(task.due_date, task.status);
 
                         return (
                           <motion.div
@@ -310,13 +306,16 @@ export default function ClienteTarefas() {
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className={`flex items-start gap-3 p-3 rounded-lg border ${
+                            className={cn(
+                              "flex items-start gap-3 p-3 rounded-lg border",
                               isCompleted 
                                 ? "bg-green-500/5 border-green-500/20" 
                                 : isMyTask 
                                   ? "bg-amber-500/5 border-amber-500/30" 
-                                  : "bg-card"
-                            }`}
+                                  : overdue
+                                    ? "bg-red-500/5 border-red-500/30"
+                                    : "bg-card"
+                            )}
                           >
                             <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
                               <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
@@ -349,9 +348,13 @@ export default function ClienteTarefas() {
                                   </span>
                                 )}
                                 {task.due_date && (
-                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                  <span className={cn(
+                                    "flex items-center gap-1",
+                                    overdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                                  )}>
                                     <Clock className="h-3 w-3" />
                                     {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                    {overdue && <AlertCircle className="h-3 w-3" />}
                                   </span>
                                 )}
                               </div>
@@ -397,9 +400,10 @@ export default function ClienteTarefas() {
                 <div className="grid gap-3">
                   {getTasksWithoutPhase().map((task, index) => {
                     const taskStatus = (task.status || "backlog") as TaskStatus;
-                    const StatusIcon = statusConfig[taskStatus].icon;
+                    const StatusIcon = getStatusIcon(taskStatus);
                     const isCompleted = taskStatus === "completed";
                     const isMyTask = canCompleteTask(task);
+                    const overdue = isTaskOverdue(task.due_date, task.status);
 
                     return (
                       <motion.div
@@ -407,13 +411,16 @@ export default function ClienteTarefas() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`flex items-start gap-3 p-3 rounded-lg border ${
+                        className={cn(
+                          "flex items-start gap-3 p-3 rounded-lg border",
                           isCompleted 
                             ? "bg-green-500/5 border-green-500/20" 
                             : isMyTask 
                               ? "bg-amber-500/5 border-amber-500/30" 
-                              : "bg-card"
-                        }`}
+                              : overdue
+                                ? "bg-red-500/5 border-red-500/30"
+                                : "bg-card"
+                        )}
                       >
                         <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
                           <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
@@ -446,9 +453,13 @@ export default function ClienteTarefas() {
                               </span>
                             )}
                             {task.due_date && (
-                              <span className="flex items-center gap-1 text-muted-foreground">
+                              <span className={cn(
+                                "flex items-center gap-1",
+                                overdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                              )}>
                                 <Clock className="h-3 w-3" />
                                 {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                {overdue && <AlertCircle className="h-3 w-3" />}
                               </span>
                             )}
                           </div>
