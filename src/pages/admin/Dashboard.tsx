@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
   UserCheck, 
@@ -17,9 +19,17 @@ import {
   CheckCircle2,
   UserPlus,
   FolderPlus,
-  ChevronRight
+  ChevronRight,
+  Calendar,
+  ListTodo,
+  FlaskConical,
+  CalendarClock,
+  AlertCircle,
+  FileCheck,
+  FileUp,
+  MessageSquare
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, differenceInDays, isToday, isTomorrow, addDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // Labels e cores
@@ -42,7 +52,7 @@ const statusColors: Record<string, string> = {
 const phaseLabels: Record<string, string> = {
   diagnostico: "Diagnóstico",
   estruturacao: "Estruturação",
-  operacao_guiada: "Operação Guiada",
+  operacao_guiada: "Op. Guiada",
   transferencia: "Transferência",
 };
 
@@ -54,6 +64,30 @@ const phaseColors: Record<string, string> = {
 };
 
 const phaseOrder = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
+
+// Helper to get phase end field name
+const getPhaseEndField = (phase: string) => {
+  const map: Record<string, string> = {
+    diagnostico: "phase_diagnostico_end",
+    estruturacao: "phase_estruturacao_end",
+    operacao_guiada: "phase_operacao_guiada_end",
+    transferencia: "phase_transferencia_end",
+  };
+  return map[phase];
+};
+
+type DeadlineStatus = "ok" | "warning" | "overdue" | "none";
+
+const getDeadlineStatus = (endDate: string | null): { status: DeadlineStatus; daysLeft: number } => {
+  if (!endDate) return { status: "none", daysLeft: 0 };
+  const end = new Date(endDate);
+  const today = startOfDay(new Date());
+  const daysLeft = differenceInDays(end, today);
+  
+  if (daysLeft < 0) return { status: "overdue", daysLeft };
+  if (daysLeft <= 7) return { status: "warning", daysLeft };
+  return { status: "ok", daysLeft };
+};
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -111,6 +145,58 @@ export default function AdminDashboard() {
     },
   });
 
+  // KPI 5: Tarefas vencidas
+  const { data: overdueTasks, isLoading: loadingOverdueTasks } = useQuery({
+    queryKey: ["tasks-overdue"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { count } = await supabase
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .lt("due_date", today)
+        .neq("status", "completed");
+      return count || 0;
+    },
+  });
+
+  // KPI 6: Experimentos ativos
+  const { data: activeExperiments, isLoading: loadingActiveExperiments } = useQuery({
+    queryKey: ["experiments-active"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("experiments")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "running");
+      return count || 0;
+    },
+  });
+
+  // KPI 7: Agendamentos hoje
+  const { data: appointmentsToday, isLoading: loadingAppointmentsToday } = useQuery({
+    queryKey: ["appointments-today"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { count } = await supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .gte("appointment_date", `${today}T00:00:00`)
+        .lt("appointment_date", `${today}T23:59:59`);
+      return count || 0;
+    },
+  });
+
+  // KPI 8: Total tarefas pendentes
+  const { data: pendingTasksTotal, isLoading: loadingPendingTasks } = useQuery({
+    queryKey: ["tasks-pending-total"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "completed");
+      return count || 0;
+    },
+  });
+
   // Pipeline: Leads por status
   const { data: leadsByStatus, isLoading: loadingPipeline } = useQuery({
     queryKey: ["leads-by-status"],
@@ -126,18 +212,33 @@ export default function AdminDashboard() {
     },
   });
 
-  // Jornada: Clientes por fase
-  const { data: clientsByPhase, isLoading: loadingJornada } = useQuery({
-    queryKey: ["clients-by-phase"],
+  // Jornada: Clientes por fase COM status de deadline
+  const { data: clientsJourneyData, isLoading: loadingJornada } = useQuery({
+    queryKey: ["clients-journey-detailed"],
     queryFn: async () => {
-      const { data } = await supabase.from("clients").select("phase").eq("status", "ativo");
-      const counts: Record<string, number> = { diagnostico: 0, estruturacao: 0, operacao_guiada: 0, transferencia: 0 };
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name, phase, phase_diagnostico_end, phase_estruturacao_end, phase_operacao_guiada_end, phase_transferencia_end")
+        .eq("status", "ativo");
+      
+      const result: Record<string, { total: number; ok: number; warning: number; overdue: number }> = {};
+      phaseOrder.forEach(phase => {
+        result[phase] = { total: 0, ok: 0, warning: 0, overdue: 0 };
+      });
+      
       data?.forEach((client) => {
-        if (client.phase && counts[client.phase] !== undefined) {
-          counts[client.phase]++;
+        if (client.phase && result[client.phase]) {
+          result[client.phase].total++;
+          const endField = getPhaseEndField(client.phase);
+          const endDate = client[endField as keyof typeof client] as string | null;
+          const { status } = getDeadlineStatus(endDate);
+          if (status === "ok") result[client.phase].ok++;
+          else if (status === "warning") result[client.phase].warning++;
+          else if (status === "overdue") result[client.phase].overdue++;
         }
       });
-      return counts;
+      
+      return result;
     },
   });
 
@@ -182,49 +283,124 @@ export default function AdminDashboard() {
     },
   });
 
-  // Fila de Ação: Clientes parados (> 14 dias)
-  const { data: staleClients, isLoading: loadingStaleClients } = useQuery({
-    queryKey: ["stale-clients"],
+  // Fila de Ação: Clientes com fase atrasada
+  const { data: clientsOverduePhase, isLoading: loadingOverduePhase } = useQuery({
+    queryKey: ["clients-overdue-phase"],
     queryFn: async () => {
-      const fourteenDaysAgo = new Date();
-      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const today = new Date().toISOString().split('T')[0];
       const { data } = await supabase
         .from("clients")
-        .select("id, name, phase, updated_at")
-        .eq("status", "ativo")
-        .lt("updated_at", fourteenDaysAgo.toISOString())
-        .order("updated_at", { ascending: true })
+        .select("id, name, phase, phase_diagnostico_end, phase_estruturacao_end, phase_operacao_guiada_end, phase_transferencia_end")
+        .eq("status", "ativo");
+      
+      const overdueClients: { id: string; name: string; phase: string; daysOverdue: number }[] = [];
+      
+      data?.forEach((client) => {
+        if (client.phase) {
+          const endField = getPhaseEndField(client.phase);
+          const endDate = client[endField as keyof typeof client] as string | null;
+          if (endDate && endDate < today) {
+            const daysOverdue = differenceInDays(new Date(), new Date(endDate));
+            overdueClients.push({
+              id: client.id,
+              name: client.name,
+              phase: client.phase,
+              daysOverdue
+            });
+          }
+        }
+      });
+      
+      return overdueClients.sort((a, b) => b.daysOverdue - a.daysOverdue).slice(0, 3);
+    },
+  });
+
+  // Fila de Ação: Tarefas vencidas há mais de 3 dias
+  const { data: severeOverdueTasks, isLoading: loadingSevereTasks } = useQuery({
+    queryKey: ["tasks-severe-overdue"],
+    queryFn: async () => {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, title, due_date, client_id, clients(name)")
+        .lt("due_date", threeDaysAgo.toISOString().split('T')[0])
+        .neq("status", "completed")
+        .order("due_date", { ascending: true })
         .limit(3);
       return data || [];
     },
   });
 
-  // Fila de Ação: Projetos parados (> 7 dias)
-  const { data: staleProjects, isLoading: loadingStaleProjects } = useQuery({
-    queryKey: ["stale-projects"],
+  // Tarefas por cliente (Top 5)
+  const { data: tasksByClient, isLoading: loadingTasksByClient } = useQuery({
+    queryKey: ["tasks-by-client"],
     queryFn: async () => {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select("client_id, status, due_date, clients(name)");
+      
+      if (!tasks) return [];
+      
+      const today = new Date().toISOString().split('T')[0];
+      const clientStats: Record<string, { 
+        id: string; 
+        name: string; 
+        total: number; 
+        completed: number; 
+        overdue: number 
+      }> = {};
+      
+      tasks.forEach((task) => {
+        if (!task.client_id) return;
+        if (!clientStats[task.client_id]) {
+          clientStats[task.client_id] = {
+            id: task.client_id,
+            name: (task.clients as any)?.name || "Cliente",
+            total: 0,
+            completed: 0,
+            overdue: 0
+          };
+        }
+        clientStats[task.client_id].total++;
+        if (task.status === "completed") clientStats[task.client_id].completed++;
+        if (task.due_date && task.due_date < today && task.status !== "completed") {
+          clientStats[task.client_id].overdue++;
+        }
+      });
+      
+      return Object.values(clientStats)
+        .sort((a, b) => (b.total - b.completed) - (a.total - a.completed))
+        .slice(0, 5);
+    },
+  });
+
+  // Agendamentos da semana
+  const { data: weekAppointments, isLoading: loadingWeekAppointments } = useQuery({
+    queryKey: ["appointments-week"],
+    queryFn: async () => {
+      const today = new Date();
+      const weekLater = addDays(today, 7);
       const { data } = await supabase
-        .from("projects")
-        .select("id, name, client_id, updated_at")
-        .neq("status", "completed")
-        .lt("updated_at", sevenDaysAgo.toISOString())
-        .order("updated_at", { ascending: true })
-        .limit(2);
+        .from("appointments")
+        .select("id, title, appointment_date, status, clients(name)")
+        .gte("appointment_date", today.toISOString())
+        .lt("appointment_date", weekLater.toISOString())
+        .order("appointment_date", { ascending: true })
+        .limit(5);
       return data || [];
     },
   });
 
-  // Atividade Recente: audit_logs
+  // Atividade Recente: audit_logs com mais tipos
   const { data: recentActivity, isLoading: loadingActivity } = useQuery({
-    queryKey: ["recent-activity"],
+    queryKey: ["recent-activity-extended"],
     queryFn: async () => {
       const { data } = await supabase
         .from("audit_logs")
-        .select("id, action, entity_type, entity_id, client_id, new_data, old_data, created_at")
+        .select("id, action, entity_type, entity_id, client_id, new_data, old_data, created_at, clients(name)")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(8);
       return data || [];
     },
   });
@@ -232,6 +408,13 @@ export default function AdminDashboard() {
   // === HELPERS ===
   const formatRelativeTime = (date: string) => {
     return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
+
+  const formatAppointmentDate = (date: string) => {
+    const d = new Date(date);
+    if (isToday(d)) return `Hoje, ${format(d, "HH:mm")}`;
+    if (isTomorrow(d)) return `Amanhã, ${format(d, "HH:mm")}`;
+    return format(d, "EEE, dd/MM 'às' HH:mm", { locale: ptBR });
   };
 
   const getActionIcon = (action: string) => {
@@ -244,6 +427,18 @@ export default function AdminDashboard() {
         return <UserPlus className="h-4 w-4 text-violet-500" />;
       case "project_created":
         return <FolderPlus className="h-4 w-4 text-orange-500" />;
+      case "task_created":
+      case "task_completed":
+        return <ListTodo className="h-4 w-4 text-blue-500" />;
+      case "experiment_started":
+      case "experiment_completed":
+        return <FlaskConical className="h-4 w-4 text-purple-500" />;
+      case "file_uploaded":
+        return <FileUp className="h-4 w-4 text-cyan-500" />;
+      case "approval_received":
+        return <FileCheck className="h-4 w-4 text-emerald-500" />;
+      case "comment_added":
+        return <MessageSquare className="h-4 w-4 text-amber-500" />;
       default:
         return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
@@ -251,30 +446,47 @@ export default function AdminDashboard() {
 
   const getActionText = (log: any) => {
     const newData = log.new_data as Record<string, any> | null;
+    const clientName = log.clients?.name;
     
     switch (log.action) {
       case "phase_changed":
         const toPhase = newData?.phase ? phaseLabels[newData.phase] || newData.phase : "nova fase";
-        return `Cliente avançou para ${toPhase}`;
+        return clientName ? `${clientName} → ${toPhase}` : `Cliente avançou para ${toPhase}`;
       case "lead_converted":
-        return "Lead convertido em cliente";
+        return clientName ? `${clientName} convertido` : "Lead convertido em cliente";
       case "ponto_focal_set":
-        return "Ponto focal definido";
+        return clientName ? `Ponto focal em ${clientName}` : "Ponto focal definido";
       case "project_created":
-        return "Novo projeto criado";
+        return clientName ? `Projeto em ${clientName}` : "Novo projeto criado";
+      case "task_created":
+        return clientName ? `Tarefa criada para ${clientName}` : "Nova tarefa criada";
+      case "task_completed":
+        return clientName ? `Tarefa concluída em ${clientName}` : "Tarefa concluída";
+      case "experiment_started":
+        return clientName ? `Experimento iniciado em ${clientName}` : "Experimento iniciado";
+      case "experiment_completed":
+        return clientName ? `Experimento finalizado em ${clientName}` : "Experimento finalizado";
+      case "file_uploaded":
+        return clientName ? `Arquivo enviado para ${clientName}` : "Arquivo enviado";
+      case "approval_received":
+        return clientName ? `Aprovação recebida de ${clientName}` : "Aprovação recebida";
       default:
         return log.action?.replace(/_/g, " ") || "Ação registrada";
     }
   };
 
   // Calcular total de alertas
-  const totalAlerts = (staleLeads?.length || 0) + (clientsWithoutFocal?.length || 0) + (staleClients?.length || 0) + (staleProjects?.length || 0);
+  const totalAlerts = 
+    (staleLeads?.length || 0) + 
+    (clientsWithoutFocal?.length || 0) + 
+    (clientsOverduePhase?.length || 0) + 
+    (severeOverdueTasks?.length || 0);
 
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 },
+      transition: { staggerChildren: 0.08 },
     },
   };
 
@@ -282,6 +494,9 @@ export default function AdminDashboard() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
+
+  const isLoadingKPIs = loadingLeadsPeriod || loadingQualified || loadingActiveClients || loadingOperacao || 
+                        loadingOverdueTasks || loadingActiveExperiments || loadingAppointmentsToday || loadingPendingTasks;
 
   return (
     <motion.div
@@ -298,25 +513,25 @@ export default function AdminDashboard() {
         </p>
       </motion.div>
 
-      {/* BLOCO 1: KPIs Rápidos */}
+      {/* BLOCO 1: KPIs Rápidos - Linha 1 */}
       <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Leads no período */}
         <Card 
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
           onClick={() => navigate("/admin/leads")}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Leads (30 dias)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Leads (30 dias)</p>
                 {loadingLeadsPeriod ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-foreground">{leadsInPeriod}</p>
+                  <p className="text-2xl font-bold text-foreground">{leadsInPeriod}</p>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-500" />
+              <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Users className="h-5 w-5 text-blue-500" />
               </div>
             </div>
           </CardContent>
@@ -327,18 +542,18 @@ export default function AdminDashboard() {
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
           onClick={() => navigate("/admin/leads?status=qualified")}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Qualificados</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Qualificados</p>
                 {loadingQualified ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-foreground">{qualifiedLeads}</p>
+                  <p className="text-2xl font-bold text-foreground">{qualifiedLeads}</p>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                <UserCheck className="h-6 w-6 text-emerald-500" />
+              <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
           </CardContent>
@@ -349,18 +564,18 @@ export default function AdminDashboard() {
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
           onClick={() => navigate("/admin/clientes?status=ativo")}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Clientes Ativos</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Clientes Ativos</p>
                 {loadingActiveClients ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-foreground">{activeClients}</p>
+                  <p className="text-2xl font-bold text-foreground">{activeClients}</p>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-full bg-violet-500/10 flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-violet-500" />
+              <div className="h-10 w-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-violet-500" />
               </div>
             </div>
           </CardContent>
@@ -371,18 +586,111 @@ export default function AdminDashboard() {
           className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
           onClick={() => navigate("/admin/clientes?phase=operacao_guiada")}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Op. Guiada</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Op. Guiada</p>
                 {loadingOperacao ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-foreground">{clientsOperacao}</p>
+                  <p className="text-2xl font-bold text-foreground">{clientsOperacao}</p>
                 )}
               </div>
-              <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Compass className="h-6 w-6 text-orange-500" />
+              <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                <Compass className="h-5 w-5 text-orange-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* BLOCO 1.5: KPIs Rápidos - Linha 2 */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tarefas vencidas */}
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${(overdueTasks || 0) > 0 ? 'border-red-500/50 hover:border-red-500' : 'hover:border-primary/50'}`}
+          onClick={() => navigate("/admin/tarefas?status=overdue")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas Vencidas</p>
+                {loadingOverdueTasks ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className={`text-2xl font-bold ${(overdueTasks || 0) > 0 ? 'text-red-500' : 'text-foreground'}`}>
+                    {overdueTasks}
+                  </p>
+                )}
+              </div>
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${(overdueTasks || 0) > 0 ? 'bg-red-500/10' : 'bg-muted'}`}>
+                <AlertCircle className={`h-5 w-5 ${(overdueTasks || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Experimentos ativos */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/experimentos")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Exp. Ativos</p>
+                {loadingActiveExperiments ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{activeExperiments}</p>
+                )}
+              </div>
+              <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                <FlaskConical className="h-5 w-5 text-purple-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Agendamentos hoje */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/agendamentos")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Agend. Hoje</p>
+                {loadingAppointmentsToday ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{appointmentsToday}</p>
+                )}
+              </div>
+              <div className="h-10 w-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-cyan-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tarefas pendentes total */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/tarefas")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas Pend.</p>
+                {loadingPendingTasks ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{pendingTasksTotal}</p>
+                )}
+              </div>
+              <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <ListTodo className="h-5 w-5 text-amber-500" />
               </div>
             </div>
           </CardContent>
@@ -411,7 +719,7 @@ export default function AdminDashboard() {
                   <button
                     key={status}
                     onClick={() => navigate(`/admin/leads?status=${status}`)}
-                    className={`flex-1 min-w-[120px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${statusColors[status]}`}
+                    className={`flex-1 min-w-[100px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${statusColors[status]}`}
                   >
                     <p className="text-2xl font-bold">{leadsByStatus?.[status] || 0}</p>
                     <p className="text-sm font-medium">{label}</p>
@@ -423,7 +731,7 @@ export default function AdminDashboard() {
         </Card>
       </motion.div>
 
-      {/* BLOCO 3: Jornada dos Clientes */}
+      {/* BLOCO 3: Jornada dos Clientes com indicadores de prazo */}
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader className="pb-3">
@@ -436,25 +744,47 @@ export default function AdminDashboard() {
             {loadingJornada ? (
               <div className="flex gap-3">
                 {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-20 flex-1" />
+                  <Skeleton key={i} className="h-24 flex-1" />
                 ))}
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                {phaseOrder.map((phase, index) => (
-                  <div key={phase} className="flex items-center">
-                    <button
-                      onClick={() => navigate(`/admin/clientes?phase=${phase}`)}
-                      className={`flex-1 min-w-[140px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${phaseColors[phase]}`}
-                    >
-                      <p className="text-2xl font-bold">{clientsByPhase?.[phase] || 0}</p>
-                      <p className="text-sm font-medium">{phaseLabels[phase]}</p>
-                    </button>
-                    {index < phaseOrder.length - 1 && (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground mx-1 hidden sm:block" />
-                    )}
-                  </div>
-                ))}
+              <div className="flex flex-wrap items-stretch gap-2">
+                {phaseOrder.map((phase, index) => {
+                  const data = clientsJourneyData?.[phase] || { total: 0, ok: 0, warning: 0, overdue: 0 };
+                  return (
+                    <div key={phase} className="flex items-center">
+                      <button
+                        onClick={() => navigate(`/admin/clientes?phase=${phase}`)}
+                        className={`flex-1 min-w-[130px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${phaseColors[phase]}`}
+                      >
+                        <p className="text-2xl font-bold">{data.total}</p>
+                        <p className="text-sm font-medium mb-2">{phaseLabels[phase]}</p>
+                        {data.total > 0 && (
+                          <div className="flex gap-1.5 flex-wrap">
+                            {data.ok > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                                {data.ok} ok
+                              </Badge>
+                            )}
+                            {data.warning > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                {data.warning} alerta
+                              </Badge>
+                            )}
+                            {data.overdue > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-red-500/10 text-red-600 border-red-500/30">
+                                {data.overdue} atrasado
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                      {index < phaseOrder.length - 1 && (
+                        <ChevronRight className="h-5 w-5 text-muted-foreground mx-1 hidden sm:block" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -463,7 +793,7 @@ export default function AdminDashboard() {
 
       {/* BLOCO 4 e 5: Grid de duas colunas */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* BLOCO 4: Fila de Ação */}
+        {/* BLOCO 4: Fila de Ação Expandida */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
             <CardHeader className="pb-3">
@@ -478,7 +808,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {(loadingStaleLeads || loadingNoFocal || loadingStaleClients || loadingStaleProjects) ? (
+              {(loadingStaleLeads || loadingNoFocal || loadingOverduePhase || loadingSevereTasks) ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-12 w-full" />
@@ -490,7 +820,47 @@ export default function AdminDashboard() {
                   <p>Tudo em dia! Nenhum item requer atenção.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  {/* Clientes com fase atrasada - CRÍTICO */}
+                  {clientsOverduePhase?.map((client) => (
+                    <button
+                      key={`overdue-${client.id}`}
+                      onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
+                    >
+                      <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          "{client.name}" - fase atrasada
+                        </p>
+                        <p className="text-xs text-red-500">
+                          {client.daysOverdue} dias além do prazo em {phaseLabels[client.phase]}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+
+                  {/* Tarefas vencidas há mais de 3 dias - CRÍTICO */}
+                  {severeOverdueTasks?.map((task: any) => (
+                    <button
+                      key={`task-${task.id}`}
+                      onClick={() => navigate(`/admin/tarefas`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
+                    >
+                      <ListTodo className="h-4 w-4 text-red-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          "{task.title}" vencida
+                        </p>
+                        <p className="text-xs text-red-500">
+                          {task.clients?.name} • Vencida {formatRelativeTime(task.due_date)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+
                   {/* Leads sem contato */}
                   {staleLeads?.map((lead) => (
                     <button
@@ -518,52 +888,12 @@ export default function AdminDashboard() {
                       onClick={() => navigate(`/admin/clientes/${client.id}`)}
                       className="w-full flex items-center gap-3 p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 hover:bg-violet-500/10 transition-colors text-left"
                     >
-                      <AlertTriangle className="h-4 w-4 text-violet-500 shrink-0" />
+                      <UserPlus className="h-4 w-4 text-violet-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           "{client.name}" sem ponto focal
                         </p>
                         <p className="text-xs text-muted-foreground">Definir responsável</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </button>
-                  ))}
-
-                  {/* Clientes parados */}
-                  {staleClients?.map((client) => (
-                    <button
-                      key={`stale-${client.id}`}
-                      onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-orange-500/5 border border-orange-500/20 hover:bg-orange-500/10 transition-colors text-left"
-                    >
-                      <Clock className="h-4 w-4 text-orange-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          "{client.name}" parado em {phaseLabels[client.phase || ""] || client.phase}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Atualizado {formatRelativeTime(client.updated_at)}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </button>
-                  ))}
-
-                  {/* Projetos parados */}
-                  {staleProjects?.map((project) => (
-                    <button
-                      key={`proj-${project.id}`}
-                      onClick={() => navigate(`/admin/projetos`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
-                    >
-                      <Clock className="h-4 w-4 text-red-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          Projeto "{project.name}" sem atualização
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Atualizado {formatRelativeTime(project.updated_at)}
-                        </p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                     </button>
@@ -574,7 +904,125 @@ export default function AdminDashboard() {
           </Card>
         </motion.div>
 
-        {/* BLOCO 5: Atividade Recente */}
+        {/* BLOCO 5: Agendamentos da Semana */}
+        <motion.div variants={itemVariants}>
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-muted-foreground" />
+                Próximos Agendamentos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingWeekAppointments ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : !weekAppointments || weekAppointments.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhum agendamento nos próximos 7 dias.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {weekAppointments.map((apt: any) => (
+                    <button
+                      key={apt.id}
+                      onClick={() => navigate("/admin/agendamentos")}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-border"
+                    >
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                        isToday(new Date(apt.appointment_date)) ? 'bg-primary/10' : 'bg-muted'
+                      }`}>
+                        <Calendar className={`h-5 w-5 ${
+                          isToday(new Date(apt.appointment_date)) ? 'text-primary' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{apt.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {apt.clients?.name} • {formatAppointmentDate(apt.appointment_date)}
+                        </p>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={`shrink-0 ${
+                          apt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
+                          apt.status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
+                          'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {apt.status === 'confirmed' ? 'Confirmado' : apt.status === 'pending' ? 'Pendente' : apt.status}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* BLOCO 6 e 7: Grid de duas colunas */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* BLOCO 6: Tarefas por Cliente */}
+        <motion.div variants={itemVariants}>
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <ListTodo className="h-5 w-5 text-muted-foreground" />
+                Tarefas Pendentes por Cliente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingTasksByClient ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : !tasksByClient || tasksByClient.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma tarefa pendente.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tasksByClient.map((client) => {
+                    const pending = client.total - client.completed;
+                    const percentage = client.total > 0 ? Math.round((client.completed / client.total) * 100) : 0;
+                    return (
+                      <button
+                        key={client.id}
+                        onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                        className="w-full text-left hover:bg-muted/50 rounded-lg p-3 transition-colors border border-transparent hover:border-border"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium truncate flex-1">{client.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {client.completed}/{client.total} ({percentage}%)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress value={percentage} className="h-2 flex-1" />
+                          {client.overdue > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-red-500/10 text-red-600 border-red-500/30 shrink-0">
+                              {client.overdue} venc.
+                            </Badge>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* BLOCO 7: Atividade Recente */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
             <CardHeader className="pb-3">
@@ -596,7 +1044,7 @@ export default function AdminDashboard() {
                   <p>Nenhuma atividade registrada ainda.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                   {recentActivity.map((log) => (
                     <button
                       key={log.id}
