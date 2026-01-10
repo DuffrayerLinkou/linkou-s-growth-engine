@@ -208,6 +208,18 @@ export type Database = {
           id: string
           name: string
           phase: string
+          phase_diagnostico_completed_at: string | null
+          phase_diagnostico_end: string | null
+          phase_diagnostico_start: string | null
+          phase_estruturacao_completed_at: string | null
+          phase_estruturacao_end: string | null
+          phase_estruturacao_start: string | null
+          phase_operacao_guiada_completed_at: string | null
+          phase_operacao_guiada_end: string | null
+          phase_operacao_guiada_start: string | null
+          phase_transferencia_completed_at: string | null
+          phase_transferencia_end: string | null
+          phase_transferencia_start: string | null
           segment: string | null
           status: string | null
           updated_at: string | null
@@ -218,6 +230,18 @@ export type Database = {
           id?: string
           name: string
           phase?: string
+          phase_diagnostico_completed_at?: string | null
+          phase_diagnostico_end?: string | null
+          phase_diagnostico_start?: string | null
+          phase_estruturacao_completed_at?: string | null
+          phase_estruturacao_end?: string | null
+          phase_estruturacao_start?: string | null
+          phase_operacao_guiada_completed_at?: string | null
+          phase_operacao_guiada_end?: string | null
+          phase_operacao_guiada_start?: string | null
+          phase_transferencia_completed_at?: string | null
+          phase_transferencia_end?: string | null
+          phase_transferencia_start?: string | null
           segment?: string | null
           status?: string | null
           updated_at?: string | null
@@ -228,6 +252,18 @@ export type Database = {
           id?: string
           name?: string
           phase?: string
+          phase_diagnostico_completed_at?: string | null
+          phase_diagnostico_end?: string | null
+          phase_diagnostico_start?: string | null
+          phase_estruturacao_completed_at?: string | null
+          phase_estruturacao_end?: string | null
+          phase_estruturacao_start?: string | null
+          phase_operacao_guiada_completed_at?: string | null
+          phase_operacao_guiada_end?: string | null
+          phase_operacao_guiada_start?: string | null
+          phase_transferencia_completed_at?: string | null
+          phase_transferencia_end?: string | null
+          phase_transferencia_start?: string | null
           segment?: string | null
           status?: string | null
           updated_at?: string | null

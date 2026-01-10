@@ -75,6 +75,18 @@ interface Client {
   phase: Phase;
   autonomy: boolean;
   created_at: string;
+  phase_diagnostico_start: string | null;
+  phase_diagnostico_end: string | null;
+  phase_diagnostico_completed_at: string | null;
+  phase_estruturacao_start: string | null;
+  phase_estruturacao_end: string | null;
+  phase_estruturacao_completed_at: string | null;
+  phase_operacao_guiada_start: string | null;
+  phase_operacao_guiada_end: string | null;
+  phase_operacao_guiada_completed_at: string | null;
+  phase_transferencia_start: string | null;
+  phase_transferencia_end: string | null;
+  phase_transferencia_completed_at: string | null;
 }
 
 interface ClientUser {
@@ -178,6 +190,14 @@ export default function ClientDetail() {
     name: "",
     segment: "",
     status: "ativo",
+    phase_diagnostico_start: "",
+    phase_diagnostico_end: "",
+    phase_estruturacao_start: "",
+    phase_estruturacao_end: "",
+    phase_operacao_guiada_start: "",
+    phase_operacao_guiada_end: "",
+    phase_transferencia_start: "",
+    phase_transferencia_end: "",
   });
 
   const hasPontoFocal = users.some((u) => u.ponto_focal);
@@ -199,6 +219,14 @@ export default function ClientDetail() {
         name: data.name,
         segment: data.segment || "",
         status: data.status || "ativo",
+        phase_diagnostico_start: data.phase_diagnostico_start || "",
+        phase_diagnostico_end: data.phase_diagnostico_end || "",
+        phase_estruturacao_start: data.phase_estruturacao_start || "",
+        phase_estruturacao_end: data.phase_estruturacao_end || "",
+        phase_operacao_guiada_start: data.phase_operacao_guiada_start || "",
+        phase_operacao_guiada_end: data.phase_operacao_guiada_end || "",
+        phase_transferencia_start: data.phase_transferencia_start || "",
+        phase_transferencia_end: data.phase_transferencia_end || "",
       });
     } catch (error) {
       console.error("Error fetching client:", error);
@@ -397,6 +425,14 @@ export default function ClientDetail() {
           name: clientFormData.name,
           segment: clientFormData.segment || null,
           status: clientFormData.status,
+          phase_diagnostico_start: clientFormData.phase_diagnostico_start || null,
+          phase_diagnostico_end: clientFormData.phase_diagnostico_end || null,
+          phase_estruturacao_start: clientFormData.phase_estruturacao_start || null,
+          phase_estruturacao_end: clientFormData.phase_estruturacao_end || null,
+          phase_operacao_guiada_start: clientFormData.phase_operacao_guiada_start || null,
+          phase_operacao_guiada_end: clientFormData.phase_operacao_guiada_end || null,
+          phase_transferencia_start: clientFormData.phase_transferencia_start || null,
+          phase_transferencia_end: clientFormData.phase_transferencia_end || null,
         })
         .eq("id", id);
 
@@ -946,62 +982,179 @@ export default function ClientDetail() {
 
       {/* Edit Client Dialog */}
       <Dialog open={isEditClientOpen} onOpenChange={setIsEditClientOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Cliente</DialogTitle>
-            <DialogDescription>Atualize as informações do cliente.</DialogDescription>
+            <DialogDescription>Atualize as informações do cliente e os prazos das fases da jornada.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="client_name">Nome *</Label>
-              <Input
-                id="client_name"
-                value={clientFormData.name}
-                onChange={(e) =>
-                  setClientFormData({ ...clientFormData, name: e.target.value })
-                }
-              />
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Informações Básicas</h4>
+              <div className="space-y-2">
+                <Label htmlFor="client_name">Nome *</Label>
+                <Input
+                  id="client_name"
+                  value={clientFormData.name}
+                  onChange={(e) =>
+                    setClientFormData({ ...clientFormData, name: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Segmento</Label>
+                  <Select
+                    value={clientFormData.segment}
+                    onValueChange={(value) =>
+                      setClientFormData({ ...clientFormData, segment: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {segments.map((seg) => (
+                        <SelectItem key={seg} value={seg}>
+                          {seg}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={clientFormData.status}
+                    onValueChange={(value) =>
+                      setClientFormData({ ...clientFormData, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="pausado">Pausado</SelectItem>
+                      <SelectItem value="encerrado">Encerrado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Phase Dates */}
+            <div className="space-y-4 pt-4 border-t">
+              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Prazos das Fases da Jornada</h4>
+              
+              {/* Diagnóstico */}
               <div className="space-y-2">
-                <Label>Segmento</Label>
-                <Select
-                  value={clientFormData.segment}
-                  onValueChange={(value) =>
-                    setClientFormData({ ...clientFormData, segment: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segments.map((seg) => (
-                      <SelectItem key={seg} value={seg}>
-                        {seg}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-primary font-medium">1. Diagnóstico</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Início</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_diagnostico_start}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_diagnostico_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Término</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_diagnostico_end}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_diagnostico_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Estruturação */}
               <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={clientFormData.status}
-                  onValueChange={(value) =>
-                    setClientFormData({ ...clientFormData, status: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="pausado">Pausado</SelectItem>
-                    <SelectItem value="encerrado">Encerrado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-primary font-medium">2. Estruturação</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Início</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_estruturacao_start}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_estruturacao_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Término</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_estruturacao_end}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_estruturacao_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Operação Guiada */}
+              <div className="space-y-2">
+                <Label className="text-primary font-medium">3. Operação Guiada</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Início</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_operacao_guiada_start}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_operacao_guiada_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Término</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_operacao_guiada_end}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_operacao_guiada_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Transferência */}
+              <div className="space-y-2">
+                <Label className="text-primary font-medium">4. Transferência</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Início</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_transferencia_start}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_transferencia_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Término</Label>
+                    <Input
+                      type="date"
+                      value={clientFormData.phase_transferencia_end}
+                      onChange={(e) =>
+                        setClientFormData({ ...clientFormData, phase_transferencia_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
