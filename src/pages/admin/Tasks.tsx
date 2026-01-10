@@ -12,6 +12,8 @@ import {
   Eye,
   EyeOff,
   Route,
+  Star,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,6 +58,7 @@ interface Task {
   created_at: string | null;
   journey_phase: string | null;
   visible_to_client: boolean | null;
+  executor_type: string | null;
   clients?: { name: string } | null;
 }
 
@@ -99,6 +103,7 @@ export default function AdminTasks() {
     status: "backlog",
     journey_phase: "",
     visible_to_client: true,
+    executor_type: "internal" as "internal" | "client",
   });
 
   const { toast } = useToast();
@@ -140,9 +145,9 @@ export default function AdminTasks() {
     },
   });
 
-  // Fetch admins/managers for assignment
-  const { data: assignees = [] } = useQuery({
-    queryKey: ["assignees-list"],
+  // Fetch admins/managers for internal assignment
+  const { data: internalAssignees = [] } = useQuery({
+    queryKey: ["internal-assignees-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -155,6 +160,22 @@ export default function AdminTasks() {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Fetch client users for client assignment
+  const { data: clientUsers = [] } = useQuery({
+    queryKey: ["client-users-list", formData.client_id],
+    queryFn: async () => {
+      if (!formData.client_id) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, ponto_focal")
+        .eq("client_id", formData.client_id)
+        .order("ponto_focal", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formData.client_id,
   });
 
   // Create/Update task mutation
@@ -171,6 +192,7 @@ export default function AdminTasks() {
         status: data.status,
         journey_phase: data.journey_phase === "none" ? null : data.journey_phase || null,
         visible_to_client: data.visible_to_client,
+        executor_type: data.executor_type,
       };
 
       if (data.id) {
@@ -229,6 +251,7 @@ export default function AdminTasks() {
       status: "backlog",
       journey_phase: "",
       visible_to_client: true,
+      executor_type: "internal",
     });
   };
 
@@ -245,6 +268,7 @@ export default function AdminTasks() {
       status: task.status || "backlog",
       journey_phase: task.journey_phase || "",
       visible_to_client: task.visible_to_client ?? true,
+      executor_type: (task.executor_type as "internal" | "client") || "internal",
     });
     setIsDialogOpen(true);
   };
@@ -351,7 +375,33 @@ export default function AdminTasks() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Responsável</Label>
+                  <Label>Tipo de Executor</Label>
+                  <RadioGroup
+                    value={formData.executor_type}
+                    onValueChange={(value: "internal" | "client") =>
+                      setFormData({ ...formData, executor_type: value, assigned_to: "" })
+                    }
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="internal" id="executor-internal" />
+                      <Label htmlFor="executor-internal" className="font-normal cursor-pointer">
+                        Equipe Interna
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="client" id="executor-client" />
+                      <Label htmlFor="executor-client" className="font-normal cursor-pointer">
+                        Cliente
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                {formData.executor_type === "internal" ? (
                   <Select
                     value={formData.assigned_to}
                     onValueChange={(value) =>
@@ -359,17 +409,45 @@ export default function AdminTasks() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione da equipe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {assignees.map((user) => (
+                      {internalAssignees.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.full_name || "Sem nome"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                ) : (
+                  <Select
+                    value={formData.assigned_to}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, assigned_to: value })
+                    }
+                    disabled={!formData.client_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.client_id ? "Selecione do cliente" : "Selecione o cliente primeiro"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-2">
+                            {user.ponto_focal && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                            <span>{user.full_name || user.email}</span>
+                            {user.ponto_focal && <span className="text-xs text-muted-foreground">(Ponto Focal)</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {clientUsers.length === 0 && formData.client_id && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          Nenhum usuário cadastrado para este cliente
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -566,6 +644,12 @@ export default function AdminTasks() {
                           <Badge variant="outline" className="text-xs">
                             {task.clients?.name || "Sem cliente"}
                           </Badge>
+                          {task.executor_type === "client" && (
+                            <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
+                              <Users className="h-3 w-3 mr-1" />
+                              Cliente
+                            </Badge>
+                          )}
                           {task.journey_phase && journeyPhaseConfig[task.journey_phase as JourneyPhase] && (
                             <Badge 
                               variant="secondary" 

@@ -762,6 +762,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
+          executor_type: string | null
           id: string
           journey_phase: string | null
           priority: string | null
@@ -778,6 +779,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          executor_type?: string | null
           id?: string
           journey_phase?: string | null
           priority?: string | null
@@ -794,6 +796,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          executor_type?: string | null
           id?: string
           journey_phase?: string | null
           priority?: string | null
