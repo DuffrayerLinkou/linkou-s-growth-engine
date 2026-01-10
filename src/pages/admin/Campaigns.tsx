@@ -296,7 +296,7 @@ export default function AdminCampaigns() {
       setSelectedCampaign(campaign);
       setFormData({
         client_id: campaign.client_id,
-        project_id: campaign.project_id || "",
+        project_id: campaign.project_id || "none",
         name: campaign.name,
         description: campaign.description || "",
         platform: campaign.platform || "",
@@ -321,7 +321,7 @@ export default function AdminCampaigns() {
       setSelectedCampaign(null);
       setFormData({
         client_id: "",
-        project_id: "",
+        project_id: "none",
         name: "",
         description: "",
         platform: "",
@@ -368,7 +368,7 @@ export default function AdminCampaigns() {
     try {
       const campaignData = {
         client_id: formData.client_id,
-        project_id: formData.project_id || null,
+        project_id: formData.project_id && formData.project_id !== "none" ? formData.project_id : null,
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         platform: formData.platform,
@@ -750,7 +750,7 @@ export default function AdminCampaigns() {
                       <SelectValue placeholder="Vincular a projeto" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
