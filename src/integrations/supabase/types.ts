@@ -510,6 +510,7 @@ export type Database = {
       }
       files: {
         Row: {
+          category: string | null
           client_id: string
           created_at: string | null
           description: string | null
@@ -520,9 +521,11 @@ export type Database = {
           mime_type: string | null
           name: string
           project_id: string | null
+          task_id: string | null
           uploaded_by: string | null
         }
         Insert: {
+          category?: string | null
           client_id: string
           created_at?: string | null
           description?: string | null
@@ -533,9 +536,11 @@ export type Database = {
           mime_type?: string | null
           name: string
           project_id?: string | null
+          task_id?: string | null
           uploaded_by?: string | null
         }
         Update: {
+          category?: string | null
           client_id?: string
           created_at?: string | null
           description?: string | null
@@ -546,6 +551,7 @@ export type Database = {
           mime_type?: string | null
           name?: string
           project_id?: string | null
+          task_id?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -561,6 +567,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
