@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -101,6 +101,7 @@ const phaseColors: Record<string, string> = {
 
 export default function AdminClients() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -249,11 +250,18 @@ export default function AdminClients() {
     }
   };
 
-  const filteredClients = clients.filter(
-    (client) =>
+  // Filtros via query params
+  const statusParam = searchParams.get("status");
+  const phaseParam = searchParams.get("phase");
+
+  const filteredClients = clients.filter((client) => {
+    const matchesSearch =
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.segment?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      client.segment?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = !statusParam || client.status === statusParam;
+    const matchesPhase = !phaseParam || client.phase === phaseParam;
+    return matchesSearch && matchesStatus && matchesPhase;
+  });
 
   return (
     <div className="space-y-6">

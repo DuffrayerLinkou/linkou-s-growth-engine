@@ -1,21 +1,28 @@
-import { motion } from "framer-motion";
-import { Target, Users, FolderKanban, TrendingUp, Clock, MapPin } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Users, 
+  UserCheck, 
+  Building2, 
+  Compass,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
+  TrendingUp,
+  CheckCircle2,
+  UserPlus,
+  FolderPlus,
+  ChevronRight
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const phaseLabels: Record<string, string> = {
-  diagnostico: "Diagnóstico",
-  estruturacao: "Estruturação",
-  operacao_guiada: "Operação Guiada",
-  transferencia: "Transferência",
-};
-
+// Labels e cores
 const statusLabels: Record<string, string> = {
   new: "Novo",
   contacted: "Contatado",
@@ -25,303 +32,596 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-500",
-  contacted: "bg-yellow-500/10 text-yellow-500",
-  qualified: "bg-green-500/10 text-green-500",
-  lost: "bg-red-500/10 text-red-500",
-  closed: "bg-purple-500/10 text-purple-500",
+  new: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  contacted: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  qualified: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  lost: "bg-red-500/10 text-red-600 border-red-500/20",
+  closed: "bg-purple-500/10 text-purple-600 border-purple-500/20",
 };
 
-export default function AdminDashboard() {
-  const { profile, isAdmin } = useAuth();
+const phaseLabels: Record<string, string> = {
+  diagnostico: "Diagnóstico",
+  estruturacao: "Estruturação",
+  operacao_guiada: "Operação Guiada",
+  transferencia: "Transferência",
+};
 
-  // Query: Total de Leads
-  const { data: totalLeads, isLoading: loadingLeads } = useQuery({
-    queryKey: ["admin-total-leads"],
+const phaseColors: Record<string, string> = {
+  diagnostico: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  estruturacao: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+  operacao_guiada: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  transferencia: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+};
+
+const phaseOrder = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
+
+export default function AdminDashboard() {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  // === QUERIES ===
+
+  // KPI 1: Leads no período (últimos 30 dias)
+  const { data: leadsInPeriod, isLoading: loadingLeadsPeriod } = useQuery({
+    queryKey: ["leads-period"],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { count } = await supabase
         .from("leads")
-        .select("*", { count: "exact", head: true });
-      if (error) throw error;
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", thirtyDaysAgo.toISOString());
       return count || 0;
     },
   });
 
-  // Query: Leads por Status
-  const { data: leadsByStatus, isLoading: loadingLeadsByStatus } = useQuery({
-    queryKey: ["admin-leads-by-status"],
+  // KPI 2: Leads qualificados
+  const { data: qualifiedLeads, isLoading: loadingQualified } = useQuery({
+    queryKey: ["leads-qualified"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("status");
-      if (error) throw error;
-      const counts: Record<string, number> = {
-        new: 0,
-        contacted: 0,
-        qualified: 0,
-        lost: 0,
-        closed: 0,
-      };
-      data?.forEach((lead) => {
-        const status = lead.status || "new";
-        if (counts[status] !== undefined) counts[status]++;
-      });
-      return counts;
+      const { count } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "qualified");
+      return count || 0;
     },
   });
 
-  // Query: Total de Clientes Ativos
+  // KPI 3: Clientes ativos
   const { data: activeClients, isLoading: loadingActiveClients } = useQuery({
-    queryKey: ["admin-active-clients"],
+    queryKey: ["clients-active"],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { count } = await supabase
         .from("clients")
         .select("*", { count: "exact", head: true })
-        .eq("status", "active");
-      if (error) throw error;
+        .eq("status", "ativo");
       return count || 0;
     },
   });
 
-  // Query: Clientes por Fase
-  const { data: clientsByPhase, isLoading: loadingClientsByPhase } = useQuery({
-    queryKey: ["admin-clients-by-phase"],
+  // KPI 4: Clientes em operação guiada
+  const { data: clientsOperacao, isLoading: loadingOperacao } = useQuery({
+    queryKey: ["clients-operacao"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("phase");
-      if (error) throw error;
-      const counts: Record<string, number> = {
-        diagnostico: 0,
-        estruturacao: 0,
-        operacao_guiada: 0,
-        transferencia: 0,
-      };
-      data?.forEach((client) => {
-        const phase = client.phase || "diagnostico";
-        if (counts[phase] !== undefined) counts[phase]++;
+      const { count } = await supabase
+        .from("clients")
+        .select("*", { count: "exact", head: true })
+        .eq("phase", "operacao_guiada");
+      return count || 0;
+    },
+  });
+
+  // Pipeline: Leads por status
+  const { data: leadsByStatus, isLoading: loadingPipeline } = useQuery({
+    queryKey: ["leads-by-status"],
+    queryFn: async () => {
+      const { data } = await supabase.from("leads").select("status");
+      const counts: Record<string, number> = { new: 0, contacted: 0, qualified: 0, lost: 0, closed: 0 };
+      data?.forEach((lead) => {
+        if (lead.status && counts[lead.status] !== undefined) {
+          counts[lead.status]++;
+        }
       });
       return counts;
     },
   });
 
-  // Query: Projetos Ativos
-  const { data: activeProjects, isLoading: loadingActiveProjects } = useQuery({
-    queryKey: ["admin-active-projects"],
+  // Jornada: Clientes por fase
+  const { data: clientsByPhase, isLoading: loadingJornada } = useQuery({
+    queryKey: ["clients-by-phase"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("projects")
-        .select("*", { count: "exact", head: true })
-        .neq("status", "completed");
-      if (error) throw error;
-      return count || 0;
+      const { data } = await supabase.from("clients").select("phase").eq("status", "ativo");
+      const counts: Record<string, number> = { diagnostico: 0, estruturacao: 0, operacao_guiada: 0, transferencia: 0 };
+      data?.forEach((client) => {
+        if (client.phase && counts[client.phase] !== undefined) {
+          counts[client.phase]++;
+        }
+      });
+      return counts;
     },
   });
 
-  // Query: Últimos 5 Leads
-  const { data: recentLeads, isLoading: loadingRecentLeads } = useQuery({
-    queryKey: ["admin-recent-leads"],
+  // Fila de Ação: Leads novos sem contato (> 2 dias)
+  const { data: staleLeads, isLoading: loadingStaleLeads } = useQuery({
+    queryKey: ["stale-leads"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      const { data } = await supabase
         .from("leads")
-        .select("id, name, status, created_at")
+        .select("id, name, created_at")
+        .eq("status", "new")
+        .lt("created_at", twoDaysAgo.toISOString())
+        .order("created_at", { ascending: true })
+        .limit(3);
+      return data || [];
+    },
+  });
+
+  // Fila de Ação: Clientes sem ponto focal
+  const { data: clientsWithoutFocal, isLoading: loadingNoFocal } = useQuery({
+    queryKey: ["clients-no-focal"],
+    queryFn: async () => {
+      const { data: clients } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("status", "ativo")
+        .limit(10);
+      
+      if (!clients) return [];
+      
+      const results = [];
+      for (const client of clients) {
+        const { data: hasFocal } = await supabase.rpc("client_has_ponto_focal", { _client_id: client.id });
+        if (!hasFocal) {
+          results.push(client);
+          if (results.length >= 3) break;
+        }
+      }
+      return results;
+    },
+  });
+
+  // Fila de Ação: Clientes parados (> 14 dias)
+  const { data: staleClients, isLoading: loadingStaleClients } = useQuery({
+    queryKey: ["stale-clients"],
+    queryFn: async () => {
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name, phase, updated_at")
+        .eq("status", "ativo")
+        .lt("updated_at", fourteenDaysAgo.toISOString())
+        .order("updated_at", { ascending: true })
+        .limit(3);
+      return data || [];
+    },
+  });
+
+  // Fila de Ação: Projetos parados (> 7 dias)
+  const { data: staleProjects, isLoading: loadingStaleProjects } = useQuery({
+    queryKey: ["stale-projects"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { data } = await supabase
+        .from("projects")
+        .select("id, name, client_id, updated_at")
+        .neq("status", "completed")
+        .lt("updated_at", sevenDaysAgo.toISOString())
+        .order("updated_at", { ascending: true })
+        .limit(2);
+      return data || [];
+    },
+  });
+
+  // Atividade Recente: audit_logs
+  const { data: recentActivity, isLoading: loadingActivity } = useQuery({
+    queryKey: ["recent-activity"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("id, action, entity_type, entity_id, client_id, new_data, old_data, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
-      if (error) throw error;
       return data || [];
     },
   });
 
-  // Query: Clientes em Operação Guiada
-  const { data: clientsInOperacao, isLoading: loadingClientsInOperacao } = useQuery({
-    queryKey: ["admin-clients-operacao-guiada"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("id, name, segment")
-        .eq("phase", "operacao_guiada");
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  // === HELPERS ===
+  const formatRelativeTime = (date: string) => {
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+  };
 
-  const isLoading = loadingLeads || loadingActiveClients || loadingActiveProjects;
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case "phase_changed":
+        return <TrendingUp className="h-4 w-4 text-blue-500" />;
+      case "lead_converted":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+      case "ponto_focal_set":
+        return <UserPlus className="h-4 w-4 text-violet-500" />;
+      case "project_created":
+        return <FolderPlus className="h-4 w-4 text-orange-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getActionText = (log: any) => {
+    const newData = log.new_data as Record<string, any> | null;
+    
+    switch (log.action) {
+      case "phase_changed":
+        const toPhase = newData?.phase ? phaseLabels[newData.phase] || newData.phase : "nova fase";
+        return `Cliente avançou para ${toPhase}`;
+      case "lead_converted":
+        return "Lead convertido em cliente";
+      case "ponto_focal_set":
+        return "Ponto focal definido";
+      case "project_created":
+        return "Novo projeto criado";
+      default:
+        return log.action?.replace(/_/g, " ") || "Ação registrada";
+    }
+  };
+
+  // Calcular total de alertas
+  const totalAlerts = (staleLeads?.length || 0) + (clientsWithoutFocal?.length || 0) + (staleClients?.length || 0) + (staleProjects?.length || 0);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+  };
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div>
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold tracking-tight"
-        >
-          Dashboard {isAdmin ? "Admin" : "Gestão"}
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-muted-foreground mt-1"
-        >
-          Bem-vindo, {profile?.full_name?.split(" ")[0] || "Administrador"}! Aqui está o resumo da agência.
-        </motion.p>
-      </div>
+      <motion.div variants={itemVariants}>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Bem-vindo, {profile?.full_name || "Admin"}! Aqui está o resumo da agência.
+        </p>
+      </motion.div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total de Leads */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+      {/* BLOCO 1: KPIs Rápidos */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Leads no período */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/leads")}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Target className="h-4 w-4 text-blue-500" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Leads (30 dias)</p>
+                {loadingLeadsPeriod ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-foreground">{leadsInPeriod}</p>
+                )}
               </div>
-            </CardHeader>
-            <CardContent>
-              {loadingLeads ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">{totalLeads}</div>
-              )}
-              <p className="text-xs text-muted-foreground">Todos os leads capturados</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Clientes Ativos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Users className="h-4 w-4 text-green-500" />
+              <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Users className="h-6 w-6 text-blue-500" />
               </div>
-            </CardHeader>
-            <CardContent>
-              {loadingActiveClients ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">{activeClients}</div>
-              )}
-              <p className="text-xs text-muted-foreground">Status ativo</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Projetos Ativos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+        {/* Leads qualificados */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/leads?status=qualified")}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projetos em Andamento</CardTitle>
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <FolderKanban className="h-4 w-4 text-purple-500" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Qualificados</p>
+                {loadingQualified ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-foreground">{qualifiedLeads}</p>
+                )}
               </div>
-            </CardHeader>
-            <CardContent>
-              {loadingActiveProjects ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">{activeProjects}</div>
-              )}
-              <p className="text-xs text-muted-foreground">Não encerrados</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Taxa de Conversão (calculada) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
+              <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <UserCheck className="h-6 w-6 text-emerald-500" />
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">
-                  {totalLeads && totalLeads > 0
-                    ? `${((activeClients || 0) / totalLeads * 100).toFixed(1)}%`
-                    : "0%"}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Lead → Cliente</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Breakdown Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Leads por Status */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+        {/* Clientes ativos */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/clientes?status=ativo")}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Leads por Status</CardTitle>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Clientes Ativos</p>
+                {loadingActiveClients ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-foreground">{activeClients}</p>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-full bg-violet-500/10 flex items-center justify-center">
+                <Building2 className="h-6 w-6 text-violet-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Operação guiada */}
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+          onClick={() => navigate("/admin/clientes?phase=operacao_guiada")}
+        >
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Op. Guiada</p>
+                {loadingOperacao ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-foreground">{clientsOperacao}</p>
+                )}
+              </div>
+              <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                <Compass className="h-6 w-6 text-orange-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* BLOCO 2: Pipeline de Leads */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              Pipeline de Leads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPipeline ? (
+              <div className="flex gap-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-20 flex-1" />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(statusLabels).map(([status, label]) => (
+                  <button
+                    key={status}
+                    onClick={() => navigate(`/admin/leads?status=${status}`)}
+                    className={`flex-1 min-w-[120px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${statusColors[status]}`}
+                  >
+                    <p className="text-2xl font-bold">{leadsByStatus?.[status] || 0}</p>
+                    <p className="text-sm font-medium">{label}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* BLOCO 3: Jornada dos Clientes */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Compass className="h-5 w-5 text-muted-foreground" />
+              Jornada dos Clientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingJornada ? (
+              <div className="flex gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-20 flex-1" />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {phaseOrder.map((phase, index) => (
+                  <div key={phase} className="flex items-center">
+                    <button
+                      onClick={() => navigate(`/admin/clientes?phase=${phase}`)}
+                      className={`flex-1 min-w-[140px] p-4 rounded-lg border transition-all hover:shadow-md hover:scale-[1.02] ${phaseColors[phase]}`}
+                    >
+                      <p className="text-2xl font-bold">{clientsByPhase?.[phase] || 0}</p>
+                      <p className="text-sm font-medium">{phaseLabels[phase]}</p>
+                    </button>
+                    {index < phaseOrder.length - 1 && (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground mx-1 hidden sm:block" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* BLOCO 4 e 5: Grid de duas colunas */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* BLOCO 4: Fila de Ação */}
+        <motion.div variants={itemVariants}>
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Requer Atenção
+                {totalAlerts > 0 && (
+                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-full">
+                    {totalAlerts}
+                  </span>
+                )}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              {loadingLeadsByStatus ? (
+            <CardContent className="space-y-2">
+              {(loadingStaleLeads || loadingNoFocal || loadingStaleClients || loadingStaleProjects) ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-6 w-full" />
+                    <Skeleton key={i} className="h-12 w-full" />
                   ))}
+                </div>
+              ) : totalAlerts === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-emerald-500/50" />
+                  <p>Tudo em dia! Nenhum item requer atenção.</p>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(leadsByStatus || {}).map(([status, count]) => (
-                    <Badge key={status} variant="secondary" className={statusColors[status]}>
-                      {statusLabels[status]}: {count}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Clientes por Fase */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Clientes por Fase da Jornada</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingClientsByPhase ? (
                 <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-6 w-full" />
+                  {/* Leads sem contato */}
+                  {staleLeads?.map((lead) => (
+                    <button
+                      key={`lead-${lead.id}`}
+                      onClick={() => navigate(`/admin/leads?status=new`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors text-left"
+                    >
+                      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          Lead "{lead.name}" sem contato
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelativeTime(lead.created_at)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+
+                  {/* Clientes sem ponto focal */}
+                  {clientsWithoutFocal?.map((client) => (
+                    <button
+                      key={`focal-${client.id}`}
+                      onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 hover:bg-violet-500/10 transition-colors text-left"
+                    >
+                      <AlertTriangle className="h-4 w-4 text-violet-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          "{client.name}" sem ponto focal
+                        </p>
+                        <p className="text-xs text-muted-foreground">Definir responsável</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+
+                  {/* Clientes parados */}
+                  {staleClients?.map((client) => (
+                    <button
+                      key={`stale-${client.id}`}
+                      onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-orange-500/5 border border-orange-500/20 hover:bg-orange-500/10 transition-colors text-left"
+                    >
+                      <Clock className="h-4 w-4 text-orange-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          "{client.name}" parado em {phaseLabels[client.phase || ""] || client.phase}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Atualizado {formatRelativeTime(client.updated_at)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+
+                  {/* Projetos parados */}
+                  {staleProjects?.map((project) => (
+                    <button
+                      key={`proj-${project.id}`}
+                      onClick={() => navigate(`/admin/projetos`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
+                    >
+                      <Clock className="h-4 w-4 text-red-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          Projeto "{project.name}" sem atualização
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Atualizado {formatRelativeTime(project.updated_at)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
                   ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* BLOCO 5: Atividade Recente */}
+        <motion.div variants={itemVariants}>
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                Atividade Recente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingActivity ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : !recentActivity || recentActivity.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma atividade registrada ainda.</p>
+                </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(clientsByPhase || {}).map(([phase, count]) => (
-                    <Badge key={phase} variant="outline">
-                      {phaseLabels[phase]}: {count}
-                    </Badge>
+                <div className="space-y-3">
+                  {recentActivity.map((log) => (
+                    <button
+                      key={log.id}
+                      onClick={() => {
+                        if (log.client_id) {
+                          navigate(`/admin/clientes/${log.client_id}`);
+                        } else if (log.entity_type === "leads") {
+                          navigate(`/admin/leads`);
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-transparent hover:border-border"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        {getActionIcon(log.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {getActionText(log)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelativeTime(log.created_at)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
                   ))}
                 </div>
               )}
@@ -329,119 +629,6 @@ export default function AdminDashboard() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Lists */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Últimos Leads */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Últimos Leads</CardTitle>
-              <CardDescription>Últimos leads capturados</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingRecentLeads ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : recentLeads && recentLeads.length > 0 ? (
-                <div className="space-y-3">
-                  {recentLeads.map((lead) => (
-                    <div key={lead.id} className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Target className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{lead.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(lead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary" className={statusColors[lead.status || "new"]}>
-                        {statusLabels[lead.status || "new"]}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum lead ainda</p>
-                  <p className="text-sm">Novos leads aparecerão aqui</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Clientes em Operação Guiada */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Clientes em Operação Guiada</CardTitle>
-              <CardDescription>Fase de testes e treinamento</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingClientsInOperacao ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : clientsInOperacao && clientsInOperacao.length > 0 ? (
-                <div className="space-y-3">
-                  {clientsInOperacao.map((client) => (
-                    <div key={client.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{client.name}</p>
-                        {client.segment && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {client.segment}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum cliente nesta fase</p>
-                  <p className="text-sm">Clientes em Operação Guiada aparecerão aqui</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </div>
+    </motion.div>
   );
 }
