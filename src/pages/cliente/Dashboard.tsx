@@ -29,12 +29,7 @@ import { format, isPast, isToday, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 
-const phaseLabels: Record<string, string> = {
-  diagnostico: "Diagnóstico",
-  estruturacao: "Estruturação",
-  operacao_guiada: "Operação Guiada",
-  transferencia: "Transferência",
-};
+import { phaseLabels, phaseColors as importedPhaseColors } from "@/lib/status-config";
 
 const phaseColors: Record<string, string> = {
   diagnostico: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",

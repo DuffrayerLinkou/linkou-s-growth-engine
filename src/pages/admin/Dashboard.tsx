@@ -38,38 +38,13 @@ import { DateRange } from "react-day-picker";
 import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
 import { ExportDashboard } from "@/components/admin/ExportDashboard";
 
-// Labels e cores
-const statusLabels: Record<string, string> = {
-  new: "Novo",
-  contacted: "Contatado",
-  qualified: "Qualificado",
-  lost: "Perdido",
-  closed: "Fechado",
-};
-
-const statusColors: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  contacted: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  qualified: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  lost: "bg-red-500/10 text-red-600 border-red-500/20",
-  closed: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-};
-
-const phaseLabels: Record<string, string> = {
-  diagnostico: "Diagnóstico",
-  estruturacao: "Estruturação",
-  operacao_guiada: "Op. Guiada",
-  transferencia: "Transferência",
-};
-
-const phaseColors: Record<string, string> = {
-  diagnostico: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  estruturacao: "bg-violet-500/10 text-violet-600 border-violet-500/20",
-  operacao_guiada: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  transferencia: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-};
-
-const phaseOrder = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
+import {
+  leadStatusLabels as statusLabels,
+  leadStatusColors as statusColors,
+  phaseLabels,
+  phaseColors,
+  phaseOrder,
+} from "@/lib/status-config";
 
 // Helper to get phase end field name
 const getPhaseEndField = (phase: string) => {

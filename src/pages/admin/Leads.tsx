@@ -73,32 +73,11 @@ interface Lead {
   created_at: string;
 }
 
-const statusColors: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-500",
-  contacted: "bg-yellow-500/10 text-yellow-500",
-  qualified: "bg-green-500/10 text-green-500",
-  converted: "bg-purple-500/10 text-purple-500",
-  lost: "bg-red-500/10 text-red-500",
-};
-
-const statusLabels: Record<string, string> = {
-  new: "Novo",
-  contacted: "Contatado",
-  qualified: "Qualificado",
-  converted: "Convertido",
-  lost: "Perdido",
-};
-
-const clientSegments = [
-  "Construtora / Incorporadora",
-  "Imobiliária",
-  "B2B / Serviços",
-  "E-commerce",
-  "SaaS",
-  "Educação",
-  "Saúde",
-  "Outro",
-];
+import { clientSegments } from "@/lib/segments-config";
+import {
+  leadStatusLabels as statusLabels,
+  leadStatusColors as statusColors,
+} from "@/lib/status-config";
 
 export default function AdminLeads() {
   const [searchParams, setSearchParams] = useSearchParams();

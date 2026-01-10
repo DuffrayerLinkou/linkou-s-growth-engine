@@ -129,28 +129,11 @@ const userSchema = z.object({
   ponto_focal: z.boolean(),
 });
 
-const statusColors: Record<string, string> = {
-  ativo: "bg-green-500/10 text-green-500",
-  pausado: "bg-yellow-500/10 text-yellow-500",
-  encerrado: "bg-red-500/10 text-red-500",
-};
-
-const statusLabels: Record<string, string> = {
-  ativo: "Ativo",
-  pausado: "Pausado",
-  encerrado: "Encerrado",
-};
-
-const segments = [
-  "Construtora / Incorporadora",
-  "Imobiliária",
-  "B2B / Serviços",
-  "E-commerce",
-  "SaaS",
-  "Educação",
-  "Saúde",
-  "Outro",
-];
+import { clientSegments as segments } from "@/lib/segments-config";
+import {
+  clientStatusLabels as statusLabels,
+  clientStatusColors as statusColors,
+} from "@/lib/status-config";
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();

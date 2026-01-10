@@ -20,13 +20,7 @@ interface Lead {
   created_at: string;
 }
 
-const statusLabels: Record<string, string> = {
-  new: "Novo",
-  contacted: "Contatado",
-  qualified: "Qualificado",
-  converted: "Convertido",
-  lost: "Perdido",
-};
+import { leadStatusLabels as statusLabels } from "@/lib/status-config";
 
 interface ExportLeadsProps {
   leads: Lead[];

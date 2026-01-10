@@ -62,42 +62,15 @@ const clientSchema = z.object({
   status: z.string().default("ativo"),
 });
 
-const segments = [
-  "Construtora / Incorporadora",
-  "Imobiliária",
-  "B2B / Serviços",
-  "E-commerce",
-  "SaaS",
-  "Educação",
-  "Saúde",
-  "Outro",
-];
+import { clientSegments } from "@/lib/segments-config";
+import {
+  clientStatusLabels as statusLabels,
+  clientStatusColors as statusColors,
+  phaseLabels,
+  phaseColors,
+} from "@/lib/status-config";
 
-const statusColors: Record<string, string> = {
-  ativo: "bg-green-500/10 text-green-500",
-  pausado: "bg-yellow-500/10 text-yellow-500",
-  encerrado: "bg-red-500/10 text-red-500",
-};
-
-const statusLabels: Record<string, string> = {
-  ativo: "Ativo",
-  pausado: "Pausado",
-  encerrado: "Encerrado",
-};
-
-const phaseLabels: Record<string, string> = {
-  diagnostico: "Diagnóstico",
-  estruturacao: "Estruturação",
-  operacao_guiada: "Operação Guiada",
-  transferencia: "Transferência",
-};
-
-const phaseColors: Record<string, string> = {
-  diagnostico: "bg-blue-500/10 text-blue-600",
-  estruturacao: "bg-purple-500/10 text-purple-600",
-  operacao_guiada: "bg-orange-500/10 text-orange-600",
-  transferencia: "bg-green-500/10 text-green-600",
-};
+const segments = clientSegments;
 
 export default function AdminClients() {
   const navigate = useNavigate();
