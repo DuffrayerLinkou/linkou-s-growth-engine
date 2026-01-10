@@ -1,9 +1,10 @@
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Mail, Phone, Building2, Calendar } from "lucide-react";
+import { Mail, Phone, Building2, Calendar, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -148,17 +149,50 @@ export function LeadsKanban({ leads, onStatusChange, onLeadClick }: LeadsKanbanP
                                   </div>
                                 )}
 
-                                {/* Data */}
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t">
-                                  <Calendar className="h-3 w-3 flex-shrink-0" />
-                                  <span>
-                                    {format(new Date(lead.created_at), "dd/MM/yy", {
-                                      locale: ptBR,
-                                    })}
-                                  </span>
-                                </div>
-                              </CardContent>
-                            </Card>
+                                                {/* Data */}
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t">
+                                                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                                                  <span>
+                                                    {format(new Date(lead.created_at), "dd/MM/yy", {
+                                                      locale: ptBR,
+                                                    })}
+                                                  </span>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex gap-1 pt-2 border-t mt-2">
+                                                  {lead.phone && (
+                                                    <Button
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      className="flex-1 h-7 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        window.open(
+                                                          `https://wa.me/55${lead.phone!.replace(/\D/g, "")}`,
+                                                          "_blank"
+                                                        );
+                                                      }}
+                                                    >
+                                                      <MessageCircle className="h-3 w-3 mr-1" />
+                                                      WhatsApp
+                                                    </Button>
+                                                  )}
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="flex-1 h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      window.open(`mailto:${lead.email}`, "_blank");
+                                                    }}
+                                                  >
+                                                    <Mail className="h-3 w-3 mr-1" />
+                                                    Email
+                                                  </Button>
+                                                </div>
+                                              </CardContent>
+                                            </Card>
                           )}
                         </Draggable>
                       ))}

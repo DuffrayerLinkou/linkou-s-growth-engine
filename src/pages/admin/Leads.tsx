@@ -17,6 +17,7 @@ import {
   RefreshCw,
   List,
   LayoutGrid,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -514,6 +515,32 @@ export default function AdminLeads() {
                     </a>
                   </div>
                 )}
+              </div>
+
+              {/* Quick Action Buttons */}
+              <div className="flex gap-3 pt-3 border-t">
+                {selectedLead.phone && (
+                  <Button
+                    className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                    onClick={() =>
+                      window.open(
+                        `https://wa.me/55${selectedLead.phone!.replace(/\D/g, "")}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    WhatsApp
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => window.open(`mailto:${selectedLead.email}`, "_blank")}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Enviar Email
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
