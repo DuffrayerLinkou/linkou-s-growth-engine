@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import {
@@ -15,6 +15,7 @@ import {
   Circle,
   Ban,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,9 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { JourneyStepper, Phase, getPhaseLabel } from "@/components/journey/JourneyStepper";
+import { JourneyStepper, Phase, getPhaseLabel, getPhaseDescription } from "@/components/journey/JourneyStepper";
+import { JourneyTimeline, PhaseDates, extractPhaseDatesFromClient, getEmptyPhaseDates } from "@/components/journey/JourneyTimeline";
+import { JourneyOverviewCard } from "@/components/journey/JourneyOverviewCard";
 
 interface AuditLog {
   id: string;
@@ -61,6 +64,7 @@ export default function MinhaJornada() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [acknowledgements, setAcknowledgements] = useState<Acknowledgement[]>([]);
   const [phaseTasks, setPhaseTasks] = useState<Task[]>([]);
+  const [phaseDates, setPhaseDates] = useState<PhaseDates>(getEmptyPhaseDates());
   const [isLoading, setIsLoading] = useState(true);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const { toast } = useToast();
@@ -80,6 +84,17 @@ export default function MinhaJornada() {
 
     setIsLoading(true);
     try {
+      // Fetch client with phase dates
+      const { data: clientData, error: clientError } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("id", clientInfo.id)
+        .single();
+
+      if (!clientError && clientData) {
+        setPhaseDates(extractPhaseDatesFromClient(clientData));
+      }
+
       // Fetch audit logs
       const { data: logs, error: logsError } = await supabase
         .from("audit_logs")
@@ -165,6 +180,18 @@ export default function MinhaJornada() {
   const totalTasks = phaseTasks.length;
   const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  // Calculate duration for each log entry
+  const getLogDuration = (logIndex: number): string | null => {
+    if (logIndex >= auditLogs.length - 1) return null;
+    const currentLog = auditLogs[logIndex];
+    const previousLog = auditLogs[logIndex + 1];
+    const days = differenceInDays(
+      new Date(currentLog.created_at),
+      new Date(previousLog.created_at)
+    );
+    return `${days} dias`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -186,7 +213,7 @@ export default function MinhaJornada() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       {/* Header */}
       <div>
         <motion.h1
@@ -206,7 +233,20 @@ export default function MinhaJornada() {
         </motion.p>
       </div>
 
-      {/* Stepper Card */}
+      {/* Journey Overview KPIs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <JourneyOverviewCard 
+          currentPhase={currentPhase} 
+          phaseDates={phaseDates}
+          phaseStartDate={phaseDates[currentPhase].start}
+        />
+      </motion.div>
+
+      {/* Timeline Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -214,16 +254,69 @@ export default function MinhaJornada() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Etapas da Jornada</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Linha do Tempo
+            </CardTitle>
             <CardDescription>
-              Você está na etapa{" "}
-              <span className="font-medium text-foreground">
-                {getPhaseLabel(currentPhase)}
-              </span>
+              Visualize os prazos e o progresso de cada etapa da jornada
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <JourneyStepper currentPhase={currentPhase} />
+            <JourneyTimeline 
+              currentPhase={currentPhase} 
+              phaseDates={phaseDates} 
+            />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Current Phase Detail Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Fase Atual: {getPhaseLabel(currentPhase)}</CardTitle>
+            <CardDescription>
+              {getPhaseDescription(currentPhase)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Compact Stepper */}
+            <JourneyStepper currentPhase={currentPhase} compact />
+
+            {/* Phase Deadline Progress */}
+            {phaseDates[currentPhase].start && phaseDates[currentPhase].end && (
+              <div className="mt-6 p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Progresso Temporal da Fase</span>
+                  <span className="text-sm text-muted-foreground">
+                    {format(parseISO(phaseDates[currentPhase].start!), "dd/MM", { locale: ptBR })} - {format(parseISO(phaseDates[currentPhase].end!), "dd/MM", { locale: ptBR })}
+                  </span>
+                </div>
+                {(() => {
+                  const start = parseISO(phaseDates[currentPhase].start!);
+                  const end = parseISO(phaseDates[currentPhase].end!);
+                  const today = new Date();
+                  const totalDays = differenceInDays(end, start);
+                  const elapsedDays = differenceInDays(today, start);
+                  const percentage = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+                  
+                  return (
+                    <>
+                      <Progress value={percentage} className="h-2" />
+                      <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                        <span>{elapsedDays} dias decorridos</span>
+                        <span>{Math.max(0, totalDays - elapsedDays)} dias restantes</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Acknowledgement Section */}
             <div className="mt-6 pt-6 border-t">
@@ -307,7 +400,7 @@ export default function MinhaJornada() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
+        transition={{ delay: 0.3 }}
       >
         <Card>
           <CardHeader>
@@ -417,16 +510,16 @@ export default function MinhaJornada() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.35 }}
       >
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
-              Histórico de Mudanças
+              Histórico de Transições
             </CardTitle>
             <CardDescription>
-              Registro de alterações na sua jornada
+              Registro de alterações de fase com duração de cada etapa
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -439,10 +532,12 @@ export default function MinhaJornada() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-0">
                 {auditLogs.map((log, index) => {
                   const fromPhase = (log.old_data as any)?.phase as Phase;
                   const toPhase = (log.new_data as any)?.phase as Phase;
+                  const duration = getLogDuration(index);
+                  const isLast = index === auditLogs.length - 1;
 
                   return (
                     <motion.div
@@ -450,16 +545,22 @@ export default function MinhaJornada() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="flex items-start gap-4"
+                      className="flex gap-4"
                     >
+                      {/* Timeline */}
                       <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 rounded-full bg-primary" />
-                        {index < auditLogs.length - 1 && (
-                          <div className="w-0.5 h-full min-h-[40px] bg-muted" />
+                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
+                        {!isLast && (
+                          <div className="w-0.5 flex-1 min-h-[50px] bg-muted" />
                         )}
                       </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center gap-2 flex-wrap">
+
+                      {/* Content */}
+                      <div className={`pb-4 flex-1 ${isLast ? "pb-0" : ""}`}>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap mt-1">
                           <Badge variant="outline">
                             {getPhaseLabel(fromPhase)}
                           </Badge>
@@ -467,14 +568,12 @@ export default function MinhaJornada() {
                           <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
                             {getPhaseLabel(toPhase)}
                           </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {format(
-                            new Date(log.created_at),
-                            "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-                            { locale: ptBR }
+                          {duration && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (após {duration})
+                            </span>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </motion.div>
                   );
