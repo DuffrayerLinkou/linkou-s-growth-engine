@@ -9,6 +9,9 @@ import {
   User,
   AlertCircle,
   Clock,
+  Eye,
+  EyeOff,
+  Route,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,11 +34,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type TaskStatus = "backlog" | "in_progress" | "blocked" | "completed";
+type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
 
 interface Task {
   id: string;
@@ -48,6 +53,8 @@ interface Task {
   project_id: string | null;
   assigned_to: string | null;
   created_at: string | null;
+  journey_phase: string | null;
+  visible_to_client: boolean | null;
   clients?: { name: string } | null;
 }
 
@@ -65,6 +72,13 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   urgent: { label: "Urgente", color: "text-red-600" },
 };
 
+const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: string }> = {
+  diagnostico: { label: "Diagnóstico", color: "bg-purple-500/20 text-purple-600" },
+  estruturacao: { label: "Estruturação", color: "bg-blue-500/20 text-blue-600" },
+  operacao_guiada: { label: "Operação Guiada", color: "bg-orange-500/20 text-orange-600" },
+  transferencia: { label: "Transferência", color: "bg-green-500/20 text-green-600" },
+};
+
 const columns: TaskStatus[] = ["backlog", "in_progress", "blocked", "completed"];
 
 export default function AdminTasks() {
@@ -72,6 +86,7 @@ export default function AdminTasks() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
+  const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -81,6 +96,8 @@ export default function AdminTasks() {
     priority: "medium",
     due_date: "",
     status: "backlog",
+    journey_phase: "",
+    visible_to_client: true,
   });
 
   const { toast } = useToast();
@@ -88,7 +105,7 @@ export default function AdminTasks() {
 
   // Fetch tasks with client info
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ["admin-tasks", clientFilter],
+    queryKey: ["admin-tasks", clientFilter, phaseFilter],
     queryFn: async () => {
       let query = supabase
         .from("tasks")
@@ -97,6 +114,10 @@ export default function AdminTasks() {
 
       if (clientFilter && clientFilter !== "all") {
         query = query.eq("client_id", clientFilter);
+      }
+
+      if (phaseFilter && phaseFilter !== "all") {
+        query = query.eq("journey_phase", phaseFilter);
       }
 
       const { data, error } = await query;
@@ -147,6 +168,8 @@ export default function AdminTasks() {
         priority: data.priority,
         due_date: data.due_date || null,
         status: data.status,
+        journey_phase: data.journey_phase || null,
+        visible_to_client: data.visible_to_client,
       };
 
       if (data.id) {
@@ -203,6 +226,8 @@ export default function AdminTasks() {
       priority: "medium",
       due_date: "",
       status: "backlog",
+      journey_phase: "",
+      visible_to_client: true,
     });
   };
 
@@ -217,6 +242,8 @@ export default function AdminTasks() {
       priority: task.priority || "medium",
       due_date: task.due_date || "",
       status: task.status || "backlog",
+      journey_phase: task.journey_phase || "",
+      visible_to_client: task.visible_to_client ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -268,7 +295,7 @@ export default function AdminTasks() {
               Nova Tarefa
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTask ? "Editar Tarefa" : "Nova Tarefa"}
@@ -346,6 +373,27 @@ export default function AdminTasks() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>Fase da Jornada</Label>
+                  <Select
+                    value={formData.journey_phase}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, journey_phase: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem fase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sem fase</SelectItem>
+                      <SelectItem value="diagnostico">Diagnóstico</SelectItem>
+                      <SelectItem value="estruturacao">Estruturação</SelectItem>
+                      <SelectItem value="operacao_guiada">Operação Guiada</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Prioridade</Label>
                   <Select
                     value={formData.priority}
@@ -364,7 +412,9 @@ export default function AdminTasks() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select
@@ -385,17 +435,30 @@ export default function AdminTasks() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Data de Vencimento</Label>
+                  <Input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, due_date: e.target.value })
+                    }
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Data de Vencimento</Label>
-                <Input
-                  type="date"
-                  value={formData.due_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, due_date: e.target.value })
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="visible_to_client"
+                  checked={formData.visible_to_client}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, visible_to_client: checked === true })
                   }
                 />
+                <Label htmlFor="visible_to_client" className="text-sm font-normal cursor-pointer">
+                  Visível para o cliente
+                </Label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
@@ -439,6 +502,18 @@ export default function AdminTasks() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filtrar por fase" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Fases</SelectItem>
+            <SelectItem value="diagnostico">Diagnóstico</SelectItem>
+            <SelectItem value="estruturacao">Estruturação</SelectItem>
+            <SelectItem value="operacao_guiada">Operação Guiada</SelectItem>
+            <SelectItem value="transferencia">Transferência</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Kanban Board */}
@@ -478,13 +553,27 @@ export default function AdminTasks() {
                           <h4 className="font-medium text-sm line-clamp-2">
                             {task.title}
                           </h4>
-                          <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {task.visible_to_client === false && (
+                              <EyeOff className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             {task.clients?.name || "Sem cliente"}
                           </Badge>
+                          {task.journey_phase && journeyPhaseConfig[task.journey_phase as JourneyPhase] && (
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs ${journeyPhaseConfig[task.journey_phase as JourneyPhase].color}`}
+                            >
+                              <Route className="h-3 w-3 mr-1" />
+                              {journeyPhaseConfig[task.journey_phase as JourneyPhase].label}
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
