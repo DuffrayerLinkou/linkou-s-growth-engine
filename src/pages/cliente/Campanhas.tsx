@@ -34,13 +34,13 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 
-type CampaignStatus = "draft" | "running" | "completed" | "paused";
+type CampaignStatus = "draft" | "pending_approval" | "running" | "completed" | "paused";
 
 interface Campaign {
   id: string;
   name: string;
   description: string | null;
-  hypothesis: string | null;
+  strategy: string | null;
   status: string | null;
   results: string | null;
   metrics: Record<string, unknown> | null;
@@ -50,7 +50,14 @@ interface Campaign {
   project_id: string;
   platform: string | null;
   objective: string | null;
+  objective_detail: string | null;
   budget: number | null;
+  daily_budget: number | null;
+  headline: string | null;
+  ad_copy: string | null;
+  call_to_action: string | null;
+  placements: string[] | null;
+  bidding_strategy: string | null;
   approved_by_ponto_focal: boolean;
   approved_at: string | null;
   approved_by: string | null;
@@ -67,16 +74,36 @@ const statusConfig: Record<
   { label: string; color: string; icon: typeof Play }
 > = {
   draft: { label: "Rascunho", color: "bg-slate-500/20 text-slate-600 border-slate-500/30", icon: Pause },
+  pending_approval: { label: "Aguardando Aprovação", color: "bg-amber-500/20 text-amber-600 border-amber-500/30", icon: Target },
   running: { label: "Ativa", color: "bg-green-500/20 text-green-600 border-green-500/30", icon: Play },
   completed: { label: "Concluída", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", icon: Target },
   paused: { label: "Pausada", color: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30", icon: Pause },
 };
 
 const platformLabels: Record<string, string> = {
-  meta: "Meta Ads",
-  google: "Google Ads",
+  meta_ads: "Meta Ads",
+  google_ads: "Google Ads",
   tiktok: "TikTok Ads",
   linkedin: "LinkedIn Ads",
+};
+
+const placementLabels: Record<string, string> = {
+  feed_facebook: "Feed Facebook",
+  feed_instagram: "Feed Instagram",
+  stories: "Stories",
+  reels: "Reels",
+  messenger: "Messenger",
+  audience_network: "Audience Network",
+  search: "Rede de Pesquisa",
+  display: "Rede de Display",
+  youtube: "YouTube",
+  discovery: "Discovery",
+  gmail: "Gmail",
+  feed: "Feed",
+  topview: "TopView",
+  branded_hashtag: "Branded Hashtag",
+  messaging: "InMail",
+  sidebar: "Barra Lateral",
 };
 
 export default function ClienteCampanhas() {
@@ -90,7 +117,7 @@ export default function ClienteCampanhas() {
       if (!clientInfo?.id) return [];
 
       const { data, error } = await supabase
-        .from("experiments")
+        .from("campaigns")
         .select(`
           *,
           projects:project_id (name),
@@ -210,6 +237,7 @@ export default function ClienteCampanhas() {
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="draft">Rascunho</SelectItem>
+            <SelectItem value="pending_approval">Aguardando Aprovação</SelectItem>
             <SelectItem value="running">Ativa</SelectItem>
             <SelectItem value="completed">Concluída</SelectItem>
             <SelectItem value="paused">Pausada</SelectItem>
@@ -297,7 +325,7 @@ export default function ClienteCampanhas() {
                           </span>
                         )}
                         <ApprovalButton
-                          entityType="experiment"
+                          entityType="campaign"
                           entityId={campaign.id}
                           clientId={clientInfo?.id || ""}
                           isApproved={campaign.approved_by_ponto_focal}
@@ -309,17 +337,75 @@ export default function ClienteCampanhas() {
 
                     <CollapsibleContent>
                       <CardContent className="pt-0 space-y-4">
-                        {campaign.objective && (
-                          <div className="p-3 rounded-lg bg-muted/50">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Objetivo</p>
-                            <p className="text-sm">{campaign.objective}</p>
+                        {/* Criativo Preview */}
+                        {(campaign.headline || campaign.ad_copy) && (
+                          <div className="p-4 rounded-lg border bg-card">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Preview do Anúncio</p>
+                            {campaign.headline && (
+                              <p className="font-semibold text-lg mb-1">{campaign.headline}</p>
+                            )}
+                            {campaign.ad_copy && (
+                              <p className="text-sm text-muted-foreground mb-2">{campaign.ad_copy}</p>
+                            )}
+                            {campaign.call_to_action && (
+                              <Badge variant="default" className="mt-2">{campaign.call_to_action}</Badge>
+                            )}
                           </div>
                         )}
 
-                        {campaign.hypothesis && (
+                        {campaign.objective && (
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Objetivo</p>
+                            <p className="text-sm font-medium">{campaign.objective}</p>
+                            {campaign.objective_detail && (
+                              <p className="text-sm text-muted-foreground mt-1">{campaign.objective_detail}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {campaign.strategy && (
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Estratégia</p>
-                            <p className="text-sm">{campaign.hypothesis}</p>
+                            <p className="text-sm">{campaign.strategy}</p>
+                          </div>
+                        )}
+
+                        {campaign.placements && campaign.placements.length > 0 && (
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Posicionamentos</p>
+                            <div className="flex flex-wrap gap-1">
+                              {campaign.placements.map((placement) => (
+                                <Badge key={placement} variant="outline" className="text-xs">
+                                  {placementLabels[placement] || placement}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {(campaign.budget || campaign.daily_budget || campaign.bidding_strategy) && (
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Orçamento e Lances</p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                              {campaign.budget && (
+                                <div>
+                                  <span className="text-muted-foreground">Total:</span>{" "}
+                                  <span className="font-medium">R$ {campaign.budget.toLocaleString("pt-BR")}</span>
+                                </div>
+                              )}
+                              {campaign.daily_budget && (
+                                <div>
+                                  <span className="text-muted-foreground">Diário:</span>{" "}
+                                  <span className="font-medium">R$ {campaign.daily_budget.toLocaleString("pt-BR")}</span>
+                                </div>
+                              )}
+                              {campaign.bidding_strategy && (
+                                <div>
+                                  <span className="text-muted-foreground">Estratégia:</span>{" "}
+                                  <span className="font-medium">{campaign.bidding_strategy.toUpperCase()}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -346,7 +432,7 @@ export default function ClienteCampanhas() {
 
                         <div className="border-t pt-4">
                           <CommentSection
-                            entityType="experiment"
+                            entityType="campaign"
                             entityId={campaign.id}
                             clientId={clientInfo?.id || ""}
                           />

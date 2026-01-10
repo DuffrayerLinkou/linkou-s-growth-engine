@@ -28,6 +28,7 @@ import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
 import AdminClientDetail from "./pages/admin/ClientDetail";
 import AdminProjects from "./pages/admin/Projects";
+import AdminCampaigns from "./pages/admin/Campaigns";
 import AdminUsers from "./pages/admin/Users";
 import AdminTasks from "./pages/admin/Tasks";
 import AdminAppointments from "./pages/admin/Appointments";
@@ -82,6 +83,7 @@ const App = () => (
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="clientes/:id" element={<AdminClientDetail />} />
+                <Route path="campanhas" element={<AdminCampaigns />} />
                 <Route path="onboarding" element={<AdminOnboarding />} />
                 <Route path="landing" element={<AdminLandingPage />} />
                 <Route path="tarefas" element={<AdminTasks />} />

@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Globe,
   FolderKanban,
+  Megaphone,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/leads", icon: UserPlus, label: "Leads" },
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
+  { href: "/admin/campanhas", icon: Megaphone, label: "Campanhas" },
   { href: "/admin/projetos", icon: FolderKanban, label: "Projetos" },
   { href: "/admin/onboarding", icon: ClipboardList, label: "Onboarding" },
   { href: "/admin/landing", icon: Globe, label: "Landing Page" },

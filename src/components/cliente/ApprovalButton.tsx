@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface ApprovalButtonProps {
-  entityType: "experiment" | "learning";
+  entityType: "campaign" | "learning";
   entityId: string;
   clientId: string;
   isApproved: boolean;
@@ -60,7 +60,7 @@ export function ApprovalButton({
 
   const approveMutation = useMutation({
     mutationFn: async () => {
-      const table = entityType === "experiment" ? "experiments" : "learnings";
+      const table = entityType === "campaign" ? "campaigns" : "learnings";
       const { error } = await supabase
         .from(table)
         .update({
@@ -83,12 +83,12 @@ export function ApprovalButton({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [entityType === "experiment" ? "experiments" : "learnings"] });
-      queryClient.invalidateQueries({ queryKey: ["client-experiments"] });
+      queryClient.invalidateQueries({ queryKey: [entityType === "campaign" ? "campaigns" : "learnings"] });
+      queryClient.invalidateQueries({ queryKey: ["client-campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["client-learnings"] });
       toast.success(
-        entityType === "experiment"
-          ? "Experimento aprovado com sucesso!"
+        entityType === "campaign"
+          ? "Campanha aprovada com sucesso!"
           : "Aprendizado aprovado com sucesso!"
       );
       setOpen(false);
@@ -137,8 +137,7 @@ export function ApprovalButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Confirmar Aprovação</AlertDialogTitle>
           <AlertDialogDescription>
-            Você está prestes a aprovar este{" "}
-            {entityType === "experiment" ? "experimento" : "aprendizado"}. Esta ação
+            Você está prestes a aprovar {entityType === "campaign" ? "esta campanha" : "este aprendizado"}. Esta ação
             não pode ser desfeita.
           </AlertDialogDescription>
         </AlertDialogHeader>
