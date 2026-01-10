@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,7 +18,9 @@ import {
   List,
   LayoutGrid,
   MessageCircle,
+  Building2,
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -87,8 +89,20 @@ const statusLabels: Record<string, string> = {
   lost: "Perdido",
 };
 
+const clientSegments = [
+  "Construtora / Incorporadora",
+  "Imobiliária",
+  "B2B / Serviços",
+  "E-commerce",
+  "SaaS",
+  "Educação",
+  "Saúde",
+  "Outro",
+];
+
 export default function AdminLeads() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +112,12 @@ export default function AdminLeads() {
   const [viewMode, setViewMode] = useState<"list" | "kanban">(
     (searchParams.get("view") as "list" | "kanban") || "list"
   );
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertFormData, setConvertFormData] = useState({
+    name: "",
+    segment: "",
+  });
   const { toast } = useToast();
 
   // Date range state
@@ -234,6 +254,67 @@ export default function AdminLeads() {
   const openLeadDetail = (lead: Lead) => {
     setSelectedLead(lead);
     setIsDetailOpen(true);
+  };
+
+  const openConvertDialog = (lead: Lead) => {
+    // Try to match lead segment with client segments
+    const matchedSegment = clientSegments.find(
+      (s) => lead.segment && s.toLowerCase().includes(lead.segment.toLowerCase())
+    ) || "";
+    
+    setConvertFormData({
+      name: lead.name,
+      segment: matchedSegment,
+    });
+    setIsConvertDialogOpen(true);
+  };
+
+  const convertToClient = async () => {
+    if (!selectedLead) return;
+    
+    setIsConverting(true);
+    try {
+      // 1. Create client
+      const { data: client, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          name: convertFormData.name,
+          segment: convertFormData.segment || null,
+          status: "active",
+          phase: "diagnostico",
+        })
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+
+      // 2. Update lead status to converted
+      const { error: leadError } = await supabase
+        .from("leads")
+        .update({ status: "converted" })
+        .eq("id", selectedLead.id);
+
+      if (leadError) throw leadError;
+
+      toast({
+        title: "Cliente criado com sucesso!",
+        description: `${convertFormData.name} foi adicionado como cliente.`,
+      });
+
+      // Close dialogs and navigate to client
+      setIsConvertDialogOpen(false);
+      setIsDetailOpen(false);
+      navigate(`/admin/clientes/${client.id}`);
+    } catch (error) {
+      console.error("Error converting lead:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao converter lead",
+        description: "Tente novamente mais tarde.",
+      });
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   // Calcular contagem por status (todos os leads do período, sem filtro de status)
@@ -572,8 +653,104 @@ export default function AdminLeads() {
                 })}
                 {selectedLead.source && ` via ${selectedLead.source}`}
               </div>
+
+              {/* Convert to Client Button */}
+              {selectedLead.status !== "converted" && (
+                <Button
+                  className="w-full mt-4"
+                  onClick={() => openConvertDialog(selectedLead)}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Converter em Cliente
+                </Button>
+              )}
+
+              {selectedLead.status === "converted" && (
+                <div className="mt-4 p-3 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-center text-sm font-medium">
+                  Este lead já foi convertido em cliente
+                </div>
+              )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to Client Dialog */}
+      <Dialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Converter Lead em Cliente</DialogTitle>
+            <DialogDescription>
+              Os dados do lead serão usados para criar um novo cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-name">Nome do Cliente / Empresa</Label>
+              <Input
+                id="client-name"
+                value={convertFormData.name}
+                onChange={(e) =>
+                  setConvertFormData({ ...convertFormData, name: e.target.value })
+                }
+                placeholder="Nome do cliente"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client-segment">Segmento</Label>
+              <Select
+                value={convertFormData.segment}
+                onValueChange={(value) =>
+                  setConvertFormData({ ...convertFormData, segment: value })
+                }
+              >
+                <SelectTrigger id="client-segment">
+                  <SelectValue placeholder="Selecione o segmento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientSegments.map((segment) => (
+                    <SelectItem key={segment} value={segment}>
+                      {segment}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedLead && (
+              <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
+                <p className="font-medium text-muted-foreground">Dados do Lead:</p>
+                <p>Email: {selectedLead.email}</p>
+                {selectedLead.phone && <p>Telefone: {selectedLead.phone}</p>}
+                {selectedLead.investment && <p>Investimento: {selectedLead.investment}</p>}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsConvertDialogOpen(false)}
+              disabled={isConverting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={convertToClient}
+              disabled={!convertFormData.name || isConverting}
+            >
+              {isConverting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                <>
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Criar Cliente
+                </>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
