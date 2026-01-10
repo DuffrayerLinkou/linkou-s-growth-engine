@@ -234,8 +234,59 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          client_id: string
+          content: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          content: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experiments: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_ponto_focal: boolean | null
           client_id: string
           created_at: string | null
           created_by: string | null
@@ -252,6 +303,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
           client_id: string
           created_at?: string | null
           created_by?: string | null
@@ -268,6 +322,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
           client_id?: string
           created_at?: string | null
           created_by?: string | null
@@ -284,6 +341,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "experiments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "experiments_client_id_fkey"
             columns: ["client_id"]
@@ -401,6 +465,9 @@ export type Database = {
       }
       learnings: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_ponto_focal: boolean | null
           category: string | null
           client_id: string
           created_at: string | null
@@ -415,6 +482,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
           category?: string | null
           client_id: string
           created_at?: string | null
@@ -429,6 +499,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
           category?: string | null
           client_id?: string
           created_at?: string | null
@@ -443,6 +516,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "learnings_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "learnings_client_id_fkey"
             columns: ["client_id"]

@@ -9,6 +9,10 @@ import {
   Route,
   CheckSquare,
   Calendar,
+  FlaskConical,
+  Lightbulb,
+  FileDown,
+  Star,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +25,9 @@ const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
   { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
+  { href: "/cliente/experimentos", icon: FlaskConical, label: "Experimentos" },
+  { href: "/cliente/aprendizados", icon: Lightbulb, label: "Aprendizados" },
+  { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
@@ -84,9 +91,17 @@ export function ClientLayout() {
                 <User className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {profile?.full_name || "Cliente"}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium truncate">
+                    {profile?.full_name || "Cliente"}
+                  </p>
+                  {profile?.ponto_focal && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 text-[10px] font-medium">
+                      <Star className="h-2.5 w-2.5 fill-current" />
+                      Ponto Focal
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {profile?.email}
                 </p>
