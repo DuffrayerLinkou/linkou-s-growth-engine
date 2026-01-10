@@ -22,7 +22,7 @@ interface Comment {
 }
 
 interface CommentSectionProps {
-  entityType: "experiment" | "learning";
+  entityType: "campaign" | "learning";
   entityId: string;
   clientId: string;
 }

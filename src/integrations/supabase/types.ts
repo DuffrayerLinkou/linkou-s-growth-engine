@@ -223,6 +223,133 @@ export type Database = {
         }
         Relationships: []
       }
+      campaigns: {
+        Row: {
+          ad_copy: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_ponto_focal: boolean | null
+          bidding_strategy: string | null
+          budget: number | null
+          call_to_action: string | null
+          campaign_type: string | null
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          creatives: Json | null
+          daily_budget: number | null
+          description: string | null
+          end_date: string | null
+          headline: string | null
+          id: string
+          metrics: Json | null
+          name: string
+          objective: string | null
+          objective_detail: string | null
+          placements: Json | null
+          platform: string | null
+          project_id: string
+          results: string | null
+          start_date: string | null
+          status: string | null
+          strategy: string | null
+          target_cpa: number | null
+          target_roas: number | null
+          targeting: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          ad_copy?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
+          bidding_strategy?: string | null
+          budget?: number | null
+          call_to_action?: string | null
+          campaign_type?: string | null
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          creatives?: Json | null
+          daily_budget?: number | null
+          description?: string | null
+          end_date?: string | null
+          headline?: string | null
+          id?: string
+          metrics?: Json | null
+          name: string
+          objective?: string | null
+          objective_detail?: string | null
+          placements?: Json | null
+          platform?: string | null
+          project_id: string
+          results?: string | null
+          start_date?: string | null
+          status?: string | null
+          strategy?: string | null
+          target_cpa?: number | null
+          target_roas?: number | null
+          targeting?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          ad_copy?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean | null
+          bidding_strategy?: string | null
+          budget?: number | null
+          call_to_action?: string | null
+          campaign_type?: string | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          creatives?: Json | null
+          daily_budget?: number | null
+          description?: string | null
+          end_date?: string | null
+          headline?: string | null
+          id?: string
+          metrics?: Json | null
+          name?: string
+          objective?: string | null
+          objective_detail?: string | null
+          placements?: Json | null
+          platform?: string | null
+          project_id?: string
+          results?: string | null
+          start_date?: string | null
+          status?: string | null
+          strategy?: string | null
+          target_cpa?: number | null
+          target_roas?: number | null
+          targeting?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiments_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experiments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experiments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           client_id: string
@@ -416,97 +543,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      experiments: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          approved_by_ponto_focal: boolean | null
-          budget: number | null
-          client_id: string
-          created_at: string | null
-          created_by: string | null
-          description: string | null
-          end_date: string | null
-          hypothesis: string | null
-          id: string
-          metrics: Json | null
-          name: string
-          objective: string | null
-          platform: string | null
-          project_id: string
-          results: string | null
-          start_date: string | null
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          approved_by_ponto_focal?: boolean | null
-          budget?: number | null
-          client_id: string
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          end_date?: string | null
-          hypothesis?: string | null
-          id?: string
-          metrics?: Json | null
-          name: string
-          objective?: string | null
-          platform?: string | null
-          project_id: string
-          results?: string | null
-          start_date?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          approved_by_ponto_focal?: boolean | null
-          budget?: number | null
-          client_id?: string
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          end_date?: string | null
-          hypothesis?: string | null
-          id?: string
-          metrics?: Json | null
-          name?: string
-          objective?: string | null
-          platform?: string | null
-          project_id?: string
-          results?: string | null
-          start_date?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "experiments_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "experiments_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "experiments_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       files: {
         Row: {
@@ -796,7 +832,7 @@ export type Database = {
             foreignKeyName: "learnings_experiment_id_fkey"
             columns: ["experiment_id"]
             isOneToOne: false
-            referencedRelation: "experiments"
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
           {
