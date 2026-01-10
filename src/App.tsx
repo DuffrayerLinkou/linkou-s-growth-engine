@@ -17,6 +17,9 @@ import ClienteDashboard from "./pages/cliente/Dashboard";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminLeads from "./pages/admin/Leads";
+import AdminClients from "./pages/admin/Clients";
+import AdminProjects from "./pages/admin/Projects";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +58,9 @@ const App = () => (
                 }
               >
                 <Route index element={<AdminDashboard />} />
+                <Route path="leads" element={<AdminLeads />} />
+                <Route path="clientes" element={<AdminClients />} />
+                <Route path="projetos" element={<AdminProjects />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
