@@ -7,6 +7,8 @@ import {
   X,
   User,
   Route,
+  CheckSquare,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,8 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
+  { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
+  { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
 
