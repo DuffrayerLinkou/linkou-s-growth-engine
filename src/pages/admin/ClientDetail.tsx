@@ -255,10 +255,10 @@ export default function ClientDetail() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Fetch profiles from Supabase
+      // Fetch profiles from Supabase including user_type
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, email, full_name, ponto_focal, created_at")
+        .select("id, email, full_name, ponto_focal, user_type, created_at")
         .eq("client_id", id)
         .order("ponto_focal", { ascending: false })
         .order("created_at", { ascending: true });
@@ -272,7 +272,7 @@ export default function ClientDetail() {
       // Fetch email confirmation status from edge function
       let usersWithEmailStatus = profiles.map(p => ({
         ...p,
-        user_type: "operator" as "operator" | "manager",
+        user_type: (p.user_type || "operator") as "operator" | "manager",
         email_confirmed: true, // Default to true
       }));
 
@@ -293,7 +293,7 @@ export default function ClientDetail() {
               const authUser = authUsers?.find((u: any) => u.id === p.id);
               return {
                 ...p,
-                user_type: "operator" as "operator" | "manager",
+                user_type: (p.user_type || "operator") as "operator" | "manager",
                 email_confirmed: authUser?.email_confirmed_at ? true : false,
               };
             });
@@ -408,6 +408,7 @@ export default function ClientDetail() {
           client_id: id,
           full_name: userFormData.full_name,
           ponto_focal: userFormData.ponto_focal,
+          user_type: userFormData.user_type,
         })
         .eq("id", authData.user.id);
 
@@ -507,12 +508,13 @@ export default function ClientDetail() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
 
-      // Update user_type in profile metadata (using a custom field approach)
+      // Update profile including user_type
       await supabase
         .from("profiles")
         .update({
           full_name: editUserFormData.full_name,
           ponto_focal: editUserFormData.ponto_focal,
+          user_type: editUserFormData.user_type,
         })
         .eq("id", selectedUser.id);
 

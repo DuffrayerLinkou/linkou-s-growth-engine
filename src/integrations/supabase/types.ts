@@ -909,6 +909,7 @@ export type Database = {
           phone: string | null
           ponto_focal: boolean
           updated_at: string | null
+          user_type: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -920,6 +921,7 @@ export type Database = {
           phone?: string | null
           ponto_focal?: boolean
           updated_at?: string | null
+          user_type?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -931,6 +933,7 @@ export type Database = {
           phone?: string | null
           ponto_focal?: boolean
           updated_at?: string | null
+          user_type?: string | null
         }
         Relationships: [
           {
@@ -1268,6 +1271,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_upload_files: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       client_has_ponto_focal: { Args: { _client_id: string }; Returns: boolean }
       count_client_users: { Args: { _client_id: string }; Returns: number }
       get_user_client_id: { Args: { _user_id: string }; Returns: string }
