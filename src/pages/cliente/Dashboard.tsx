@@ -6,7 +6,6 @@ import {
   CheckCircle2, 
   ListTodo,
   Megaphone,
-  Lightbulb,
   FileText,
   AlertTriangle,
   ArrowRight,
@@ -148,20 +147,6 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Total de aprendizados
-  const { data: learningsCount, isLoading: loadingLearnings } = useQuery({
-    queryKey: ["client-learnings-count", clientInfo?.id],
-    queryFn: async () => {
-      if (!clientInfo?.id) return 0;
-      const { count, error } = await supabase
-        .from("learnings")
-        .select("*", { count: "exact", head: true })
-        .eq("client_id", clientInfo.id);
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: !!clientInfo?.id,
-  });
 
   // Query: Resumo de tarefas por status
   const { data: tasksSummary, isLoading: loadingTasksSummary } = useQuery({
@@ -221,21 +206,6 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id && isPontoFocal,
   });
 
-  // Query: Aprendizados pendentes de aprovação (ponto focal)
-  const { data: pendingLearnings, isLoading: loadingPendingLearnings } = useQuery({
-    queryKey: ["client-pending-learnings", clientInfo?.id],
-    queryFn: async () => {
-      if (!clientInfo?.id || !isPontoFocal) return [];
-      const { data, error } = await supabase
-        .from("learnings")
-        .select("id, title")
-        .eq("client_id", clientInfo.id)
-        .eq("approved_by_ponto_focal", false);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clientInfo?.id && isPontoFocal,
-  });
 
   // Query: 3 últimas campanhas
   const { data: recentCampaigns, isLoading: loadingRecentCampaigns } = useQuery({
@@ -374,7 +344,7 @@ export default function ClienteDashboard() {
   };
 
   const taskProgress = tasksSummary ? Math.round((tasksSummary.completed / tasksSummary.total) * 100) || 0 : 0;
-  const pendingApprovalsCount = (pendingCampaigns?.length || 0) + (pendingLearnings?.length || 0);
+  const pendingApprovalsCount = pendingCampaigns?.length || 0;
 
   return (
     <div className="space-y-6">
@@ -462,22 +432,22 @@ export default function ClienteDashboard() {
           </Card>
         </motion.div>
 
-        {/* Aprendizados */}
+        {/* Tarefas Concluídas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aprendizados</CardTitle>
+              <CardTitle className="text-sm font-medium">Tarefas Concluídas</CardTitle>
               <div className="p-2 rounded-lg bg-green-500/10">
-                <Lightbulb className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
               </div>
             </CardHeader>
             <CardContent>
-              {loadingLearnings ? (
+              {loadingTasksSummary ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-bold">{learningsCount}</div>
+                <div className="text-2xl font-bold">{tasksSummary?.completed || 0}</div>
               )}
-              <p className="text-xs text-muted-foreground">registrados</p>
+              <p className="text-xs text-muted-foreground">de {tasksSummary?.total || 0} tarefas</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -504,15 +474,6 @@ export default function ClienteDashboard() {
                     <Button variant="outline" size="sm" className="gap-2">
                       <Megaphone className="h-4 w-4" />
                       {pendingCampaigns?.length} campanha(s) para aprovar
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                )}
-                {(pendingLearnings?.length || 0) > 0 && (
-                  <Link to="/cliente/aprendizados">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Lightbulb className="h-4 w-4" />
-                      {pendingLearnings?.length} aprendizado(s) para aprovar
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
