@@ -2,9 +2,6 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
-  FolderKanban,
-  FileText,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -18,9 +15,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/cliente/projetos", icon: FolderKanban, label: "Projetos" },
-  { href: "/cliente/arquivos", icon: FileText, label: "Arquivos" },
-  { href: "/cliente/configuracoes", icon: Settings, label: "Configurações" },
+  { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
 
 export function ClientLayout() {

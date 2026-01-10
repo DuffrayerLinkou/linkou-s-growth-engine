@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -6,19 +7,16 @@ import {
   Users,
   Search,
   Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
   Building2,
-  Globe,
   Loader2,
+  ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -27,12 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -48,16 +40,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,22 +47,17 @@ import { supabase } from "@/integrations/supabase/client";
 interface Client {
   id: string;
   name: string;
-  cnpj: string | null;
   segment: string | null;
-  website: string | null;
-  logo_url: string | null;
-  notes: string | null;
   status: string | null;
   created_at: string;
+  user_count?: number;
+  has_ponto_focal?: boolean;
 }
 
 const clientSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
-  cnpj: z.string().max(18).optional().or(z.literal("")),
   segment: z.string().optional().or(z.literal("")),
-  website: z.string().url("URL inválida").optional().or(z.literal("")),
-  notes: z.string().max(1000).optional().or(z.literal("")),
-  status: z.string().default("active"),
+  status: z.string().default("ativo"),
 });
 
 const segments = [
@@ -95,23 +72,23 @@ const segments = [
 ];
 
 const statusColors: Record<string, string> = {
-  active: "bg-green-500/10 text-green-500",
-  inactive: "bg-gray-500/10 text-gray-500",
-  churned: "bg-red-500/10 text-red-500",
+  ativo: "bg-green-500/10 text-green-500",
+  pausado: "bg-yellow-500/10 text-yellow-500",
+  encerrado: "bg-red-500/10 text-red-500",
 };
 
 const statusLabels: Record<string, string> = {
-  active: "Ativo",
-  inactive: "Inativo",
-  churned: "Cancelado",
+  ativo: "Ativo",
+  pausado: "Pausado",
+  encerrado: "Encerrado",
 };
 
 export default function AdminClients() {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -119,11 +96,8 @@ export default function AdminClients() {
 
   const [formData, setFormData] = useState({
     name: "",
-    cnpj: "",
     segment: "",
-    website: "",
-    notes: "",
-    status: "active",
+    status: "ativo",
   });
 
   const fetchClients = async () => {
@@ -135,7 +109,31 @@ export default function AdminClients() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setClients(data || []);
+
+      // Buscar contagem de usuários e status de ponto focal para cada cliente
+      const clientsWithDetails = await Promise.all(
+        (data || []).map(async (client) => {
+          const { count } = await supabase
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .eq("client_id", client.id);
+
+          const { data: pontoFocalData } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("client_id", client.id)
+            .eq("ponto_focal", true)
+            .limit(1);
+
+          return {
+            ...client,
+            user_count: count || 0,
+            has_ponto_focal: (pontoFocalData?.length || 0) > 0,
+          };
+        })
+      );
+
+      setClients(clientsWithDetails);
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast({
@@ -157,21 +155,15 @@ export default function AdminClients() {
       setSelectedClient(client);
       setFormData({
         name: client.name,
-        cnpj: client.cnpj || "",
         segment: client.segment || "",
-        website: client.website || "",
-        notes: client.notes || "",
-        status: client.status || "active",
+        status: client.status || "ativo",
       });
     } else {
       setSelectedClient(null);
       setFormData({
         name: "",
-        cnpj: "",
         segment: "",
-        website: "",
-        notes: "",
-        status: "active",
+        status: "ativo",
       });
     }
     setErrors({});
@@ -198,10 +190,7 @@ export default function AdminClients() {
     try {
       const clientData = {
         name: formData.name.trim(),
-        cnpj: formData.cnpj.trim() || null,
         segment: formData.segment || null,
-        website: formData.website.trim() || null,
-        notes: formData.notes.trim() || null,
         status: formData.status,
       };
 
@@ -213,26 +202,16 @@ export default function AdminClients() {
 
         if (error) throw error;
 
-        setClients((prev) =>
-          prev.map((c) =>
-            c.id === selectedClient.id ? { ...c, ...clientData } : c
-          )
-        );
-
         toast({
           title: "Cliente atualizado",
           description: "As informações foram salvas.",
         });
       } else {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("clients")
-          .insert(clientData)
-          .select()
-          .single();
+          .insert(clientData);
 
         if (error) throw error;
-
-        setClients((prev) => [data, ...prev]);
 
         toast({
           title: "Cliente criado",
@@ -241,6 +220,7 @@ export default function AdminClients() {
       }
 
       setIsFormOpen(false);
+      fetchClients();
     } catch (error) {
       console.error("Error saving client:", error);
       toast({
@@ -253,40 +233,9 @@ export default function AdminClients() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedClient) return;
-
-    try {
-      const { error } = await supabase
-        .from("clients")
-        .delete()
-        .eq("id", selectedClient.id);
-
-      if (error) throw error;
-
-      setClients((prev) => prev.filter((c) => c.id !== selectedClient.id));
-
-      toast({
-        title: "Cliente excluído",
-        description: "O cliente foi removido com sucesso.",
-      });
-
-      setIsDeleteOpen(false);
-      setSelectedClient(null);
-    } catch (error) {
-      console.error("Error deleting client:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao excluir",
-        description: "Tente novamente.",
-      });
-    }
-  };
-
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.cnpj?.includes(searchQuery) ||
       client.segment?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -297,7 +246,7 @@ export default function AdminClients() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">
-            Gerencie os clientes da agência.
+            Gerencie os clientes e seus usuários.
           </p>
         </div>
         <Button onClick={() => openForm()}>
@@ -338,8 +287,8 @@ export default function AdminClients() {
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Segmento</TableHead>
-                  <TableHead className="hidden lg:table-cell">Website</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Usuários</TableHead>
                   <TableHead className="hidden sm:table-cell">Criado em</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -351,19 +300,20 @@ export default function AdminClients() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="group"
+                    className="group cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/admin/clientes/${client.id}`)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                           <Building2 className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <div>
-                          <div className="font-medium">{client.name}</div>
-                          {client.cnpj && (
-                            <div className="text-sm text-muted-foreground">
-                              {client.cnpj}
-                            </div>
+                        <div className="font-medium flex items-center gap-2">
+                          {client.name}
+                          {client.user_count! > 0 && !client.has_ponto_focal && (
+                            <span title="Sem ponto focal">
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                            </span>
                           )}
                         </div>
                       </div>
@@ -371,28 +321,19 @@ export default function AdminClients() {
                     <TableCell className="hidden md:table-cell">
                       {client.segment || "-"}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {client.website ? (
-                        <a
-                          href={client.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <Globe className="h-3 w-3" />
-                          {new URL(client.website).hostname}
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className={statusColors[client.status || "active"]}
+                        className={statusColors[client.status || "ativo"]}
                       >
-                        {statusLabels[client.status || "active"]}
+                        {statusLabels[client.status || "ativo"]}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {client.user_count || 0}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">
                       {format(new Date(client.created_at), "dd/MM/yy", {
@@ -400,29 +341,7 @@ export default function AdminClients() {
                       })}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openForm(client)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedClient(client);
-                              setIsDeleteOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </TableCell>
                   </motion.tr>
                 ))}
@@ -464,17 +383,6 @@ export default function AdminClients() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ</Label>
-                <Input
-                  id="cnpj"
-                  value={formData.cnpj}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cnpj: e.target.value })
-                  }
-                  placeholder="00.000.000/0000-00"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Segmento</Label>
                 <Select
                   value={formData.segment}
@@ -494,23 +402,6 @@ export default function AdminClients() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  value={formData.website}
-                  onChange={(e) =>
-                    setFormData({ ...formData, website: e.target.value })
-                  }
-                  placeholder="https://..."
-                />
-                {errors.website && (
-                  <p className="text-sm text-destructive">{errors.website}</p>
-                )}
-              </div>
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select
@@ -523,27 +414,12 @@ export default function AdminClients() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="pausado">Pausado</SelectItem>
+                    <SelectItem value="encerrado">Encerrado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Observações</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-                placeholder="Notas sobre o cliente..."
-                rows={3}
-              />
             </div>
           </div>
 
@@ -553,41 +429,13 @@ export default function AdminClients() {
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : selectedClient ? (
-                "Salvar alterações"
-              ) : (
-                "Criar cliente"
-              )}
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {selectedClient ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação é irreversível. Todos os projetos, tarefas e arquivos
-              vinculados a este cliente também serão excluídos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

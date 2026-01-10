@@ -98,40 +98,28 @@ export type Database = {
       }
       clients: {
         Row: {
-          cnpj: string | null
           created_at: string | null
           id: string
-          logo_url: string | null
           name: string
-          notes: string | null
           segment: string | null
           status: string | null
           updated_at: string | null
-          website: string | null
         }
         Insert: {
-          cnpj?: string | null
           created_at?: string | null
           id?: string
-          logo_url?: string | null
           name: string
-          notes?: string | null
           segment?: string | null
           status?: string | null
           updated_at?: string | null
-          website?: string | null
         }
         Update: {
-          cnpj?: string | null
           created_at?: string | null
           id?: string
-          logo_url?: string | null
           name?: string
-          notes?: string | null
           segment?: string | null
           status?: string | null
           updated_at?: string | null
-          website?: string | null
         }
         Relationships: []
       }
@@ -370,32 +358,46 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          client_id: string | null
           created_at: string | null
           email: string
           full_name: string | null
           id: string
           phone: string | null
+          ponto_focal: boolean
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
           phone?: string | null
+          ponto_focal?: boolean
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          client_id?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
           phone?: string | null
+          ponto_focal?: boolean
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -530,11 +532,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      client_has_ponto_focal: { Args: { _client_id: string }; Returns: boolean }
+      count_client_users: { Args: { _client_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      set_ponto_focal: {
+        Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
       user_has_client_access: {

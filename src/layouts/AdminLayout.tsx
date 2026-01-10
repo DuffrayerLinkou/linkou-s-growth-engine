@@ -3,13 +3,6 @@ import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
-  FolderKanban,
-  Target,
-  Lightbulb,
-  CheckSquare,
-  FileText,
-  ClipboardList,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -24,14 +17,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/leads", icon: Target, label: "Leads" },
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
-  { href: "/admin/projetos", icon: FolderKanban, label: "Projetos" },
-  { href: "/admin/experimentos", icon: Lightbulb, label: "Experimentos" },
-  { href: "/admin/aprendizados", icon: ClipboardList, label: "Aprendizados" },
-  { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
-  { href: "/admin/arquivos", icon: FileText, label: "Arquivos" },
-  { href: "/admin/configuracoes", icon: Settings, label: "Configurações" },
 ];
 
 export function AdminLayout() {
