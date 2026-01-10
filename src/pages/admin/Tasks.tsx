@@ -168,7 +168,7 @@ export default function AdminTasks() {
         priority: data.priority,
         due_date: data.due_date || null,
         status: data.status,
-        journey_phase: data.journey_phase || null,
+        journey_phase: data.journey_phase === "none" ? null : data.journey_phase || null,
         visible_to_client: data.visible_to_client,
       };
 
@@ -384,7 +384,7 @@ export default function AdminTasks() {
                       <SelectValue placeholder="Sem fase" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem fase</SelectItem>
+                      <SelectItem value="none">Sem fase</SelectItem>
                       <SelectItem value="diagnostico">Diagnóstico</SelectItem>
                       <SelectItem value="estruturacao">Estruturação</SelectItem>
                       <SelectItem value="operacao_guiada">Operação Guiada</SelectItem>
