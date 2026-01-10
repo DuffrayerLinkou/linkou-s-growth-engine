@@ -14,6 +14,8 @@ import {
   Pencil,
   Trash2,
   Mail,
+  Route,
+  ArrowRight,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -57,13 +59,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { JourneyStepper, Phase, getPhaseLabel, getAllPhases } from "@/components/journey/JourneyStepper";
 
 interface Client {
   id: string;
   name: string;
   segment: string | null;
   status: string | null;
+  phase: Phase;
+  autonomy: boolean;
   created_at: string;
 }
 
@@ -73,6 +79,14 @@ interface ClientUser {
   full_name: string | null;
   ponto_focal: boolean;
   created_at: string;
+}
+
+interface AuditLog {
+  id: string;
+  created_at: string;
+  action: string;
+  old_data: { phase?: string } | null;
+  new_data: { phase?: string } | null;
 }
 
 const userSchema = z.object({
@@ -108,14 +122,18 @@ const segments = [
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [users, setUsers] = useState<ClientUser[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
+  const [isPhaseDialogOpen, setIsPhaseDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedPhase, setSelectedPhase] = useState<Phase>("diagnostico");
   const { toast } = useToast();
 
   const [userFormData, setUserFormData] = useState({
@@ -144,7 +162,8 @@ export default function ClientDetail() {
         .single();
 
       if (error) throw error;
-      setClient(data);
+      setClient(data as Client);
+      setSelectedPhase(data.phase as Phase);
       setClientFormData({
         name: data.name,
         segment: data.segment || "",
@@ -179,10 +198,29 @@ export default function ClientDetail() {
     }
   };
 
+  const fetchAuditLogs = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("id, created_at, action, old_data, new_data")
+        .eq("client_id", id)
+        .eq("action", "phase_changed")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setAuditLogs((data || []) as AuditLog[]);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchClient(), fetchUsers()]);
+      await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs()]);
       setIsLoading(false);
     };
     loadData();
@@ -206,7 +244,6 @@ export default function ClientDetail() {
     setIsSubmitting(true);
 
     try {
-      // 1. Criar usuário no Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userFormData.email,
         password: userFormData.password,
@@ -220,7 +257,6 @@ export default function ClientDetail() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erro ao criar usuário");
 
-      // 2. Atualizar profile com client_id
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -232,7 +268,6 @@ export default function ClientDetail() {
 
       if (profileError) throw profileError;
 
-      // 3. Se marcou como ponto focal, desmarcar os outros
       if (userFormData.ponto_focal) {
         await supabase.rpc("set_ponto_focal", {
           _user_id: authData.user.id,
@@ -314,6 +349,55 @@ export default function ClientDetail() {
       toast({
         variant: "destructive",
         title: "Erro ao atualizar",
+        description: "Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChangePhase = async () => {
+    if (!client || !user) return;
+
+    setIsSubmitting(true);
+    try {
+      const fromPhase = client.phase;
+      const toPhase = selectedPhase;
+
+      // Update client phase
+      const updateData: any = { phase: toPhase };
+      if (toPhase === "transferencia") {
+        updateData.autonomy = true;
+      }
+
+      const { error } = await supabase
+        .from("clients")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Log the change
+      await supabase.rpc("log_phase_change", {
+        _client_id: id,
+        _actor_user_id: user.id,
+        _from_phase: fromPhase,
+        _to_phase: toPhase,
+      });
+
+      toast({
+        title: "Fase alterada",
+        description: `Cliente movido para "${getPhaseLabel(toPhase)}".`,
+      });
+
+      setIsPhaseDialogOpen(false);
+      fetchClient();
+      fetchAuditLogs();
+    } catch (error) {
+      console.error("Error changing phase:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao alterar fase",
         description: "Tente novamente.",
       });
     } finally {
@@ -409,16 +493,83 @@ export default function ClientDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue="journey" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="journey" className="flex items-center gap-2">
+            <Route className="h-4 w-4" />
+            Jornada
+          </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Usuários ({users.length})
           </TabsTrigger>
         </TabsList>
 
+        {/* Journey Tab */}
+        <TabsContent value="journey" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle>Jornada Linkou</CardTitle>
+                <CardDescription>
+                  Acompanhe e gerencie a fase atual do cliente.
+                </CardDescription>
+              </div>
+              <Button onClick={() => {
+                setSelectedPhase(client.phase);
+                setIsPhaseDialogOpen(true);
+              }}>
+                Alterar Fase
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <JourneyStepper currentPhase={client.phase} />
+
+              {/* Audit Log Timeline */}
+              <div className="mt-8 pt-6 border-t">
+                <h4 className="font-medium mb-4">Histórico de Alterações</h4>
+                {auditLogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Ainda não há histórico de mudanças de fase.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {auditLogs.map((log, index) => {
+                      const fromPhase = (log.old_data as any)?.phase as Phase;
+                      const toPhase = (log.new_data as any)?.phase as Phase;
+
+                      return (
+                        <motion.div
+                          key={log.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex items-center gap-3 text-sm"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                          <span className="text-muted-foreground">
+                            {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                          </span>
+                          <span>Fase alterada de</span>
+                          <Badge variant="outline" className="text-xs">
+                            {getPhaseLabel(fromPhase)}
+                          </Badge>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                          <Badge className="bg-primary/10 text-primary text-xs">
+                            {getPhaseLabel(toPhase)}
+                          </Badge>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Users Tab */}
         <TabsContent value="users" className="space-y-4">
-          {/* Info Card */}
           <Card className="border-dashed">
             <CardContent className="py-4">
               <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -428,7 +579,6 @@ export default function ClientDetail() {
             </CardContent>
           </Card>
 
-          {/* Users Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <div>
@@ -512,6 +662,65 @@ export default function ClientDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Phase Change Dialog */}
+      <Dialog open={isPhaseDialogOpen} onOpenChange={setIsPhaseDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Alterar Fase</DialogTitle>
+            <DialogDescription>
+              Selecione a nova fase para o cliente {client.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Fase atual</Label>
+              <Badge variant="outline" className="text-sm">
+                {getPhaseLabel(client.phase)}
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nova fase</Label>
+              <Select
+                value={selectedPhase}
+                onValueChange={(value) => setSelectedPhase(value as Phase)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getAllPhases().map((phase) => (
+                    <SelectItem key={phase.id} value={phase.id}>
+                      {phase.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedPhase === "transferencia" && (
+              <p className="text-sm text-muted-foreground">
+                ⚠️ Ao mover para Transferência, o cliente será marcado como autônomo.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPhaseDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleChangePhase} 
+              disabled={isSubmitting || selectedPhase === client.phase}
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Alterar Fase
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create User Dialog */}
       <Dialog open={isUserFormOpen} onOpenChange={setIsUserFormOpen}>

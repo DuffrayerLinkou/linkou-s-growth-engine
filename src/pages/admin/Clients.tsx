@@ -11,6 +11,7 @@ import {
   Loader2,
   ChevronRight,
   AlertCircle,
+  Circle,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ interface Client {
   name: string;
   segment: string | null;
   status: string | null;
+  phase: string;
   created_at: string;
   user_count?: number;
   has_ponto_focal?: boolean;
@@ -81,6 +83,20 @@ const statusLabels: Record<string, string> = {
   ativo: "Ativo",
   pausado: "Pausado",
   encerrado: "Encerrado",
+};
+
+const phaseLabels: Record<string, string> = {
+  diagnostico: "Diagnóstico",
+  estruturacao: "Estruturação",
+  operacao_guiada: "Operação Guiada",
+  transferencia: "Transferência",
+};
+
+const phaseColors: Record<string, string> = {
+  diagnostico: "bg-blue-500/10 text-blue-600",
+  estruturacao: "bg-purple-500/10 text-purple-600",
+  operacao_guiada: "bg-orange-500/10 text-orange-600",
+  transferencia: "bg-green-500/10 text-green-600",
 };
 
 export default function AdminClients() {
@@ -287,9 +303,9 @@ export default function AdminClients() {
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Segmento</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Fase</TableHead>
+                  <TableHead className="hidden lg:table-cell">Status</TableHead>
                   <TableHead className="hidden sm:table-cell">Usuários</TableHead>
-                  <TableHead className="hidden sm:table-cell">Criado em</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -324,6 +340,15 @@ export default function AdminClients() {
                     <TableCell>
                       <Badge
                         variant="secondary"
+                        className={phaseColors[client.phase] || "bg-muted"}
+                      >
+                        <Circle className="h-2 w-2 mr-1 fill-current" />
+                        {phaseLabels[client.phase] || client.phase}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Badge
+                        variant="secondary"
                         className={statusColors[client.status || "ativo"]}
                       >
                         {statusLabels[client.status || "ativo"]}
@@ -334,11 +359,6 @@ export default function AdminClients() {
                         <Users className="h-4 w-4 text-muted-foreground" />
                         {client.user_count || 0}
                       </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
-                      {format(new Date(client.created_at), "dd/MM/yy", {
-                        locale: ptBR,
-                      })}
                     </TableCell>
                     <TableCell>
                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />

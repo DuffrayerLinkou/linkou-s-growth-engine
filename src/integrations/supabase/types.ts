@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      acknowledgements: {
+        Row: {
+          acknowledged_by: string
+          client_id: string
+          created_at: string
+          id: string
+          note: string | null
+          phase: string
+        }
+        Insert: {
+          acknowledged_by: string
+          client_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          phase: string
+        }
+        Update: {
+          acknowledged_by?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          phase?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acknowledgements_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acknowledgements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -98,25 +140,31 @@ export type Database = {
       }
       clients: {
         Row: {
+          autonomy: boolean
           created_at: string | null
           id: string
           name: string
+          phase: string
           segment: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          autonomy?: boolean
           created_at?: string | null
           id?: string
           name: string
+          phase?: string
           segment?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          autonomy?: boolean
           created_at?: string | null
           id?: string
           name?: string
+          phase?: string
           segment?: string | null
           status?: string | null
           updated_at?: string | null
@@ -534,12 +582,26 @@ export type Database = {
     Functions: {
       client_has_ponto_focal: { Args: { _client_id: string }; Returns: boolean }
       count_client_users: { Args: { _client_id: string }; Returns: number }
+      get_user_client_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      is_ponto_focal: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      log_phase_change: {
+        Args: {
+          _actor_user_id: string
+          _client_id: string
+          _from_phase: string
+          _to_phase: string
+        }
+        Returns: string
       }
       set_ponto_focal: {
         Args: { _client_id: string; _user_id: string }

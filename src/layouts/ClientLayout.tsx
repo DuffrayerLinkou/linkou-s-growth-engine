@@ -6,6 +6,7 @@ import {
   Menu,
   X,
   User,
+  Route,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
 
