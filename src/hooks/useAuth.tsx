@@ -30,6 +30,7 @@ interface AuthContextType {
   clientInfo: ClientInfo | null;
   roles: AppRole[];
   isLoading: boolean;
+  rolesLoaded: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
 
   const fetchUserData = async (userId: string) => {
     try {
@@ -87,8 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (rolesData) {
         setRoles(rolesData.map((r) => r.role));
       }
+      setRolesLoaded(true);
     } catch (error) {
       console.error("Error fetching user data:", error);
+      setRolesLoaded(true);
     }
   };
 
@@ -114,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setClientInfo(null);
           setRoles([]);
+          setRolesLoaded(false);
         }
 
         if (event === "INITIAL_SESSION") {
@@ -169,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setClientInfo(null);
     setRoles([]);
+    setRolesLoaded(false);
   };
 
   const hasRole = (role: AppRole) => roles.includes(role);
@@ -180,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clientInfo,
     roles,
     isLoading,
+    rolesLoaded,
     signUp,
     signIn,
     signOut,
