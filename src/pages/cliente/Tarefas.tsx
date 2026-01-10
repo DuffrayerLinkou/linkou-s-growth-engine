@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Clock, AlertCircle, CheckCircle2, Loader2, Ban, Route, Filter, Star, Circle } from "lucide-react";
+import { Clock, AlertCircle, CheckCircle2, Loader2, Ban, Route, Filter, Star, Circle, List, Columns3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ import {
   allPhases,
   isTaskOverdue,
 } from "@/lib/task-config";
+import { TasksKanbanClient } from "@/components/cliente/TasksKanbanClient";
 
 interface Task {
   id: string;
@@ -60,6 +61,8 @@ export default function ClienteTarefas() {
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [taskToComplete, setTaskToComplete] = useState<Task | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
 
   const currentClientPhase = clientInfo?.phase as JourneyPhase || "diagnostico";
 
@@ -107,20 +110,53 @@ export default function ClienteTarefas() {
     },
   });
 
-  // Check if user can complete a task
-  const canCompleteTask = (task: Task) => {
-    return (
-      task.executor_type === "client" &&
-      task.assigned_to === user?.id &&
-      task.status !== "completed"
-    );
+  // Status change mutation for Kanban
+  const statusChangeMutation = useMutation({
+    mutationFn: async ({ taskId, newStatus }: { taskId: string; newStatus: string }) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: newStatus })
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-tasks"] });
+      toast({
+        title: "Status atualizado!",
+        description: "O status da tarefa foi alterado com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar status",
+        description: error.message,
+      });
+    },
+  });
+
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    await statusChangeMutation.mutateAsync({ taskId, newStatus });
   };
+
+  // Check if user can complete a task (is their responsibility)
+  const isMyTask = (task: Task) => {
+    return task.executor_type === "client" && task.assigned_to === user?.id;
+  };
+
+  const canCompleteTask = (task: Task) => {
+    return isMyTask(task) && task.status !== "completed";
+  };
+
+  // Get my pending tasks
+  const myPendingTasks = tasks.filter(task => isMyTask(task) && task.status !== "completed");
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     const matchesPhase = phaseFilter === "all" || task.journey_phase === phaseFilter;
     const matchesStatus = statusFilter === "all" || (task.status || "backlog") === statusFilter;
-    return matchesPhase && matchesStatus;
+    const matchesMine = !showOnlyMyTasks || isMyTask(task);
+    return matchesPhase && matchesStatus && matchesMine;
   });
 
   // Group tasks by phase
@@ -170,12 +206,121 @@ export default function ClienteTarefas() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Minhas Tarefas</h1>
-        <p className="text-muted-foreground">
-          Acompanhe o andamento das tarefas do seu projeto
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Minhas Tarefas</h1>
+          <p className="text-muted-foreground">
+            Acompanhe o andamento das tarefas do seu projeto
+          </p>
+        </div>
+        
+        {/* View Toggle */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="h-4 w-4 mr-2" />
+            Lista
+          </Button>
+          <Button
+            variant={viewMode === "kanban" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("kanban")}
+          >
+            <Columns3 className="h-4 w-4 mr-2" />
+            Kanban
+          </Button>
+        </div>
       </div>
+
+      {/* My Responsibilities Highlight Card */}
+      {myPendingTasks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="border-2 border-amber-500/50 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shadow-lg">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20">
+                    <Star className="h-5 w-5 text-amber-600 fill-amber-500" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-lg">Suas Responsabilidades</h2>
+                    <p className="text-sm text-muted-foreground">Tarefas que dependem de você</p>
+                  </div>
+                </div>
+                <Badge className="bg-amber-500 text-white hover:bg-amber-600 text-sm px-3 py-1">
+                  {myPendingTasks.length} pendente{myPendingTasks.length > 1 ? "s" : ""}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="grid gap-2">
+                {myPendingTasks.slice(0, 3).map((task) => {
+                  const taskStatus = (task.status || "backlog") as TaskStatus;
+                  const overdue = isTaskOverdue(task.due_date, task.status);
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg border-l-4 border-l-amber-500 bg-card",
+                        overdue && "border-l-red-500 bg-red-500/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
+                          {(() => {
+                            const StatusIcon = getStatusIcon(taskStatus);
+                            return <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />;
+                          })()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{task.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Badge variant="secondary" className={statusConfig[taskStatus].color}>
+                              {statusConfig[taskStatus].label}
+                            </Badge>
+                            {task.due_date && (
+                              <span className={cn(
+                                "flex items-center gap-1",
+                                overdue ? "text-red-600 font-medium" : ""
+                              )}>
+                                <Clock className="h-3 w-3" />
+                                {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setTaskToComplete(task)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Concluir
+                      </Button>
+                    </div>
+                  );
+                })}
+                {myPendingTasks.length > 3 && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-amber-600"
+                    onClick={() => setShowOnlyMyTasks(true)}
+                  >
+                    Ver todas as {myPendingTasks.length} tarefas
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Current Phase Banner */}
       <Card className={`border ${journeyPhaseConfig[currentClientPhase]?.color || ""}`}>
@@ -208,6 +353,20 @@ export default function ClienteTarefas() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
+        <Button
+          variant={showOnlyMyTasks ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
+          className={showOnlyMyTasks ? "bg-amber-500 hover:bg-amber-600" : ""}
+        >
+          <Star className={cn("h-4 w-4 mr-2", showOnlyMyTasks && "fill-current")} />
+          Minhas Tarefas
+          {myPendingTasks.length > 0 && (
+            <Badge variant="secondary" className="ml-2 bg-white/20">
+              {myPendingTasks.length}
+            </Badge>
+          )}
+        </Button>
         <Select value={phaseFilter} onValueChange={setPhaseFilter}>
           <SelectTrigger className="w-[200px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -237,252 +396,263 @@ export default function ClienteTarefas() {
         </Select>
       </div>
 
-      {/* Tasks Grouped by Phase */}
-      <div className="space-y-6">
-        {allPhases.map((phase, phaseIndex) => {
-          const phaseTasks = getTasksByPhase(phase);
-          const progress = getPhaseProgress(phase);
-          const isCurrentPhase = phase === currentClientPhase;
-          const phaseOrder = journeyPhaseConfig[phase].order;
-          const currentPhaseOrder = journeyPhaseConfig[currentClientPhase].order;
-          const isCompletedPhase = phaseOrder < currentPhaseOrder;
-          const isFuturePhase = phaseOrder > currentPhaseOrder;
+      {/* Kanban View */}
+      {viewMode === "kanban" && (
+        <TasksKanbanClient
+          tasks={filteredTasks}
+          onStatusChange={handleStatusChange}
+          currentUserId={user?.id}
+        />
+      )}
 
-          // Skip phases with no tasks if filtering
-          if (phaseFilter !== "all" && phaseTasks.length === 0) return null;
+      {/* List View - Tasks Grouped by Phase */}
+      {viewMode === "list" && (
+        <div className="space-y-6">
+          {allPhases.map((phase, phaseIndex) => {
+            const phaseTasks = getTasksByPhase(phase);
+            const progress = getPhaseProgress(phase);
+            const isCurrentPhase = phase === currentClientPhase;
+            const phaseOrder = journeyPhaseConfig[phase].order;
+            const currentPhaseOrder = journeyPhaseConfig[currentClientPhase].order;
+            const isCompletedPhase = phaseOrder < currentPhaseOrder;
+            const isFuturePhase = phaseOrder > currentPhaseOrder;
 
-          return (
+            // Skip phases with no tasks if filtering
+            if (phaseFilter !== "all" && phaseTasks.length === 0) return null;
+
+            return (
+              <motion.div
+                key={phase}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: phaseIndex * 0.1 }}
+              >
+                <Card className={isCurrentPhase ? `border-2 ${journeyPhaseConfig[phase].color.replace("bg-", "border-").split(" ")[0]}` : ""}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant="secondary" 
+                          className={journeyPhaseConfig[phase].color}
+                        >
+                          {journeyPhaseConfig[phase].label}
+                        </Badge>
+                        {isCurrentPhase && (
+                          <Badge variant="outline" className="text-xs">
+                            Fase Atual
+                          </Badge>
+                        )}
+                        {isCompletedPhase && (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{progress.completed}/{progress.total}</span>
+                        <Progress value={progress.percentage} className="w-20 h-2" />
+                        <span>{progress.percentage}%</span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {phaseTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {isFuturePhase 
+                          ? "Tarefas desta fase serão liberadas em breve"
+                          : "Nenhuma tarefa nesta fase"}
+                      </p>
+                    ) : (
+                      <div className="grid gap-3">
+                        {phaseTasks.map((task, index) => {
+                          const taskStatus = (task.status || "backlog") as TaskStatus;
+                          const StatusIcon = getStatusIcon(taskStatus);
+                          const isCompleted = taskStatus === "completed";
+                          const isTaskMine = isMyTask(task);
+                          const overdue = isTaskOverdue(task.due_date, task.status);
+
+                          return (
+                            <motion.div
+                              key={task.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={cn(
+                                "flex items-start gap-3 p-3 rounded-lg border transition-all",
+                                isCompleted 
+                                  ? "bg-green-500/5 border-green-500/20" 
+                                  : isTaskMine 
+                                    ? "border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent shadow-sm" 
+                                    : overdue
+                                      ? "bg-red-500/5 border-red-500/30"
+                                      : "bg-card"
+                              )}
+                            >
+                              <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
+                                <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                                    {task.title}
+                                  </p>
+                                  {isTaskMine && (
+                                    <Badge className="text-xs bg-amber-500 text-white hover:bg-amber-600">
+                                      <Star className="h-3 w-3 mr-1 fill-current" />
+                                      Sua Responsabilidade
+                                    </Badge>
+                                  )}
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 mt-2 text-xs">
+                                  <Badge variant="secondary" className={statusConfig[taskStatus].color}>
+                                    {statusConfig[taskStatus].label}
+                                  </Badge>
+                                  {task.priority && (
+                                    <span className={`flex items-center gap-1 ${priorityConfig[task.priority]?.color || "text-muted-foreground"}`}>
+                                      <AlertCircle className="h-3 w-3" />
+                                      {priorityConfig[task.priority]?.label || task.priority}
+                                    </span>
+                                  )}
+                                  {task.due_date && (
+                                    <span className={cn(
+                                      "flex items-center gap-1",
+                                      overdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                                    )}>
+                                      <Clock className="h-3 w-3" />
+                                      {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                      {overdue && <AlertCircle className="h-3 w-3" />}
+                                    </span>
+                                  )}
+                                </div>
+                                {canCompleteTask(task) && (
+                                  <Button
+                                    size="sm"
+                                    className="mt-3"
+                                    onClick={() => setTaskToComplete(task)}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    Marcar como Concluída
+                                  </Button>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+
+          {/* Tasks without phase */}
+          {getTasksWithoutPhase().length > 0 && phaseFilter === "all" && (
             <motion.div
-              key={phase}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: phaseIndex * 0.1 }}
+              transition={{ delay: 0.4 }}
             >
-              <Card className={isCurrentPhase ? `border-2 ${journeyPhaseConfig[phase].color.replace("bg-", "border-").split(" ")[0]}` : ""}>
+              <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Badge 
-                        variant="secondary" 
-                        className={journeyPhaseConfig[phase].color}
-                      >
-                        {journeyPhaseConfig[phase].label}
-                      </Badge>
-                      {isCurrentPhase && (
-                        <Badge variant="outline" className="text-xs">
-                          Fase Atual
-                        </Badge>
-                      )}
-                      {isCompletedPhase && (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{progress.completed}/{progress.total}</span>
-                      <Progress value={progress.percentage} className="w-20 h-2" />
-                      <span>{progress.percentage}%</span>
-                    </div>
+                    <Badge variant="outline">Outras Tarefas</Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {getTasksWithoutPhase().length} tarefas
+                    </span>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {phaseTasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      {isFuturePhase 
-                        ? "Tarefas desta fase serão liberadas em breve"
-                        : "Nenhuma tarefa nesta fase"}
-                    </p>
-                  ) : (
-                    <div className="grid gap-3">
-                      {phaseTasks.map((task, index) => {
-                        const taskStatus = (task.status || "backlog") as TaskStatus;
-                        const StatusIcon = getStatusIcon(taskStatus);
-                        const isCompleted = taskStatus === "completed";
-                        const isMyTask = canCompleteTask(task);
-                        const overdue = isTaskOverdue(task.due_date, task.status);
+                  <div className="grid gap-3">
+                    {getTasksWithoutPhase().map((task, index) => {
+                      const taskStatus = (task.status || "backlog") as TaskStatus;
+                      const StatusIcon = getStatusIcon(taskStatus);
+                      const isCompleted = taskStatus === "completed";
+                      const isTaskMine = isMyTask(task);
+                      const overdue = isTaskOverdue(task.due_date, task.status);
 
-                        return (
-                          <motion.div
-                            key={task.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={cn(
-                              "flex items-start gap-3 p-3 rounded-lg border",
-                              isCompleted 
-                                ? "bg-green-500/5 border-green-500/20" 
-                                : isMyTask 
-                                  ? "bg-amber-500/5 border-amber-500/30" 
-                                  : overdue
-                                    ? "bg-red-500/5 border-red-500/30"
-                                    : "bg-card"
-                            )}
-                          >
-                            <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
-                              <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                                  {task.title}
-                                </p>
-                                {isMyTask && (
-                                  <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
-                                    <Star className="h-3 w-3 mr-1 fill-current" />
-                                    Sua Tarefa
-                                  </Badge>
-                                )}
-                              </div>
-                              {task.description && (
-                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                  {task.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 mt-2 text-xs">
-                                <Badge variant="secondary" className={statusConfig[taskStatus].color}>
-                                  {statusConfig[taskStatus].label}
+                      return (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border transition-all",
+                            isCompleted 
+                              ? "bg-green-500/5 border-green-500/20" 
+                              : isTaskMine 
+                                ? "border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent shadow-sm" 
+                                : overdue
+                                  ? "bg-red-500/5 border-red-500/30"
+                                  : "bg-card"
+                          )}
+                        >
+                          <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
+                            <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                                {task.title}
+                              </p>
+                              {isTaskMine && (
+                                <Badge className="text-xs bg-amber-500 text-white hover:bg-amber-600">
+                                  <Star className="h-3 w-3 mr-1 fill-current" />
+                                  Sua Responsabilidade
                                 </Badge>
-                                {task.priority && (
-                                  <span className={`flex items-center gap-1 ${priorityConfig[task.priority]?.color || "text-muted-foreground"}`}>
-                                    <AlertCircle className="h-3 w-3" />
-                                    {priorityConfig[task.priority]?.label || task.priority}
-                                  </span>
-                                )}
-                                {task.due_date && (
-                                  <span className={cn(
-                                    "flex items-center gap-1",
-                                    overdue ? "text-red-600 font-medium" : "text-muted-foreground"
-                                  )}>
-                                    <Clock className="h-3 w-3" />
-                                    {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
-                                    {overdue && <AlertCircle className="h-3 w-3" />}
-                                  </span>
-                                )}
-                              </div>
-                              {isMyTask && (
-                                <Button
-                                  size="sm"
-                                  className="mt-3"
-                                  onClick={() => setTaskToComplete(task)}
-                                >
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Marcar como Concluída
-                                </Button>
                               )}
                             </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
+                            {task.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {task.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2 text-xs">
+                              <Badge variant="secondary" className={statusConfig[taskStatus].color}>
+                                {statusConfig[taskStatus].label}
+                              </Badge>
+                              {task.priority && (
+                                <span className={`flex items-center gap-1 ${priorityConfig[task.priority]?.color || "text-muted-foreground"}`}>
+                                  <AlertCircle className="h-3 w-3" />
+                                  {priorityConfig[task.priority]?.label || task.priority}
+                                </span>
+                              )}
+                              {task.due_date && (
+                                <span className={cn(
+                                  "flex items-center gap-1",
+                                  overdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                                )}>
+                                  <Clock className="h-3 w-3" />
+                                  {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                  {overdue && <AlertCircle className="h-3 w-3" />}
+                                </span>
+                              )}
+                            </div>
+                            {canCompleteTask(task) && (
+                              <Button
+                                size="sm"
+                                className="mt-3"
+                                onClick={() => setTaskToComplete(task)}
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Marcar como Concluída
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
-          );
-        })}
-
-        {/* Tasks without phase */}
-        {getTasksWithoutPhase().length > 0 && phaseFilter === "all" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline">Outras Tarefas</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {getTasksWithoutPhase().length} tarefas
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3">
-                  {getTasksWithoutPhase().map((task, index) => {
-                    const taskStatus = (task.status || "backlog") as TaskStatus;
-                    const StatusIcon = getStatusIcon(taskStatus);
-                    const isCompleted = taskStatus === "completed";
-                    const isMyTask = canCompleteTask(task);
-                    const overdue = isTaskOverdue(task.due_date, task.status);
-
-                    return (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={cn(
-                          "flex items-start gap-3 p-3 rounded-lg border",
-                          isCompleted 
-                            ? "bg-green-500/5 border-green-500/20" 
-                            : isMyTask 
-                              ? "bg-amber-500/5 border-amber-500/30" 
-                              : overdue
-                                ? "bg-red-500/5 border-red-500/30"
-                                : "bg-card"
-                        )}
-                      >
-                        <div className={`p-1.5 rounded-md ${statusConfig[taskStatus].color}`}>
-                          <StatusIcon className={`h-4 w-4 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={`font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                              {task.title}
-                            </p>
-                            {isMyTask && (
-                              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
-                                <Star className="h-3 w-3 mr-1 fill-current" />
-                                Sua Tarefa
-                              </Badge>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {task.description}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-3 mt-2 text-xs">
-                            <Badge variant="secondary" className={statusConfig[taskStatus].color}>
-                              {statusConfig[taskStatus].label}
-                            </Badge>
-                            {task.priority && (
-                              <span className={`flex items-center gap-1 ${priorityConfig[task.priority]?.color || "text-muted-foreground"}`}>
-                                <AlertCircle className="h-3 w-3" />
-                                {priorityConfig[task.priority]?.label || task.priority}
-                              </span>
-                            )}
-                            {task.due_date && (
-                              <span className={cn(
-                                "flex items-center gap-1",
-                                overdue ? "text-red-600 font-medium" : "text-muted-foreground"
-                              )}>
-                                <Clock className="h-3 w-3" />
-                                {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
-                                {overdue && <AlertCircle className="h-3 w-3" />}
-                              </span>
-                            )}
-                          </div>
-                          {isMyTask && (
-                            <Button
-                              size="sm"
-                              className="mt-3"
-                              onClick={() => setTaskToComplete(task)}
-                            >
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Marcar como Concluída
-                            </Button>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {tasks.length === 0 && (
         <Card>
