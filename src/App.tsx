@@ -14,11 +14,13 @@ import NotFound from "./pages/NotFound";
 
 // Client pages
 import ClienteDashboard from "./pages/cliente/Dashboard";
+import MinhaConta from "./pages/cliente/MinhaConta";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
+import AdminClientDetail from "./pages/admin/ClientDetail";
 import AdminProjects from "./pages/admin/Projects";
 
 const queryClient = new QueryClient();
@@ -46,6 +48,7 @@ const App = () => (
                 }
               >
                 <Route index element={<ClienteDashboard />} />
+                <Route path="minha-conta" element={<MinhaConta />} />
               </Route>
 
               {/* Admin routes */}
@@ -60,6 +63,7 @@ const App = () => (
                 <Route index element={<AdminDashboard />} />
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="clientes" element={<AdminClients />} />
+                <Route path="clientes/:id" element={<AdminClientDetail />} />
                 <Route path="projetos" element={<AdminProjects />} />
               </Route>
 

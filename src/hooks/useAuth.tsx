@@ -11,12 +11,22 @@ interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   phone: string | null;
+  client_id: string | null;
+  ponto_focal: boolean;
+}
+
+interface ClientInfo {
+  id: string;
+  name: string;
+  segment: string | null;
+  status: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  clientInfo: ClientInfo | null;
   roles: AppRole[];
   isLoading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
@@ -26,6 +36,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isAccountManager: boolean;
   isClient: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,7 +59,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (profileData) {
-        setProfile(profileData);
+        setProfile(profileData as Profile);
+
+        // Se o usuário tem um client_id, buscar info do cliente
+        if (profileData.client_id) {
+          const { data: clientData } = await supabase
+            .from("clients")
+            .select("id, name, segment, status")
+            .eq("id", profileData.client_id)
+            .maybeSingle();
+
+          if (clientData) {
+            setClientInfo(clientData);
+          }
+        } else {
+          setClientInfo(null);
+        }
       }
 
       // Fetch roles
@@ -61,6 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchUserData(user.id);
     }
   };
 
@@ -78,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
+          setClientInfo(null);
           setRoles([]);
         }
 
@@ -132,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setClientInfo(null);
     setRoles([]);
   };
 
@@ -141,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     profile,
+    clientInfo,
     roles,
     isLoading,
     signUp,
@@ -150,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: hasRole("admin"),
     isAccountManager: hasRole("account_manager"),
     isClient: hasRole("client"),
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
