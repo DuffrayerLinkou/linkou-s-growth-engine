@@ -13,6 +13,7 @@ interface Profile {
   phone: string | null;
   client_id: string | null;
   ponto_focal: boolean;
+  user_type: string | null;
 }
 
 interface ClientInfo {

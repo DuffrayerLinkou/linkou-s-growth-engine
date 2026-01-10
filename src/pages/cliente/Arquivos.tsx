@@ -113,7 +113,7 @@ export default function ClienteArquivos() {
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadDescription, setUploadDescription] = useState("");
 
-  const isPontoFocal = profile?.ponto_focal === true;
+  const canUploadFiles = profile?.ponto_focal === true || profile?.user_type === 'manager';
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["client-files", clientInfo?.id],
@@ -241,7 +241,7 @@ export default function ClienteArquivos() {
         </div>
 
         {/* Upload Button for Ponto Focal */}
-        {isPontoFocal && (
+        {canUploadFiles && (
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -408,7 +408,7 @@ export default function ClienteArquivos() {
             <p className="text-muted-foreground mb-4">
               Os arquivos e entregáveis do seu projeto aparecerão aqui.
             </p>
-            {isPontoFocal && (
+            {canUploadFiles && (
               <Button onClick={() => setIsUploadOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Enviar seu primeiro arquivo
