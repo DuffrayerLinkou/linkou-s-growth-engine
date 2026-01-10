@@ -7,11 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 export default function Auth() {
-  const { user, roles, isLoading } = useAuth();
+  const { user, roles, isLoading, rolesLoaded } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && user) {
+    // Aguardar até que as roles tenham sido carregadas
+    if (!isLoading && user && rolesLoaded) {
       // Redirect based on role
       if (roles.includes("admin") || roles.includes("account_manager")) {
         navigate("/admin", { replace: true });
@@ -19,9 +20,9 @@ export default function Auth() {
         navigate("/cliente", { replace: true });
       }
     }
-  }, [user, roles, isLoading, navigate]);
+  }, [user, roles, isLoading, rolesLoaded, navigate]);
 
-  if (isLoading) {
+  if (isLoading || (user && !rolesLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Carregando...</div>
