@@ -1150,6 +1150,7 @@ export type Database = {
           created_by: string | null
           custo_por_clique: number | null
           custo_por_lead: number | null
+          custo_por_sql: number | null
           custo_por_venda: number | null
           frequencia: number | null
           id: string
@@ -1157,6 +1158,7 @@ export type Database = {
           investimento: number | null
           month: number
           quantidade_leads: number | null
+          quantidade_sql: number | null
           quantidade_vendas: number | null
           updated_at: string | null
           updated_by: string | null
@@ -1170,6 +1172,7 @@ export type Database = {
           created_by?: string | null
           custo_por_clique?: number | null
           custo_por_lead?: number | null
+          custo_por_sql?: number | null
           custo_por_venda?: number | null
           frequencia?: number | null
           id?: string
@@ -1177,6 +1180,7 @@ export type Database = {
           investimento?: number | null
           month: number
           quantidade_leads?: number | null
+          quantidade_sql?: number | null
           quantidade_vendas?: number | null
           updated_at?: string | null
           updated_by?: string | null
@@ -1190,6 +1194,7 @@ export type Database = {
           created_by?: string | null
           custo_por_clique?: number | null
           custo_por_lead?: number | null
+          custo_por_sql?: number | null
           custo_por_venda?: number | null
           frequencia?: number | null
           id?: string
@@ -1197,6 +1202,7 @@ export type Database = {
           investimento?: number | null
           month?: number
           quantidade_leads?: number | null
+          quantidade_sql?: number | null
           quantidade_vendas?: number | null
           updated_at?: string | null
           updated_by?: string | null
