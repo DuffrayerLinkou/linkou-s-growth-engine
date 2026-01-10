@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -79,13 +80,32 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function AdminLeads() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { toast } = useToast();
+
+  // Sincronizar filtro com query params
+  useEffect(() => {
+    const urlStatus = searchParams.get("status");
+    if (urlStatus && urlStatus !== statusFilter) {
+      setStatusFilter(urlStatus);
+    }
+  }, [searchParams]);
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    if (value === "all") {
+      searchParams.delete("status");
+    } else {
+      searchParams.set("status", value);
+    }
+    setSearchParams(searchParams);
+  };
 
   const fetchLeads = async () => {
     setIsLoading(true);
@@ -117,6 +137,7 @@ export default function AdminLeads() {
 
   useEffect(() => {
     fetchLeads();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
@@ -182,7 +203,7 @@ export default function AdminLeads() {
           const count = leads.filter((l) => l.status === status).length;
           return (
             <Card key={status} className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => setStatusFilter(status === statusFilter ? "all" : status)}>
+              onClick={() => handleStatusFilterChange(status === statusFilter ? "all" : status)}>
               <CardHeader className="pb-2">
                 <CardDescription>{label}</CardDescription>
                 <CardTitle className="text-2xl">{count}</CardTitle>
@@ -203,7 +224,7 @@ export default function AdminLeads() {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
           <SelectTrigger className="w-full sm:w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filtrar status" />
