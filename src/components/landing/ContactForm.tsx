@@ -25,13 +25,7 @@ const leadSchema = z.object({
   objective: z.string().max(1000).optional(),
 });
 
-const segments = [
-  "Construtora / Incorporadora",
-  "Imobiliária",
-  "B2B / Serviços",
-  "E-commerce",
-  "Outro",
-];
+import { landingSegments as segments } from "@/lib/segments-config";
 
 const investments = [
   "Até R$ 5.000/mês",

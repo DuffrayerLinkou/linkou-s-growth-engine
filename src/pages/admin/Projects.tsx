@@ -92,19 +92,10 @@ const projectSchema = z.object({
   budget: z.string().optional().or(z.literal("")),
 });
 
-const statusColors: Record<string, string> = {
-  planning: "bg-gray-500/10 text-gray-500",
-  active: "bg-green-500/10 text-green-500",
-  paused: "bg-yellow-500/10 text-yellow-500",
-  completed: "bg-blue-500/10 text-blue-500",
-};
-
-const statusLabels: Record<string, string> = {
-  planning: "Planejamento",
-  active: "Ativo",
-  paused: "Pausado",
-  completed: "Concluído",
-};
+import {
+  projectStatusLabels as statusLabels,
+  projectStatusColors as statusColors,
+} from "@/lib/status-config";
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -137,7 +128,7 @@ export default function AdminProjects() {
           .from("projects")
           .select("*, clients(id, name)")
           .order("created_at", { ascending: false }),
-        supabase.from("clients").select("id, name").eq("status", "active"),
+        supabase.from("clients").select("id, name").eq("status", "ativo"),
       ]);
 
       if (projectsRes.error) throw projectsRes.error;

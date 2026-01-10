@@ -86,7 +86,7 @@ export default function AdminUsers() {
     },
   });
 
-  // Fetch clients for dropdown
+  // Fetch clients for dropdown using centralized hook
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
     queryFn: async () => {
