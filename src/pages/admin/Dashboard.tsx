@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,8 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
+  TrendingDown,
+  Minus,
   CheckCircle2,
   UserPlus,
   FolderPlus,
@@ -29,8 +32,11 @@ import {
   FileUp,
   MessageSquare
 } from "lucide-react";
-import { formatDistanceToNow, format, differenceInDays, isToday, isTomorrow, addDays, startOfDay } from "date-fns";
+import { formatDistanceToNow, format, differenceInDays, isToday, isTomorrow, addDays, startOfDay, subDays, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
+import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
+import { ExportDashboard } from "@/components/admin/ExportDashboard";
 
 // Labels e cores
 const statusLabels: Record<string, string> = {
@@ -93,32 +99,82 @@ export default function AdminDashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
 
-  // === QUERIES ===
-
-  // KPI 1: Leads no período (últimos 30 dias)
-  const { data: leadsInPeriod, isLoading: loadingLeadsPeriod } = useQuery({
-    queryKey: ["leads-period"],
-    queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", thirtyDaysAgo.toISOString());
-      return count || 0;
-    },
+  // Estado do filtro de datas - padrão: últimos 30 dias
+  const [selectedPreset, setSelectedPreset] = useState("last30days");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const preset = presets.find(p => p.value === "last30days");
+    return preset?.getRange();
   });
 
-  // KPI 2: Leads qualificados
-  const { data: qualifiedLeads, isLoading: loadingQualified } = useQuery({
-    queryKey: ["leads-qualified"],
+  // Calcula o período anterior para comparação
+  const previousPeriod = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) return null;
+    const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+    return { from: subDays(dateRange.from, days), to: subDays(dateRange.from, 1) };
+  }, [dateRange]);
+
+  // === QUERIES ===
+
+  // KPI 1: Leads no período selecionado
+  const { data: leadsInPeriod, isLoading: loadingLeadsPeriod } = useQuery({
+    queryKey: ["leads-period", dateRange],
     queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return 0;
       const { count } = await supabase
         .from("leads")
         .select("*", { count: "exact", head: true })
-        .eq("status", "qualified");
+        .gte("created_at", startOfDay(dateRange.from).toISOString())
+        .lte("created_at", endOfDay(dateRange.to).toISOString());
       return count || 0;
     },
+    enabled: !!dateRange?.from && !!dateRange?.to,
+  });
+
+  // Leads no período anterior (comparativo)
+  const { data: leadsPreviousPeriod } = useQuery({
+    queryKey: ["leads-period-previous", previousPeriod],
+    queryFn: async () => {
+      if (!previousPeriod?.from || !previousPeriod?.to) return 0;
+      const { count } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", startOfDay(previousPeriod.from).toISOString())
+        .lte("created_at", endOfDay(previousPeriod.to).toISOString());
+      return count || 0;
+    },
+    enabled: !!previousPeriod?.from && !!previousPeriod?.to,
+  });
+
+  // KPI 2: Leads qualificados no período
+  const { data: qualifiedLeads, isLoading: loadingQualified } = useQuery({
+    queryKey: ["leads-qualified", dateRange],
+    queryFn: async () => {
+      if (!dateRange?.from || !dateRange?.to) return 0;
+      const { count } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "qualified")
+        .gte("created_at", startOfDay(dateRange.from).toISOString())
+        .lte("created_at", endOfDay(dateRange.to).toISOString());
+      return count || 0;
+    },
+    enabled: !!dateRange?.from && !!dateRange?.to,
+  });
+
+  // Leads qualificados no período anterior
+  const { data: qualifiedPreviousPeriod } = useQuery({
+    queryKey: ["leads-qualified-previous", previousPeriod],
+    queryFn: async () => {
+      if (!previousPeriod?.from || !previousPeriod?.to) return 0;
+      const { count } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "qualified")
+        .gte("created_at", startOfDay(previousPeriod.from).toISOString())
+        .lte("created_at", endOfDay(previousPeriod.to).toISOString());
+      return count || 0;
+    },
+    enabled: !!previousPeriod?.from && !!previousPeriod?.to,
   });
 
   // KPI 3: Clientes ativos
@@ -498,6 +554,89 @@ export default function AdminDashboard() {
   const isLoadingKPIs = loadingLeadsPeriod || loadingQualified || loadingActiveClients || loadingOperacao || 
                         loadingOverdueTasks || loadingActiveExperiments || loadingAppointmentsToday || loadingPendingTasks;
 
+  // Componente de variação percentual
+  const PercentageChange = ({ current, previous }: { current: number; previous: number }) => {
+    if (previous === 0 && current === 0) {
+      return <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Minus className="h-3 w-3" /></span>;
+    }
+    if (previous === 0) {
+      return <span className="text-[10px] text-emerald-600 flex items-center gap-0.5"><TrendingUp className="h-3 w-3" /> Novo</span>;
+    }
+    const percentChange = ((current - previous) / previous) * 100;
+    const isPositive = percentChange > 0;
+    const isNeutral = percentChange === 0;
+    if (isNeutral) {
+      return <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Minus className="h-3 w-3" /> =</span>;
+    }
+    return (
+      <span className={`text-[10px] flex items-center gap-0.5 ${isPositive ? "text-emerald-600" : "text-red-500"}`}>
+        {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        {isPositive ? "+" : ""}{percentChange.toFixed(0)}%
+      </span>
+    );
+  };
+
+  // Dados para exportação Excel
+  const exportData = useMemo(() => ({
+    kpis: {
+      leadsUltimos30Dias: leadsInPeriod || 0,
+      leadsQualificados: qualifiedLeads || 0,
+      clientesAtivos: activeClients || 0,
+      clientesEmOperacao: clientsOperacao || 0,
+      tarefasVencidas: overdueTasks || 0,
+      experimentosAtivos: activeExperiments || 0,
+      agendamentosHoje: appointmentsToday || 0,
+      tarefasPendentesTotal: pendingTasksTotal || 0,
+    },
+    leadsPipeline: Object.entries(leadsByStatus || {}).map(([status, count]) => ({
+      status: statusLabels[status] || status,
+      count: count as number,
+    })),
+    clientJourney: Object.entries(clientsJourneyData || {}).map(([phase, data]) => ({
+      phase: phaseLabels[phase] || phase,
+      count: (data as any).total,
+      deadlineStatus: (data as any).overdue > 0 ? "Atrasado" : (data as any).warning > 0 ? "Atenção" : "OK",
+    })),
+    tasksByClient: (tasksByClient || []).map(item => ({
+      clientName: item.name,
+      total: item.total,
+      overdue: item.overdue,
+    })),
+    attentionItems: {
+      staleLeads: (staleLeads || []).map(lead => ({
+        name: lead.name,
+        createdAt: format(new Date(lead.created_at), "dd/MM/yyyy", { locale: ptBR }),
+      })),
+      clientsWithoutFocal: (clientsWithoutFocal || []).map(client => ({
+        name: client.name,
+      })),
+      overdueClients: (clientsOverduePhase || []).map(client => ({
+        name: client.name,
+        phase: phaseLabels[client.phase] || client.phase,
+      })),
+      severelyOverdueTasks: (severeOverdueTasks || []).map((task: any) => ({
+        title: task.title,
+        clientName: task.clients?.name || "Sem cliente",
+        dueDate: task.due_date ? format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR }) : "",
+      })),
+    },
+    appointments: (weekAppointments || []).map((apt: any) => ({
+      title: apt.title,
+      clientName: apt.clients?.name || "Sem cliente",
+      date: apt.appointment_date ? format(new Date(apt.appointment_date), "dd/MM/yyyy", { locale: ptBR }) : "",
+      time: apt.appointment_date ? format(new Date(apt.appointment_date), "HH:mm", { locale: ptBR }) : "",
+    })),
+    dateRange: {
+      from: dateRange?.from || new Date(),
+      to: dateRange?.to || new Date(),
+    },
+  }), [
+    leadsInPeriod, qualifiedLeads, activeClients, clientsOperacao,
+    overdueTasks, activeExperiments, appointmentsToday, pendingTasksTotal,
+    leadsByStatus, clientsJourneyData, tasksByClient, staleLeads, clientsWithoutFocal,
+    clientsOverduePhase, severeOverdueTasks, weekAppointments, dateRange
+  ]);
+
   return (
     <motion.div
       variants={containerVariants}
@@ -505,12 +644,26 @@ export default function AdminDashboard() {
       animate="visible"
       className="space-y-6"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants}>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo, {profile?.full_name || "Admin"}! Aqui está o resumo da agência.
-        </p>
+      {/* Header com filtro e exportação */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Bem-vindo, {profile?.full_name || "Admin"}! Aqui está o resumo da agência.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            selectedPreset={selectedPreset}
+            onPresetChange={setSelectedPreset}
+          />
+          <ExportDashboard
+            data={exportData}
+            isLoading={isLoadingKPIs}
+          />
+        </div>
       </motion.div>
 
       {/* BLOCO 1: KPIs Rápidos - Linha 1 */}
@@ -523,11 +676,14 @@ export default function AdminDashboard() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Leads (30 dias)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Leads (período)</p>
                 {loadingLeadsPeriod ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold text-foreground">{leadsInPeriod}</p>
+                  <div className="space-y-0.5">
+                    <p className="text-2xl font-bold text-foreground">{leadsInPeriod}</p>
+                    <PercentageChange current={leadsInPeriod || 0} previous={leadsPreviousPeriod || 0} />
+                  </div>
                 )}
               </div>
               <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
@@ -549,7 +705,10 @@ export default function AdminDashboard() {
                 {loadingQualified ? (
                   <Skeleton className="h-8 w-16 mt-1" />
                 ) : (
-                  <p className="text-2xl font-bold text-foreground">{qualifiedLeads}</p>
+                  <div className="space-y-0.5">
+                    <p className="text-2xl font-bold text-foreground">{qualifiedLeads}</p>
+                    <PercentageChange current={qualifiedLeads || 0} previous={qualifiedPreviousPeriod || 0} />
+                  </div>
                 )}
               </div>
               <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">

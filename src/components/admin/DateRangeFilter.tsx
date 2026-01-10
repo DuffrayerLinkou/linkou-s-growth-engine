@@ -167,6 +167,7 @@ export function DateRangeFilter({
               onSelect={handleCustomDateChange}
               numberOfMonths={2}
               locale={ptBR}
+              className="pointer-events-auto"
             />
             <div className="flex justify-end gap-2 p-2 border-t">
               <Button
