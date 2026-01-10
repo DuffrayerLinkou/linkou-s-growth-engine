@@ -10,7 +10,7 @@ import {
   CheckSquare,
   Calendar,
   BarChart3,
-  Lightbulb,
+  Megaphone,
   FileDown,
   Star,
 } from "lucide-react";
@@ -26,7 +26,7 @@ const navItems = [
   { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
   { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
   { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Métricas de Tráfego" },
-  { href: "/cliente/aprendizados", icon: Lightbulb, label: "Aprendizados" },
+  { href: "/cliente/campanhas", icon: Megaphone, label: "Campanhas" },
   { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },

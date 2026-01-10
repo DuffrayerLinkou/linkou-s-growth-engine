@@ -19,7 +19,7 @@ import MinhaJornada from "./pages/cliente/MinhaJornada";
 import ClienteTarefas from "./pages/cliente/Tarefas";
 import ClienteAgendamentos from "./pages/cliente/Agendamentos";
 import ClienteMetricasTrafego from "./pages/cliente/MetricasTrafego";
-import ClienteAprendizados from "./pages/cliente/Aprendizados";
+import ClienteCampanhas from "./pages/cliente/Campanhas";
 import ClienteArquivos from "./pages/cliente/Arquivos";
 
 // Admin pages
@@ -64,7 +64,7 @@ const App = () => (
                 <Route path="minha-jornada" element={<MinhaJornada />} />
                 <Route path="tarefas" element={<ClienteTarefas />} />
                 <Route path="metricas-trafego" element={<ClienteMetricasTrafego />} />
-                <Route path="aprendizados" element={<ClienteAprendizados />} />
+                <Route path="campanhas" element={<ClienteCampanhas />} />
                 <Route path="arquivos" element={<ClienteArquivos />} />
                 <Route path="agendamentos" element={<ClienteAgendamentos />} />
               </Route>

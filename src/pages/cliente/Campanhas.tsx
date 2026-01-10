@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  FlaskConical,
+  Megaphone,
   Target,
   Calendar,
   TrendingUp,
   Filter,
   ChevronDown,
   ChevronUp,
+  Pause,
+  Play,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,9 +34,9 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 
-type ExperimentStatus = "draft" | "running" | "completed" | "failed";
+type CampaignStatus = "draft" | "running" | "completed" | "paused";
 
-interface Experiment {
+interface Campaign {
   id: string;
   name: string;
   description: string | null;
@@ -46,6 +48,9 @@ interface Experiment {
   end_date: string | null;
   created_at: string | null;
   project_id: string;
+  platform: string | null;
+  objective: string | null;
+  budget: number | null;
   approved_by_ponto_focal: boolean;
   approved_at: string | null;
   approved_by: string | null;
@@ -58,22 +63,29 @@ interface Experiment {
 }
 
 const statusConfig: Record<
-  ExperimentStatus,
-  { label: string; color: string }
+  CampaignStatus,
+  { label: string; color: string; icon: typeof Play }
 > = {
-  draft: { label: "Rascunho", color: "bg-slate-500/20 text-slate-600 border-slate-500/30" },
-  running: { label: "Em Execução", color: "bg-blue-500/20 text-blue-600 border-blue-500/30" },
-  completed: { label: "Concluído", color: "bg-green-500/20 text-green-600 border-green-500/30" },
-  failed: { label: "Falhou", color: "bg-red-500/20 text-red-600 border-red-500/30" },
+  draft: { label: "Rascunho", color: "bg-slate-500/20 text-slate-600 border-slate-500/30", icon: Pause },
+  running: { label: "Ativa", color: "bg-green-500/20 text-green-600 border-green-500/30", icon: Play },
+  completed: { label: "Concluída", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", icon: Target },
+  paused: { label: "Pausada", color: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30", icon: Pause },
 };
 
-export default function ClienteExperimentos() {
+const platformLabels: Record<string, string> = {
+  meta: "Meta Ads",
+  google: "Google Ads",
+  tiktok: "TikTok Ads",
+  linkedin: "LinkedIn Ads",
+};
+
+export default function ClienteCampanhas() {
   const { clientInfo } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const { data: experiments = [], isLoading } = useQuery({
-    queryKey: ["client-experiments", clientInfo?.id],
+  const { data: campaigns = [], isLoading } = useQuery({
+    queryKey: ["client-campaigns", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return [];
 
@@ -88,14 +100,14 @@ export default function ClienteExperimentos() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Experiment[];
+      return data as Campaign[];
     },
     enabled: !!clientInfo?.id,
   });
 
-  const filteredExperiments = experiments.filter((exp) => {
+  const filteredCampaigns = campaigns.filter((camp) => {
     if (statusFilter === "all") return true;
-    return exp.status === statusFilter;
+    return camp.status === statusFilter;
   });
 
   const toggleExpanded = (id: string) => {
@@ -109,10 +121,10 @@ export default function ClienteExperimentos() {
   };
 
   // Stats
-  const totalExperiments = experiments.length;
-  const runningExperiments = experiments.filter((e) => e.status === "running").length;
-  const completedExperiments = experiments.filter((e) => e.status === "completed").length;
-  const approvedExperiments = experiments.filter((e) => e.approved_by_ponto_focal).length;
+  const totalCampaigns = campaigns.length;
+  const activeCampaigns = campaigns.filter((c) => c.status === "running").length;
+  const completedCampaigns = campaigns.filter((c) => c.status === "completed").length;
+  const approvedCampaigns = campaigns.filter((c) => c.approved_by_ponto_focal).length;
 
   if (isLoading) {
     return (
@@ -126,9 +138,9 @@ export default function ClienteExperimentos() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Experimentos</h1>
+        <h1 className="text-3xl font-bold">Campanhas</h1>
         <p className="text-muted-foreground">
-          Acompanhe os experimentos realizados em seu projeto
+          Acompanhe as campanhas de marketing do seu projeto
         </p>
       </div>
 
@@ -138,10 +150,10 @@ export default function ClienteExperimentos() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <FlaskConical className="h-5 w-5 text-primary" />
+                <Megaphone className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalExperiments}</p>
+                <p className="text-2xl font-bold">{totalCampaigns}</p>
                 <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </div>
@@ -150,12 +162,12 @@ export default function ClienteExperimentos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Play className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{runningExperiments}</p>
-                <p className="text-xs text-muted-foreground">Em Execução</p>
+                <p className="text-2xl font-bold">{activeCampaigns}</p>
+                <p className="text-xs text-muted-foreground">Ativas</p>
               </div>
             </div>
           </CardContent>
@@ -163,12 +175,12 @@ export default function ClienteExperimentos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Target className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Target className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{completedExperiments}</p>
-                <p className="text-xs text-muted-foreground">Concluídos</p>
+                <p className="text-2xl font-bold">{completedCampaigns}</p>
+                <p className="text-xs text-muted-foreground">Concluídas</p>
               </div>
             </div>
           </CardContent>
@@ -177,11 +189,11 @@ export default function ClienteExperimentos() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-500/10">
-                <FlaskConical className="h-5 w-5 text-purple-600" />
+                <TrendingUp className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{approvedExperiments}</p>
-                <p className="text-xs text-muted-foreground">Aprovados</p>
+                <p className="text-2xl font-bold">{approvedCampaigns}</p>
+                <p className="text-xs text-muted-foreground">Aprovadas</p>
               </div>
             </div>
           </CardContent>
@@ -196,56 +208,62 @@ export default function ClienteExperimentos() {
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="draft">Rascunho</SelectItem>
-            <SelectItem value="running">Em Execução</SelectItem>
-            <SelectItem value="completed">Concluído</SelectItem>
-            <SelectItem value="failed">Falhou</SelectItem>
+            <SelectItem value="running">Ativa</SelectItem>
+            <SelectItem value="completed">Concluída</SelectItem>
+            <SelectItem value="paused">Pausada</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Experiments List */}
+      {/* Campaigns List */}
       <div className="space-y-4">
-        {filteredExperiments.length === 0 ? (
+        {filteredCampaigns.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <FlaskConical className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhum experimento ainda</h3>
+              <Megaphone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma campanha ainda</h3>
               <p className="text-muted-foreground">
-                Os experimentos do seu projeto aparecerão aqui quando forem criados.
+                As campanhas do seu projeto aparecerão aqui quando forem criadas.
               </p>
             </CardContent>
           </Card>
         ) : (
-          filteredExperiments.map((experiment, index) => {
-            const status = (experiment.status || "draft") as ExperimentStatus;
-            const isExpanded = expandedIds.has(experiment.id);
+          filteredCampaigns.map((campaign, index) => {
+            const status = (campaign.status || "draft") as CampaignStatus;
+            const statusInfo = statusConfig[status] || statusConfig.draft;
+            const isExpanded = expandedIds.has(campaign.id);
 
             return (
               <motion.div
-                key={experiment.id}
+                key={campaign.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
                 <Card>
-                  <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(experiment.id)}>
+                  <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(campaign.id)}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="secondary" className={statusConfig[status].color}>
-                              {statusConfig[status].label}
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <Badge variant="secondary" className={statusInfo.color}>
+                              {statusInfo.label}
                             </Badge>
-                            {experiment.projects?.name && (
-                              <Badge variant="outline">{experiment.projects.name}</Badge>
+                            {campaign.platform && (
+                              <Badge variant="outline">
+                                {platformLabels[campaign.platform] || campaign.platform}
+                              </Badge>
+                            )}
+                            {campaign.projects?.name && (
+                              <Badge variant="outline">{campaign.projects.name}</Badge>
                             )}
                           </div>
-                          <CardTitle className="text-lg">{experiment.name}</CardTitle>
-                          {experiment.description && (
+                          <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                          {campaign.description && (
                             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {experiment.description}
+                              {campaign.description}
                             </p>
                           )}
                         </div>
@@ -261,50 +279,62 @@ export default function ClienteExperimentos() {
                       </div>
 
                       <div className="flex items-center gap-4 mt-3 flex-wrap">
-                        {experiment.start_date && (
+                        {campaign.start_date && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
-                            Início: {format(new Date(experiment.start_date), "dd/MM/yyyy", { locale: ptBR })}
+                            Início: {format(new Date(campaign.start_date), "dd/MM/yyyy", { locale: ptBR })}
                           </span>
                         )}
-                        {experiment.end_date && (
+                        {campaign.end_date && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
-                            Fim: {format(new Date(experiment.end_date), "dd/MM/yyyy", { locale: ptBR })}
+                            Fim: {format(new Date(campaign.end_date), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                        )}
+                        {campaign.budget && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                            R$ {campaign.budget.toLocaleString("pt-BR")}
                           </span>
                         )}
                         <ApprovalButton
                           entityType="experiment"
-                          entityId={experiment.id}
+                          entityId={campaign.id}
                           clientId={clientInfo?.id || ""}
-                          isApproved={experiment.approved_by_ponto_focal}
-                          approvedAt={experiment.approved_at}
-                          approvedByName={experiment.approver?.full_name}
+                          isApproved={campaign.approved_by_ponto_focal}
+                          approvedAt={campaign.approved_at}
+                          approvedByName={campaign.approver?.full_name}
                         />
                       </div>
                     </CardHeader>
 
                     <CollapsibleContent>
                       <CardContent className="pt-0 space-y-4">
-                        {experiment.hypothesis && (
+                        {campaign.objective && (
                           <div className="p-3 rounded-lg bg-muted/50">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Hipótese</p>
-                            <p className="text-sm">{experiment.hypothesis}</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Objetivo</p>
+                            <p className="text-sm">{campaign.objective}</p>
                           </div>
                         )}
 
-                        {experiment.results && (
+                        {campaign.hypothesis && (
+                          <div className="p-3 rounded-lg bg-muted/50">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Estratégia</p>
+                            <p className="text-sm">{campaign.hypothesis}</p>
+                          </div>
+                        )}
+
+                        {campaign.results && (
                           <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                             <p className="text-xs font-medium text-green-600 mb-1">Resultados</p>
-                            <p className="text-sm">{experiment.results}</p>
+                            <p className="text-sm">{campaign.results}</p>
                           </div>
                         )}
 
-                        {experiment.metrics && Object.keys(experiment.metrics).length > 0 && (
+                        {campaign.metrics && Object.keys(campaign.metrics).length > 0 && (
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Métricas</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {Object.entries(experiment.metrics).map(([key, value]) => (
+                              {Object.entries(campaign.metrics).map(([key, value]) => (
                                 <div key={key} className="text-sm">
                                   <span className="text-muted-foreground">{key}:</span>{" "}
                                   <span className="font-medium">{String(value)}</span>
@@ -317,7 +347,7 @@ export default function ClienteExperimentos() {
                         <div className="border-t pt-4">
                           <CommentSection
                             entityType="experiment"
-                            entityId={experiment.id}
+                            entityId={campaign.id}
                             clientId={clientInfo?.id || ""}
                           />
                         </div>

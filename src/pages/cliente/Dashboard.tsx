@@ -5,7 +5,7 @@ import {
   Clock, 
   CheckCircle2, 
   ListTodo,
-  FlaskConical,
+  Megaphone,
   Lightbulb,
   FileText,
   AlertTriangle,
@@ -73,18 +73,18 @@ const priorityColors: Record<string, string> = {
   low: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
 };
 
-const experimentStatusLabels: Record<string, string> = {
+const campaignStatusLabels: Record<string, string> = {
   draft: "Rascunho",
-  running: "Em Execução",
-  completed: "Concluído",
-  cancelled: "Cancelado",
+  running: "Ativa",
+  completed: "Concluída",
+  paused: "Pausada",
 };
 
-const experimentStatusColors: Record<string, string> = {
+const campaignStatusColors: Record<string, string> = {
   draft: "bg-gray-500/10 text-gray-600",
-  running: "bg-blue-500/10 text-blue-600",
-  completed: "bg-green-500/10 text-green-600",
-  cancelled: "bg-red-500/10 text-red-600",
+  running: "bg-green-500/10 text-green-600",
+  completed: "bg-blue-500/10 text-blue-600",
+  paused: "bg-yellow-500/10 text-yellow-600",
 };
 
 const fileTypeIcons: Record<string, React.ReactNode> = {
@@ -132,9 +132,9 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Experimentos ativos (em execução)
-  const { data: activeExperimentsCount, isLoading: loadingActiveExperiments } = useQuery({
-    queryKey: ["client-active-experiments", clientInfo?.id],
+  // Query: Campanhas ativas (em execução)
+  const { data: activeCampaignsCount, isLoading: loadingActiveCampaigns } = useQuery({
+    queryKey: ["client-active-campaigns", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return 0;
       const { count, error } = await supabase
@@ -204,9 +204,9 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Experimentos pendentes de aprovação (ponto focal)
-  const { data: pendingExperiments, isLoading: loadingPendingExperiments } = useQuery({
-    queryKey: ["client-pending-experiments", clientInfo?.id],
+  // Query: Campanhas pendentes de aprovação (ponto focal)
+  const { data: pendingCampaigns, isLoading: loadingPendingCampaigns } = useQuery({
+    queryKey: ["client-pending-campaigns", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id || !isPontoFocal) return [];
       const { data, error } = await supabase
@@ -237,9 +237,9 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id && isPontoFocal,
   });
 
-  // Query: 3 últimos experimentos
-  const { data: recentExperiments, isLoading: loadingRecentExperiments } = useQuery({
-    queryKey: ["client-recent-experiments", clientInfo?.id],
+  // Query: 3 últimas campanhas
+  const { data: recentCampaigns, isLoading: loadingRecentCampaigns } = useQuery({
+    queryKey: ["client-recent-campaigns", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return [];
       const { data, error } = await supabase
@@ -334,7 +334,7 @@ export default function ClienteDashboard() {
     
     const entityLabels: Record<string, string> = {
       tasks: "Tarefa",
-      experiments: "Experimento",
+      experiments: "Campanha",
       learnings: "Aprendizado",
       files: "Arquivo",
       projects: "Projeto",
@@ -374,7 +374,7 @@ export default function ClienteDashboard() {
   };
 
   const taskProgress = tasksSummary ? Math.round((tasksSummary.completed / tasksSummary.total) * 100) || 0 : 0;
-  const pendingApprovalsCount = (pendingExperiments?.length || 0) + (pendingLearnings?.length || 0);
+  const pendingApprovalsCount = (pendingCampaigns?.length || 0) + (pendingLearnings?.length || 0);
 
   return (
     <div className="space-y-6">
@@ -442,20 +442,20 @@ export default function ClienteDashboard() {
           </Card>
         </motion.div>
 
-        {/* Experimentos Ativos */}
+        {/* Campanhas Ativas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Experimentos Ativos</CardTitle>
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <FlaskConical className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium">Campanhas Ativas</CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Megaphone className="h-4 w-4 text-green-500" />
               </div>
             </CardHeader>
             <CardContent>
-              {loadingActiveExperiments ? (
+              {loadingActiveCampaigns ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-bold">{activeExperimentsCount}</div>
+                <div className="text-2xl font-bold">{activeCampaignsCount}</div>
               )}
               <p className="text-xs text-muted-foreground">em execução</p>
             </CardContent>
@@ -499,11 +499,11 @@ export default function ClienteDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-4">
-                {(pendingExperiments?.length || 0) > 0 && (
-                  <Link to="/cliente/experimentos">
+                {(pendingCampaigns?.length || 0) > 0 && (
+                  <Link to="/cliente/campanhas">
                     <Button variant="outline" size="sm" className="gap-2">
-                      <FlaskConical className="h-4 w-4" />
-                      {pendingExperiments?.length} experimento(s) para aprovar
+                      <Megaphone className="h-4 w-4" />
+                      {pendingCampaigns?.length} campanha(s) para aprovar
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -643,41 +643,41 @@ export default function ClienteDashboard() {
         </motion.div>
       </div>
 
-      {/* Experimentos Recentes + Arquivos Recentes */}
+      {/* Campanhas Recentes + Arquivos Recentes */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Experimentos Recentes */}
+        {/* Campanhas Recentes */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                Experimentos Recentes
-                <Link to="/cliente/experimentos">
+                Campanhas Recentes
+                <Link to="/cliente/campanhas">
                   <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                    Ver todos <ArrowRight className="h-3 w-3" />
+                    Ver todas <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {loadingRecentExperiments ? (
+              {loadingRecentCampaigns ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
-              ) : recentExperiments && recentExperiments.length > 0 ? (
+              ) : recentCampaigns && recentCampaigns.length > 0 ? (
                 <div className="space-y-2">
-                  {recentExperiments.map((exp) => (
-                    <div key={exp.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  {recentCampaigns.map((camp) => (
+                    <div key={camp.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FlaskConical className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                        <p className="text-sm font-medium truncate">{exp.name}</p>
+                        <Megaphone className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <p className="text-sm font-medium truncate">{camp.name}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge className={experimentStatusColors[exp.status || "draft"]}>
-                          {experimentStatusLabels[exp.status || "draft"]}
+                        <Badge className={campaignStatusColors[camp.status || "draft"]}>
+                          {campaignStatusLabels[camp.status || "draft"]}
                         </Badge>
-                        {exp.approved_by_ponto_focal && (
+                        {camp.approved_by_ponto_focal && (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
                         )}
                       </div>
@@ -686,8 +686,8 @@ export default function ClienteDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  <FlaskConical className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Nenhum experimento registrado</p>
+                  <Megaphone className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma campanha registrada</p>
                 </div>
               )}
             </CardContent>
