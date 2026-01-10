@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   FileDown,
@@ -12,6 +12,10 @@ import {
   Calendar,
   FolderOpen,
   Search,
+  Upload,
+  User,
+  Users,
+  Video,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +33,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { FileUploader } from "@/components/shared/FileUploader";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface FileRecord {
   id: string;
@@ -41,8 +56,14 @@ interface FileRecord {
   file_size: number | null;
   created_at: string | null;
   project_id: string | null;
+  task_id: string | null;
+  category: string | null;
+  uploaded_by: string | null;
   projects?: {
     name: string;
+  } | null;
+  tasks?: {
+    title: string;
   } | null;
 }
 
@@ -58,6 +79,16 @@ const fileTypeConfig: Record<string, { icon: typeof File; color: string }> = {
   jpeg: { icon: FileImage, color: "text-purple-500" },
   gif: { icon: FileImage, color: "text-purple-500" },
   svg: { icon: FileImage, color: "text-purple-500" },
+  mp4: { icon: Video, color: "text-pink-500" },
+  mov: { icon: Video, color: "text-pink-500" },
+  webm: { icon: Video, color: "text-pink-500" },
+};
+
+const categoryLabels: Record<string, string> = {
+  general: "Geral",
+  campaign_asset: "Mídia para Campanha",
+  document_request: "Documento Solicitado",
+  deliverable: "Entregável",
 };
 
 const formatFileSize = (bytes: number | null): string => {
@@ -72,10 +103,17 @@ const getFileExtension = (filename: string): string => {
 };
 
 export default function ClienteArquivos() {
-  const { clientInfo } = useAuth();
+  const { clientInfo, user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [originFilter, setOriginFilter] = useState<string>("all");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<string>("general");
+  const [uploadDescription, setUploadDescription] = useState("");
+
+  const isPontoFocal = profile?.ponto_focal === true;
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["client-files", clientInfo?.id],
@@ -86,7 +124,8 @@ export default function ClienteArquivos() {
         .from("files")
         .select(`
           *,
-          projects:project_id (name)
+          projects:project_id (name),
+          tasks:task_id (title)
         `)
         .eq("client_id", clientInfo.id)
         .order("created_at", { ascending: false });
@@ -100,6 +139,11 @@ export default function ClienteArquivos() {
   // Get unique projects
   const projects = [...new Set(files.map((f) => f.projects?.name).filter(Boolean))] as string[];
 
+  // Check if file is from client (uploaded by current user)
+  const isFromClient = (file: FileRecord) => {
+    return file.uploaded_by === user?.id;
+  };
+
   // Filter files
   const filteredFiles = files.filter((file) => {
     const ext = getFileExtension(file.name);
@@ -107,7 +151,8 @@ export default function ClienteArquivos() {
       typeFilter === "all" ||
       (typeFilter === "document" && ["pdf", "doc", "docx"].includes(ext)) ||
       (typeFilter === "spreadsheet" && ["xls", "xlsx", "csv"].includes(ext)) ||
-      (typeFilter === "image" && ["png", "jpg", "jpeg", "gif", "svg"].includes(ext));
+      (typeFilter === "image" && ["png", "jpg", "jpeg", "gif", "svg"].includes(ext)) ||
+      (typeFilter === "video" && ["mp4", "mov", "webm"].includes(ext));
 
     const matchesSearch =
       !searchQuery ||
@@ -117,7 +162,12 @@ export default function ClienteArquivos() {
     const matchesProject =
       projectFilter === "all" || file.projects?.name === projectFilter;
 
-    return matchesType && matchesSearch && matchesProject;
+    const matchesOrigin =
+      originFilter === "all" ||
+      (originFilter === "mine" && isFromClient(file)) ||
+      (originFilter === "team" && !isFromClient(file));
+
+    return matchesType && matchesSearch && matchesProject && matchesOrigin;
   });
 
   const handleDownload = async (file: FileRecord) => {
@@ -161,12 +211,15 @@ export default function ClienteArquivos() {
   // Stats
   const totalFiles = files.length;
   const totalSize = files.reduce((acc, f) => acc + (f.file_size || 0), 0);
-  const documentCount = files.filter((f) =>
-    ["pdf", "doc", "docx"].includes(getFileExtension(f.name))
-  ).length;
-  const imageCount = files.filter((f) =>
-    ["png", "jpg", "jpeg", "gif", "svg"].includes(getFileExtension(f.name))
-  ).length;
+  const myUploadsCount = files.filter((f) => isFromClient(f)).length;
+  const teamUploadsCount = files.filter((f) => !isFromClient(f)).length;
+
+  const handleUploadComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ["client-files"] });
+    setIsUploadOpen(false);
+    setUploadDescription("");
+    setUploadCategory("general");
+  };
 
   if (isLoading) {
     return (
@@ -179,11 +232,64 @@ export default function ClienteArquivos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Arquivos & Entregáveis</h1>
-        <p className="text-muted-foreground">
-          Acesse os arquivos e materiais do seu projeto
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Arquivos & Entregáveis</h1>
+          <p className="text-muted-foreground">
+            Acesse os arquivos e materiais do seu projeto
+          </p>
+        </div>
+
+        {/* Upload Button for Ponto Focal */}
+        {isPontoFocal && (
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Upload className="h-4 w-4" />
+                Enviar Arquivo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Enviar Arquivo</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="campaign_asset">Foto/Vídeo para Campanha</SelectItem>
+                      <SelectItem value="document_request">Documento Solicitado</SelectItem>
+                      <SelectItem value="general">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Descreva o arquivo..."
+                    value={uploadDescription}
+                    onChange={(e) => setUploadDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                <FileUploader
+                  clientId={clientInfo?.id || ""}
+                  category={uploadCategory as "general" | "campaign_asset" | "document_request" | "deliverable"}
+                  description={uploadDescription}
+                  onUploadComplete={handleUploadComplete}
+                  maxFiles={5}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -217,12 +323,12 @@ export default function ClienteArquivos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-500/10">
-                <FileText className="h-5 w-5 text-red-600" />
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <User className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{documentCount}</p>
-                <p className="text-xs text-muted-foreground">Documentos</p>
+                <p className="text-2xl font-bold">{myUploadsCount}</p>
+                <p className="text-xs text-muted-foreground">Seus Envios</p>
               </div>
             </div>
           </CardContent>
@@ -230,12 +336,12 @@ export default function ClienteArquivos() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <FileImage className="h-5 w-5 text-purple-600" />
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Users className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{imageCount}</p>
-                <p className="text-xs text-muted-foreground">Imagens</p>
+                <p className="text-2xl font-bold">{teamUploadsCount}</p>
+                <p className="text-xs text-muted-foreground">Da Equipe</p>
               </div>
             </div>
           </CardContent>
@@ -243,7 +349,7 @@ export default function ClienteArquivos() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -253,6 +359,16 @@ export default function ClienteArquivos() {
             className="pl-9"
           />
         </div>
+        <Select value={originFilter} onValueChange={setOriginFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Origem" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="mine">Meus Envios</SelectItem>
+            <SelectItem value="team">Da Equipe</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[180px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -263,6 +379,7 @@ export default function ClienteArquivos() {
             <SelectItem value="document">Documentos</SelectItem>
             <SelectItem value="spreadsheet">Planilhas</SelectItem>
             <SelectItem value="image">Imagens</SelectItem>
+            <SelectItem value="video">Vídeos</SelectItem>
           </SelectContent>
         </Select>
         {projects.length > 0 && (
@@ -288,9 +405,15 @@ export default function ClienteArquivos() {
           <CardContent className="p-12 text-center">
             <FileDown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhum arquivo ainda</h3>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               Os arquivos e entregáveis do seu projeto aparecerão aqui.
             </p>
+            {isPontoFocal && (
+              <Button onClick={() => setIsUploadOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Enviar seu primeiro arquivo
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -299,6 +422,7 @@ export default function ClienteArquivos() {
             const ext = getFileExtension(file.name);
             const config = fileTypeConfig[ext] || { icon: File, color: "text-muted-foreground" };
             const FileIcon = config.icon;
+            const fromClient = isFromClient(file);
 
             return (
               <motion.div
@@ -307,7 +431,10 @@ export default function ClienteArquivos() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="hover:border-primary/50 transition-colors">
+                <Card className={cn(
+                  "hover:border-primary/50 transition-colors",
+                  fromClient && "border-l-4 border-l-blue-500"
+                )}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg bg-muted ${config.color}`}>
@@ -327,15 +454,51 @@ export default function ClienteArquivos() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {/* Origin Badge */}
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-xs",
+                          fromClient
+                            ? "bg-blue-500/10 text-blue-600"
+                            : "bg-green-500/10 text-green-600"
+                        )}
+                      >
+                        {fromClient ? (
+                          <>
+                            <User className="h-3 w-3 mr-1" />
+                            Seu envio
+                          </>
+                        ) : (
+                          <>
+                            <Users className="h-3 w-3 mr-1" />
+                            Da equipe
+                          </>
+                        )}
+                      </Badge>
                       <Badge variant="outline" className="text-xs">
                         {ext.toUpperCase()}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {formatFileSize(file.file_size)}
                       </span>
+                    </div>
+
+                    {/* Category and Project */}
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {file.category && file.category !== "general" && (
+                        <Badge variant="outline" className="text-xs">
+                          {categoryLabels[file.category] || file.category}
+                        </Badge>
+                      )}
                       {file.projects?.name && (
                         <Badge variant="secondary" className="text-xs">
                           {file.projects.name}
+                        </Badge>
+                      )}
+                      {file.tasks?.title && (
+                        <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-600">
+                          📋 {file.tasks.title}
                         </Badge>
                       )}
                     </div>
