@@ -33,6 +33,7 @@ import AdminTasks from "./pages/admin/Tasks";
 import AdminAppointments from "./pages/admin/Appointments";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminOnboarding from "./pages/admin/Onboarding";
+import AdminLandingPage from "./pages/admin/LandingPage";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="clientes/:id" element={<AdminClientDetail />} />
                 <Route path="onboarding" element={<AdminOnboarding />} />
+                <Route path="landing" element={<AdminLandingPage />} />
                 <Route path="tarefas" element={<AdminTasks />} />
                 <Route path="agendamentos" element={<AdminAppointments />} />
                 <Route path="templates" element={<AdminTemplates />} />

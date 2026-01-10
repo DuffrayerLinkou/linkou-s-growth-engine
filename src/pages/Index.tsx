@@ -1,5 +1,6 @@
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
+import { TrackingScripts } from "@/components/TrackingScripts";
 import { Results } from "@/components/landing/Results";
 import { Method } from "@/components/landing/Method";
 import { ForWhom } from "@/components/landing/ForWhom";
@@ -13,6 +14,7 @@ import { MobileWhatsAppCTA } from "@/components/landing/MobileWhatsAppCTA";
 const Index = () => {
   return (
     <div className="min-h-screen">
+      <TrackingScripts />
       <Header />
       <main>
         <Hero />

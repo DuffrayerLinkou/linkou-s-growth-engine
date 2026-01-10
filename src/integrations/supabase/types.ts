@@ -556,6 +556,111 @@ export type Database = {
           },
         ]
       }
+      landing_settings: {
+        Row: {
+          body_scripts: string | null
+          chat_widget_enabled: boolean | null
+          chat_widget_script: string | null
+          created_at: string | null
+          favicon_url: string | null
+          ga4_enabled: boolean | null
+          ga4_measurement_id: string | null
+          google_ads_conversion_id: string | null
+          google_ads_enabled: boolean | null
+          google_ads_id: string | null
+          gtm_enabled: boolean | null
+          gtm_id: string | null
+          head_scripts: string | null
+          hotjar_enabled: boolean | null
+          hotjar_id: string | null
+          id: string
+          linkedin_enabled: boolean | null
+          linkedin_partner_id: string | null
+          meta_pixel_enabled: boolean | null
+          meta_pixel_id: string | null
+          og_image_url: string | null
+          robots_txt: string | null
+          search_console_verification: string | null
+          search_console_verified: boolean | null
+          site_description: string | null
+          site_title: string | null
+          tiktok_pixel_enabled: boolean | null
+          tiktok_pixel_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+          whatsapp_message: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          body_scripts?: string | null
+          chat_widget_enabled?: boolean | null
+          chat_widget_script?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          google_ads_conversion_id?: string | null
+          google_ads_enabled?: boolean | null
+          google_ads_id?: string | null
+          gtm_enabled?: boolean | null
+          gtm_id?: string | null
+          head_scripts?: string | null
+          hotjar_enabled?: boolean | null
+          hotjar_id?: string | null
+          id?: string
+          linkedin_enabled?: boolean | null
+          linkedin_partner_id?: string | null
+          meta_pixel_enabled?: boolean | null
+          meta_pixel_id?: string | null
+          og_image_url?: string | null
+          robots_txt?: string | null
+          search_console_verification?: string | null
+          search_console_verified?: boolean | null
+          site_description?: string | null
+          site_title?: string | null
+          tiktok_pixel_enabled?: boolean | null
+          tiktok_pixel_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          body_scripts?: string | null
+          chat_widget_enabled?: boolean | null
+          chat_widget_script?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          google_ads_conversion_id?: string | null
+          google_ads_enabled?: boolean | null
+          google_ads_id?: string | null
+          gtm_enabled?: boolean | null
+          gtm_id?: string | null
+          head_scripts?: string | null
+          hotjar_enabled?: boolean | null
+          hotjar_id?: string | null
+          id?: string
+          linkedin_enabled?: boolean | null
+          linkedin_partner_id?: string | null
+          meta_pixel_enabled?: boolean | null
+          meta_pixel_id?: string | null
+          og_image_url?: string | null
+          robots_txt?: string | null
+          search_console_verification?: string | null
+          search_console_verified?: boolean | null
+          site_description?: string | null
+          site_title?: string | null
+          tiktok_pixel_enabled?: boolean | null
+          tiktok_pixel_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           created_at: string | null
