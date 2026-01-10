@@ -128,11 +128,17 @@ Deno.serve(async (req) => {
       }
 
       case 'update-user': {
-        const { user_id, email, full_name, role, client_id, ponto_focal } = payload
+        const { user_id, email, full_name, role, client_id, ponto_focal, password, confirm_email } = payload
 
-        // Update auth user email if changed
-        if (email) {
-          await adminClient.auth.admin.updateUserById(user_id, { email })
+        // Update auth user
+        const authUpdate: Record<string, unknown> = {}
+        if (email) authUpdate.email = email
+        if (password) authUpdate.password = password
+        if (confirm_email === true) authUpdate.email_confirm = true
+
+        if (Object.keys(authUpdate).length > 0) {
+          const { error: authError } = await adminClient.auth.admin.updateUserById(user_id, authUpdate)
+          if (authError) throw authError
         }
 
         // Update profile
@@ -155,6 +161,17 @@ Deno.serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      case 'get-user': {
+        const { user_id } = payload
+
+        const { data: { user: authUser }, error } = await adminClient.auth.admin.getUserById(user_id)
+        if (error) throw error
+
+        return new Response(JSON.stringify({ user: authUser }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }

@@ -19,6 +19,11 @@ import {
   ArrowRight,
   FileText,
   CheckSquare,
+  Key,
+  CheckCircle2,
+  MoreHorizontal,
+  Briefcase,
+  Wrench,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -48,6 +53,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -95,6 +107,8 @@ interface ClientUser {
   full_name: string | null;
   ponto_focal: boolean;
   created_at: string;
+  user_type?: "operator" | "manager";
+  email_confirmed?: boolean;
 }
 
 interface AuditLog {
@@ -145,6 +159,9 @@ export default function ClientDetail() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ClientUser | null>(null);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
   const [isPhaseDialogOpen, setIsPhaseDialogOpen] = useState(false);
@@ -167,7 +184,17 @@ export default function ClientDetail() {
     full_name: "",
     password: "",
     ponto_focal: false,
+    user_type: "operator" as "operator" | "manager",
   });
+
+  const [editUserFormData, setEditUserFormData] = useState({
+    email: "",
+    full_name: "",
+    ponto_focal: false,
+    user_type: "operator" as "operator" | "manager",
+  });
+
+  const [newPassword, setNewPassword] = useState("");
 
   const [clientFormData, setClientFormData] = useState({
     name: "",
@@ -226,7 +253,10 @@ export default function ClientDetail() {
     if (!id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Fetch profiles from Supabase
+      const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id, email, full_name, ponto_focal, created_at")
         .eq("client_id", id)
@@ -234,7 +264,46 @@ export default function ClientDetail() {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      setUsers(data || []);
+      if (!profiles || profiles.length === 0) {
+        setUsers([]);
+        return;
+      }
+
+      // Fetch email confirmation status from edge function
+      let usersWithEmailStatus = profiles.map(p => ({
+        ...p,
+        user_type: "operator" as "operator" | "manager",
+        email_confirmed: true, // Default to true
+      }));
+
+      if (session) {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ action: "list-users" }),
+          });
+
+          if (response.ok) {
+            const { users: authUsers } = await response.json();
+            usersWithEmailStatus = profiles.map(p => {
+              const authUser = authUsers?.find((u: any) => u.id === p.id);
+              return {
+                ...p,
+                user_type: "operator" as "operator" | "manager",
+                email_confirmed: authUser?.email_confirmed_at ? true : false,
+              };
+            });
+          }
+        } catch {
+          // If edge function fails, continue with default values
+        }
+      }
+
+      setUsers(usersWithEmailStatus);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -362,6 +431,7 @@ export default function ClientDetail() {
         full_name: "",
         password: "",
         ponto_focal: false,
+        user_type: "operator",
       });
       fetchUsers();
     } catch (error: any) {
@@ -396,6 +466,176 @@ export default function ClientDetail() {
         title: "Erro ao definir ponto focal",
         description: "Tente novamente.",
       });
+    }
+  };
+
+  const handleOpenEditUser = async (clientUser: ClientUser) => {
+    setSelectedUser(clientUser);
+    setEditUserFormData({
+      email: clientUser.email,
+      full_name: clientUser.full_name || "",
+      ponto_focal: clientUser.ponto_focal,
+      user_type: clientUser.user_type || "operator",
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "update-user",
+          user_id: selectedUser.id,
+          email: editUserFormData.email,
+          full_name: editUserFormData.full_name,
+          ponto_focal: editUserFormData.ponto_focal,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      // Update user_type in profile metadata (using a custom field approach)
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: editUserFormData.full_name,
+          ponto_focal: editUserFormData.ponto_focal,
+        })
+        .eq("id", selectedUser.id);
+
+      if (editUserFormData.ponto_focal && !selectedUser.ponto_focal) {
+        await supabase.rpc("set_ponto_focal", {
+          _user_id: selectedUser.id,
+          _client_id: id,
+        });
+      }
+
+      toast({
+        title: "Usuário atualizado",
+        description: "As informações foram salvas.",
+      });
+
+      setIsEditUserOpen(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar",
+        description: error.message || "Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenPasswordDialog = (clientUser: ClientUser) => {
+    setSelectedUser(clientUser);
+    setNewPassword("");
+    setIsPasswordDialogOpen(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!selectedUser || newPassword.length < 6) {
+      setErrors({ password: "Senha deve ter pelo menos 6 caracteres" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "update-user",
+          user_id: selectedUser.id,
+          password: newPassword,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast({
+        title: "Senha alterada",
+        description: "A nova senha foi definida.",
+      });
+
+      setIsPasswordDialogOpen(false);
+      setSelectedUser(null);
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao alterar senha",
+        description: error.message || "Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmEmail = async (clientUser: ClientUser) => {
+    setIsSubmitting(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "update-user",
+          user_id: clientUser.id,
+          confirm_email: true,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast({
+        title: "Email confirmado",
+        description: "O email do usuário foi confirmado manualmente.",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Error confirming email:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao confirmar email",
+        description: error.message || "Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -753,23 +993,24 @@ export default function ClientDetail() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Usuário</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead className="hidden sm:table-cell">Criado em</TableHead>
-                      <TableHead className="w-[150px]">Ponto Focal</TableHead>
+                      <TableHead className="w-[100px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user, index) => (
+                    {users.map((clientUser, index) => (
                       <motion.tr
-                        key={user.id}
+                        key={clientUser.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{user.full_name || "Sem nome"}</span>
-                            {user.ponto_focal && (
+                            <span className="font-medium">{clientUser.full_name || "Sem nome"}</span>
+                            {clientUser.ponto_focal && (
                               <Badge className="bg-yellow-500/10 text-yellow-600 gap-1">
                                 <Star className="h-3 w-3" />
                                 Ponto Focal
@@ -778,29 +1019,71 @@ export default function ClientDetail() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={clientUser.user_type === "manager" 
+                              ? "bg-primary/10 text-primary border-primary/20" 
+                              : "bg-muted text-muted-foreground"
+                            }
+                          >
+                            {clientUser.user_type === "manager" ? (
+                              <>
+                                <Briefcase className="h-3 w-3 mr-1" />
+                                Gestor
+                              </>
+                            ) : (
+                              <>
+                                <Wrench className="h-3 w-3 mr-1" />
+                                Operador
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Mail className="h-4 w-4" />
-                            {user.email}
+                            <span>{clientUser.email}</span>
+                            {clientUser.email_confirmed === false && (
+                              <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">
+                                Não confirmado
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">
-                          {format(new Date(user.created_at), "dd/MM/yy", { locale: ptBR })}
+                          {format(new Date(clientUser.created_at), "dd/MM/yy", { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          {user.ponto_focal ? (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Atual
-                            </Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleSetPontoFocal(user.id)}
-                            >
-                              <Star className="h-3 w-3 mr-1" />
-                              Definir
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenEditUser(clientUser)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenPasswordDialog(clientUser)}>
+                                <Key className="h-4 w-4 mr-2" />
+                                Trocar Senha
+                              </DropdownMenuItem>
+                              {clientUser.email_confirmed === false && (
+                                <DropdownMenuItem onClick={() => handleConfirmEmail(clientUser)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Confirmar Email
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              {!clientUser.ponto_focal && (
+                                <DropdownMenuItem onClick={() => handleSetPontoFocal(clientUser.id)}>
+                                  <Star className="h-4 w-4 mr-2" />
+                                  Definir Ponto Focal
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </motion.tr>
                     ))}
@@ -929,6 +1212,37 @@ export default function ClientDetail() {
               )}
             </div>
 
+            <div className="space-y-2">
+              <Label>Tipo de usuário</Label>
+              <Select
+                value={userFormData.user_type}
+                onValueChange={(value: "operator" | "manager") =>
+                  setUserFormData({ ...userFormData, user_type: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operator">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4" />
+                      Operador
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="manager">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Gestor do Negócio
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Gestor: responsável pelas decisões. Operador: executa tarefas do dia a dia.
+              </p>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -958,6 +1272,139 @@ export default function ClientDetail() {
             <Button onClick={handleCreateUser} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do usuário.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_full_name">Nome completo</Label>
+              <Input
+                id="edit_full_name"
+                value={editUserFormData.full_name}
+                onChange={(e) =>
+                  setEditUserFormData({ ...editUserFormData, full_name: e.target.value })
+                }
+                placeholder="Nome do usuário"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_email">Email</Label>
+              <Input
+                id="edit_email"
+                type="email"
+                value={editUserFormData.email}
+                onChange={(e) =>
+                  setEditUserFormData({ ...editUserFormData, email: e.target.value })
+                }
+                placeholder="email@exemplo.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de usuário</Label>
+              <Select
+                value={editUserFormData.user_type}
+                onValueChange={(value: "operator" | "manager") =>
+                  setEditUserFormData({ ...editUserFormData, user_type: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="operator">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4" />
+                      Operador
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="manager">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Gestor do Negócio
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Gestor: responsável pelas decisões. Operador: executa tarefas do dia a dia.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit_ponto_focal"
+                checked={editUserFormData.ponto_focal}
+                onChange={(e) =>
+                  setEditUserFormData({ ...editUserFormData, ponto_focal: e.target.checked })
+                }
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="edit_ponto_focal" className="cursor-pointer">
+                Ponto Focal
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateUser} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar Senha</DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para {selectedUser?.full_name || selectedUser?.email}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new_password">Nova senha</Label>
+              <Input
+                id="new_password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleChangePassword} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Alterar Senha
             </Button>
           </DialogFooter>
         </DialogContent>
