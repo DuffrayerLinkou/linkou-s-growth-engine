@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -37,9 +36,11 @@ import {
   Users,
   Target,
   ShoppingCart,
-  Plus,
   Edit2,
   BarChart3,
+  UserCheck,
+  Download,
+  Loader2,
 } from "lucide-react";
 import {
   LineChart,
@@ -51,6 +52,11 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
 interface TrafficMetric {
   id: string;
@@ -63,8 +69,10 @@ interface TrafficMetric {
   cliques: number | null;
   custo_por_clique: number | null;
   quantidade_leads: number | null;
+  quantidade_sql: number | null;
   quantidade_vendas: number | null;
   custo_por_lead: number | null;
+  custo_por_sql: number | null;
   custo_por_venda: number | null;
   investimento: number | null;
   created_at: string;
@@ -78,6 +86,7 @@ interface MetricFormData {
   cliques: string;
   custo_por_clique: string;
   quantidade_leads: string;
+  quantidade_sql: string;
   quantidade_vendas: string;
   investimento: string;
 }
@@ -115,6 +124,12 @@ export default function MetricasTrafego() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const preset = presets.find(p => p.value === "thisYear");
+    return preset?.getRange();
+  });
+  const [selectedPreset, setSelectedPreset] = useState("thisYear");
+  const [isExporting, setIsExporting] = useState(false);
   const [formData, setFormData] = useState<MetricFormData>({
     alcance: "",
     impressoes: "",
@@ -122,6 +137,7 @@ export default function MetricasTrafego() {
     cliques: "",
     custo_por_clique: "",
     quantidade_leads: "",
+    quantidade_sql: "",
     quantidade_vendas: "",
     investimento: "",
   });
@@ -155,6 +171,7 @@ export default function MetricasTrafego() {
       existingId?: string;
     }) => {
       const leads = parseInt(data.formData.quantidade_leads) || 0;
+      const sql = parseInt(data.formData.quantidade_sql) || 0;
       const vendas = parseInt(data.formData.quantidade_vendas) || 0;
       const investimento = parseFloat(data.formData.investimento) || 0;
 
@@ -168,8 +185,10 @@ export default function MetricasTrafego() {
         cliques: parseInt(data.formData.cliques) || null,
         custo_por_clique: parseFloat(data.formData.custo_por_clique) || null,
         quantidade_leads: leads || null,
+        quantidade_sql: sql || null,
         quantidade_vendas: vendas || null,
         custo_por_lead: leads > 0 ? investimento / leads : null,
+        custo_por_sql: sql > 0 ? investimento / sql : null,
         custo_por_venda: vendas > 0 ? investimento / vendas : null,
         investimento: investimento || null,
         updated_by: profile?.id,
@@ -208,6 +227,7 @@ export default function MetricasTrafego() {
       cliques: "",
       custo_por_clique: "",
       quantidade_leads: "",
+      quantidade_sql: "",
       quantidade_vendas: "",
       investimento: "",
     });
@@ -224,6 +244,7 @@ export default function MetricasTrafego() {
         cliques: existingMetric.cliques?.toString() || "",
         custo_por_clique: existingMetric.custo_por_clique?.toString() || "",
         quantidade_leads: existingMetric.quantidade_leads?.toString() || "",
+        quantidade_sql: existingMetric.quantidade_sql?.toString() || "",
         quantidade_vendas: existingMetric.quantidade_vendas?.toString() || "",
         investimento: existingMetric.investimento?.toString() || "",
       });
@@ -250,8 +271,10 @@ export default function MetricasTrafego() {
       return {
         totalInvestimento: 0,
         totalLeads: 0,
+        totalSQL: 0,
         totalVendas: 0,
         avgCPL: 0,
+        avgCustoSQL: 0,
         avgCAC: 0,
       };
     }
@@ -264,6 +287,10 @@ export default function MetricasTrafego() {
       (sum, m) => sum + (m.quantidade_leads || 0),
       0
     );
+    const totalSQL = metrics.reduce(
+      (sum, m) => sum + (m.quantidade_sql || 0),
+      0
+    );
     const totalVendas = metrics.reduce(
       (sum, m) => sum + (m.quantidade_vendas || 0),
       0
@@ -272,8 +299,10 @@ export default function MetricasTrafego() {
     return {
       totalInvestimento,
       totalLeads,
+      totalSQL,
       totalVendas,
       avgCPL: totalLeads > 0 ? totalInvestimento / totalLeads : 0,
+      avgCustoSQL: totalSQL > 0 ? totalInvestimento / totalSQL : 0,
       avgCAC: totalVendas > 0 ? totalInvestimento / totalVendas : 0,
     };
   }, [metrics]);
@@ -304,11 +333,102 @@ export default function MetricasTrafego() {
     { key: "cliques", label: "Cliques", format: (v: number | null) => formatNumber(v) },
     { key: "custo_por_clique", label: "CPC", format: (v: number | null) => formatCurrency(v) },
     { key: "quantidade_leads", label: "Leads", format: (v: number | null) => formatNumber(v) },
+    { key: "quantidade_sql", label: "SQL", format: (v: number | null) => formatNumber(v) },
     { key: "quantidade_vendas", label: "Vendas", format: (v: number | null) => formatNumber(v) },
     { key: "custo_por_lead", label: "CPL", format: (v: number | null) => formatCurrency(v) },
+    { key: "custo_por_sql", label: "Custo/SQL", format: (v: number | null) => formatCurrency(v) },
     { key: "custo_por_venda", label: "CAC", format: (v: number | null) => formatCurrency(v) },
     { key: "investimento", label: "Investimento", format: (v: number | null) => formatCurrency(v) },
   ];
+
+  // Export function
+  const handleExport = async () => {
+    if (!metrics || metrics.length === 0) {
+      toast.error("Não há dados para exportar");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Filter metrics by date range
+      const filteredMetrics = metrics.filter((m) => {
+        if (!dateRange?.from) return true;
+        const metricDate = new Date(m.year, m.month - 1, 1);
+        const from = dateRange.from;
+        const to = dateRange.to || dateRange.from;
+        return metricDate >= from && metricDate <= to;
+      });
+
+      if (filteredMetrics.length === 0) {
+        toast.error("Nenhuma métrica encontrada no período selecionado");
+        setIsExporting(false);
+        return;
+      }
+
+      // Calculate totals for filtered data
+      const totalInvestimento = filteredMetrics.reduce((sum, m) => sum + (m.investimento || 0), 0);
+      const totalLeads = filteredMetrics.reduce((sum, m) => sum + (m.quantidade_leads || 0), 0);
+      const totalSQL = filteredMetrics.reduce((sum, m) => sum + (m.quantidade_sql || 0), 0);
+      const totalVendas = filteredMetrics.reduce((sum, m) => sum + (m.quantidade_vendas || 0), 0);
+      const totalCliques = filteredMetrics.reduce((sum, m) => sum + (m.cliques || 0), 0);
+      const totalAlcance = filteredMetrics.reduce((sum, m) => sum + (m.alcance || 0), 0);
+      const totalImpressoes = filteredMetrics.reduce((sum, m) => sum + (m.impressoes || 0), 0);
+
+      // Summary sheet
+      const summaryData = [
+        { "Indicador": "Investimento Total", "Valor": formatCurrency(totalInvestimento) },
+        { "Indicador": "Total de Leads", "Valor": formatNumber(totalLeads) },
+        { "Indicador": "Total de SQL", "Valor": formatNumber(totalSQL) },
+        { "Indicador": "Total de Vendas", "Valor": formatNumber(totalVendas) },
+        { "Indicador": "CPL Médio", "Valor": formatCurrency(totalLeads > 0 ? totalInvestimento / totalLeads : 0) },
+        { "Indicador": "Custo por SQL Médio", "Valor": formatCurrency(totalSQL > 0 ? totalInvestimento / totalSQL : 0) },
+        { "Indicador": "CAC Médio", "Valor": formatCurrency(totalVendas > 0 ? totalInvestimento / totalVendas : 0) },
+        { "Indicador": "Total de Cliques", "Valor": formatNumber(totalCliques) },
+        { "Indicador": "CPC Médio", "Valor": formatCurrency(totalCliques > 0 ? totalInvestimento / totalCliques : 0) },
+        { "Indicador": "Alcance Total", "Valor": formatNumber(totalAlcance) },
+        { "Indicador": "Impressões Totais", "Valor": formatNumber(totalImpressoes) },
+      ];
+
+      // Monthly data sheet
+      const monthlyData = filteredMetrics.map((m) => ({
+        "Mês": MONTH_NAMES[m.month - 1],
+        "Ano": m.year,
+        "Alcance": m.alcance || 0,
+        "Impressões": m.impressoes || 0,
+        "Frequência": m.frequencia || 0,
+        "Cliques": m.cliques || 0,
+        "CPC (R$)": m.custo_por_clique || 0,
+        "Leads": m.quantidade_leads || 0,
+        "SQL": m.quantidade_sql || 0,
+        "Vendas": m.quantidade_vendas || 0,
+        "CPL (R$)": m.custo_por_lead || 0,
+        "Custo/SQL (R$)": m.custo_por_sql || 0,
+        "CAC (R$)": m.custo_por_venda || 0,
+        "Investimento (R$)": m.investimento || 0,
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo");
+
+      const monthlySheet = XLSX.utils.json_to_sheet(monthlyData);
+      XLSX.utils.book_append_sheet(workbook, monthlySheet, "Métricas Mensais");
+
+      // Generate filename with date range
+      const fromStr = dateRange?.from ? format(dateRange.from, "dd-MM-yyyy", { locale: ptBR }) : "inicio";
+      const toStr = dateRange?.to ? format(dateRange.to, "dd-MM-yyyy", { locale: ptBR }) : "fim";
+      const fileName = `metricas-trafego-${fromStr}-a-${toStr}.xlsx`;
+
+      XLSX.writeFile(workbook, fileName);
+      toast.success("Relatório exportado com sucesso!");
+    } catch (error) {
+      console.error("Error exporting:", error);
+      toast.error("Erro ao exportar relatório");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -327,7 +447,7 @@ export default function MetricasTrafego() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
@@ -337,7 +457,7 @@ export default function MetricasTrafego() {
             Acompanhe os resultados das campanhas de tráfego pago
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={selectedYear.toString()}
             onValueChange={(v) => setSelectedYear(parseInt(v))}
@@ -353,16 +473,34 @@ export default function MetricasTrafego() {
               ))}
             </SelectContent>
           </Select>
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            selectedPreset={selectedPreset}
+            onPresetChange={setSelectedPreset}
+          />
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={isExporting || !metrics || metrics.length === 0}
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Exportar Excel
+          </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Investimento Total</p>
+                <p className="text-sm text-muted-foreground">Investimento</p>
                 <p className="text-2xl font-bold">{formatCurrency(kpis.totalInvestimento)}</p>
               </div>
               <div className="p-3 rounded-full bg-primary/10">
@@ -376,7 +514,7 @@ export default function MetricasTrafego() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Leads</p>
+                <p className="text-sm text-muted-foreground">Total Leads</p>
                 <p className="text-2xl font-bold">{formatNumber(kpis.totalLeads)}</p>
               </div>
               <div className="p-3 rounded-full bg-blue-500/10">
@@ -390,7 +528,21 @@ export default function MetricasTrafego() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total de Vendas</p>
+                <p className="text-sm text-muted-foreground">Total SQL</p>
+                <p className="text-2xl font-bold">{formatNumber(kpis.totalSQL)}</p>
+              </div>
+              <div className="p-3 rounded-full bg-cyan-500/10">
+                <UserCheck className="h-5 w-5 text-cyan-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Vendas</p>
                 <p className="text-2xl font-bold">{formatNumber(kpis.totalVendas)}</p>
               </div>
               <div className="p-3 rounded-full bg-green-500/10">
@@ -404,8 +556,8 @@ export default function MetricasTrafego() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">CPL Médio</p>
-                <p className="text-2xl font-bold">{formatCurrency(kpis.avgCPL)}</p>
+                <p className="text-sm text-muted-foreground">Custo/SQL</p>
+                <p className="text-2xl font-bold">{formatCurrency(kpis.avgCustoSQL)}</p>
               </div>
               <div className="p-3 rounded-full bg-orange-500/10">
                 <Target className="h-5 w-5 text-orange-500" />
@@ -623,9 +775,9 @@ export default function MetricasTrafego() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="quantidade_leads">Quantidade de Leads</Label>
+                <Label htmlFor="quantidade_leads">Leads</Label>
                 <Input
                   id="quantidade_leads"
                   type="number"
@@ -635,7 +787,17 @@ export default function MetricasTrafego() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="quantidade_vendas">Quantidade de Vendas</Label>
+                <Label htmlFor="quantidade_sql">SQL</Label>
+                <Input
+                  id="quantidade_sql"
+                  type="number"
+                  value={formData.quantidade_sql}
+                  onChange={(e) => setFormData({ ...formData, quantidade_sql: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantidade_vendas">Vendas</Label>
                 <Input
                   id="quantidade_vendas"
                   type="number"
@@ -647,7 +809,7 @@ export default function MetricasTrafego() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              * CPL e CAC serão calculados automaticamente com base no investimento, leads e vendas.
+              * CPL, Custo/SQL e CAC serão calculados automaticamente com base no investimento.
             </p>
           </div>
           <div className="flex justify-end gap-2">
