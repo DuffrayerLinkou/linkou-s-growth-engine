@@ -8,6 +8,9 @@ import {
   X,
   User,
   Shield,
+  UserPlus,
+  CheckSquare,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +22,10 @@ import { UsersRound } from "lucide-react";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/leads", icon: UserPlus, label: "Leads" },
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
+  { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
+  { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
 ];
 
