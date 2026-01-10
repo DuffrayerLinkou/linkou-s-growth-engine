@@ -422,6 +422,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           approved_by_ponto_focal: boolean | null
+          budget: number | null
           client_id: string
           created_at: string | null
           created_by: string | null
@@ -431,6 +432,8 @@ export type Database = {
           id: string
           metrics: Json | null
           name: string
+          objective: string | null
+          platform: string | null
           project_id: string
           results: string | null
           start_date: string | null
@@ -441,6 +444,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_by_ponto_focal?: boolean | null
+          budget?: number | null
           client_id: string
           created_at?: string | null
           created_by?: string | null
@@ -450,6 +454,8 @@ export type Database = {
           id?: string
           metrics?: Json | null
           name: string
+          objective?: string | null
+          platform?: string | null
           project_id: string
           results?: string | null
           start_date?: string | null
@@ -460,6 +466,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           approved_by_ponto_focal?: boolean | null
+          budget?: number | null
           client_id?: string
           created_at?: string | null
           created_by?: string | null
@@ -469,6 +476,8 @@ export type Database = {
           id?: string
           metrics?: Json | null
           name?: string
+          objective?: string | null
+          platform?: string | null
           project_id?: string
           results?: string | null
           start_date?: string | null
