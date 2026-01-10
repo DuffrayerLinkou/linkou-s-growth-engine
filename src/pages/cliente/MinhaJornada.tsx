@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Link } from "react-router-dom";
 import {
   History,
   ArrowRight,
@@ -10,10 +11,15 @@ import {
   Clock,
   FileCheck,
   AlertCircle,
+  CheckCircle2,
+  Circle,
+  Ban,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,10 +41,26 @@ interface Acknowledgement {
   note: string | null;
 }
 
+interface Task {
+  id: string;
+  title: string;
+  status: string | null;
+  priority: string | null;
+  journey_phase: string | null;
+}
+
+const statusConfig: Record<string, { label: string; icon: typeof Circle }> = {
+  backlog: { label: "Backlog", icon: Circle },
+  in_progress: { label: "Em Andamento", icon: Loader2 },
+  blocked: { label: "Bloqueado", icon: Ban },
+  completed: { label: "Concluído", icon: CheckCircle2 },
+};
+
 export default function MinhaJornada() {
   const { profile, clientInfo, refreshProfile } = useAuth();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [acknowledgements, setAcknowledgements] = useState<Acknowledgement[]>([]);
+  const [phaseTasks, setPhaseTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const { toast } = useToast();
@@ -79,6 +101,18 @@ export default function MinhaJornada() {
 
       if (acksError) throw acksError;
       setAcknowledgements(acks || []);
+
+      // Fetch tasks for current phase
+      const { data: tasks, error: tasksError } = await supabase
+        .from("tasks")
+        .select("id, title, status, priority, journey_phase")
+        .eq("client_id", clientInfo.id)
+        .eq("journey_phase", currentPhase)
+        .eq("visible_to_client", true)
+        .order("created_at", { ascending: false });
+
+      if (tasksError) throw tasksError;
+      setPhaseTasks(tasks || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -93,7 +127,7 @@ export default function MinhaJornada() {
 
   useEffect(() => {
     fetchData();
-  }, [clientInfo?.id]);
+  }, [clientInfo?.id, currentPhase]);
 
   const handleAcknowledge = async () => {
     if (!profile?.id || !clientInfo?.id) return;
@@ -125,6 +159,11 @@ export default function MinhaJornada() {
       setIsAcknowledging(false);
     }
   };
+
+  // Calculate phase task progress
+  const completedTasks = phaseTasks.filter((t) => t.status === "completed").length;
+  const totalTasks = phaseTasks.length;
+  const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   if (isLoading) {
     return (
@@ -260,6 +299,116 @@ export default function MinhaJornada() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Phase Tasks Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Tarefas desta Fase
+                </CardTitle>
+                <CardDescription>
+                  Tarefas da etapa "{getPhaseLabel(currentPhase)}"
+                </CardDescription>
+              </div>
+              {totalTasks > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Progresso</p>
+                    <p className="font-semibold">{completedTasks} de {totalTasks}</p>
+                  </div>
+                  <div className="w-20">
+                    <Progress value={progressPercentage} className="h-2" />
+                  </div>
+                  <span className="text-sm font-medium min-w-[3ch]">{progressPercentage}%</span>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {phaseTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Circle className="h-12 w-12 mb-4 opacity-50" />
+                <p className="font-medium">Nenhuma tarefa nesta fase</p>
+                <p className="text-sm">
+                  Tarefas serão adicionadas pela equipe.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {phaseTasks.slice(0, 5).map((task, index) => {
+                  const status = task.status || "backlog";
+                  const StatusIcon = statusConfig[status]?.icon || Circle;
+                  const isCompleted = status === "completed";
+
+                  return (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${
+                        isCompleted ? "bg-green-500/5 border-green-500/20" : "bg-card"
+                      }`}
+                    >
+                      <StatusIcon 
+                        className={`h-5 w-5 flex-shrink-0 ${
+                          isCompleted 
+                            ? "text-green-600" 
+                            : status === "in_progress" 
+                              ? "text-blue-600 animate-spin" 
+                              : status === "blocked"
+                                ? "text-red-600"
+                                : "text-muted-foreground"
+                        }`} 
+                      />
+                      <span className={`flex-1 ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                        {task.title}
+                      </span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          isCompleted 
+                            ? "bg-green-500/20 text-green-600" 
+                            : status === "in_progress"
+                              ? "bg-blue-500/20 text-blue-600"
+                              : status === "blocked"
+                                ? "bg-red-500/20 text-red-600"
+                                : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {statusConfig[status]?.label || status}
+                      </Badge>
+                    </motion.div>
+                  );
+                })}
+
+                {phaseTasks.length > 5 && (
+                  <p className="text-sm text-muted-foreground text-center pt-2">
+                    +{phaseTasks.length - 5} tarefas adicionais
+                  </p>
+                )}
+
+                <div className="pt-4">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/cliente/tarefas">
+                      Ver todas as tarefas
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

@@ -569,11 +569,13 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          journey_phase: string | null
           priority: string | null
           project_id: string | null
           status: string | null
           title: string
           updated_at: string | null
+          visible_to_client: boolean | null
         }
         Insert: {
           assigned_to?: string | null
@@ -583,11 +585,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          journey_phase?: string | null
           priority?: string | null
           project_id?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
+          visible_to_client?: boolean | null
         }
         Update: {
           assigned_to?: string | null
@@ -597,11 +601,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          journey_phase?: string | null
           priority?: string | null
           project_id?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
+          visible_to_client?: boolean | null
         }
         Relationships: [
           {
