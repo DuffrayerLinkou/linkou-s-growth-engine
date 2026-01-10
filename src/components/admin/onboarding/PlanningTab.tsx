@@ -1,0 +1,372 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const statusConfig = {
+  draft: { label: "Rascunho", color: "bg-muted text-muted-foreground", icon: FileText },
+  active: { label: "Ativo", color: "bg-blue-500/20 text-blue-600", icon: Target },
+  completed: { label: "Concluído", color: "bg-green-500/20 text-green-600", icon: CheckCircle },
+};
+
+const campaignTypes = [
+  { id: "awareness", label: "Awareness (Reconhecimento)" },
+  { id: "consideration", label: "Consideração" },
+  { id: "conversion", label: "Conversão" },
+  { id: "remarketing", label: "Remarketing" },
+  { id: "lookalike", label: "Lookalike" },
+];
+
+interface PlanForm {
+  client_id: string;
+  title: string;
+  objectives: string;
+  kpis: string;
+  personas: string;
+  funnel_strategy: string;
+  campaign_types: string[];
+  timeline_start: string;
+  timeline_end: string;
+  status: string;
+}
+
+const initialForm: PlanForm = {
+  client_id: "",
+  title: "",
+  objectives: "",
+  kpis: "",
+  personas: "",
+  funnel_strategy: "",
+  campaign_types: [],
+  timeline_start: "",
+  timeline_end: "",
+  status: "draft",
+};
+
+export function PlanningTab() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [form, setForm] = useState<PlanForm>(initialForm);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ["strategic-plans"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("strategic_plans")
+        .select("*, clients(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        client_id: form.client_id,
+        title: form.title,
+        objectives: form.objectives ? { list: form.objectives.split("\n").filter(Boolean) } : null,
+        kpis: form.kpis ? { list: form.kpis.split("\n").filter(Boolean) } : null,
+        personas: form.personas ? { description: form.personas } : null,
+        funnel_strategy: form.funnel_strategy || null,
+        campaign_types: form.campaign_types.length > 0 ? form.campaign_types : null,
+        timeline_start: form.timeline_start || null,
+        timeline_end: form.timeline_end || null,
+        status: form.status,
+      };
+
+      if (editingPlan) {
+        const { error } = await supabase.from("strategic_plans").update(payload).eq("id", editingPlan.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("strategic_plans").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategic-plans"] });
+      setIsDialogOpen(false);
+      setEditingPlan(null);
+      setForm(initialForm);
+      toast({ title: editingPlan ? "Plano atualizado!" : "Plano criado!" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível salvar o plano.", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("strategic_plans").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategic-plans"] });
+      setDeleteId(null);
+      toast({ title: "Plano excluído!" });
+    },
+  });
+
+  const openEdit = (plan: any) => {
+    setEditingPlan(plan);
+    setForm({
+      client_id: plan.client_id,
+      title: plan.title,
+      objectives: plan.objectives?.list?.join("\n") || "",
+      kpis: plan.kpis?.list?.join("\n") || "",
+      personas: plan.personas?.description || "",
+      funnel_strategy: plan.funnel_strategy || "",
+      campaign_types: plan.campaign_types || [],
+      timeline_start: plan.timeline_start || "",
+      timeline_end: plan.timeline_end || "",
+      status: plan.status,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const openNew = () => {
+    setEditingPlan(null);
+    setForm(initialForm);
+    setIsDialogOpen(true);
+  };
+
+  const toggleCampaignType = (typeId: string) => {
+    setForm(prev => ({
+      ...prev,
+      campaign_types: prev.campaign_types.includes(typeId)
+        ? prev.campaign_types.filter(t => t !== typeId)
+        : [...prev.campaign_types, typeId]
+    }));
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Planos Estratégicos
+            </CardTitle>
+            <CardDescription>Gerencie os planos estratégicos dos seus clientes</CardDescription>
+          </div>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Plano
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : plans.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Nenhum plano criado ainda</div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {plans.map((plan: any) => {
+                const status = statusConfig[plan.status as keyof typeof statusConfig] || statusConfig.draft;
+                const StatusIcon = status.icon;
+                return (
+                  <Card key={plan.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">{plan.title}</CardTitle>
+                          <CardDescription>{plan.clients?.name}</CardDescription>
+                        </div>
+                        <Badge className={status.color}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {status.label}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="space-y-2 text-sm">
+                        {plan.campaign_types && plan.campaign_types.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {plan.campaign_types.slice(0, 3).map((type: string) => (
+                              <Badge key={type} variant="secondary" className="text-xs">
+                                {campaignTypes.find(t => t.id === type)?.label.split(" ")[0] || type}
+                              </Badge>
+                            ))}
+                            {plan.campaign_types.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">+{plan.campaign_types.length - 3}</Badge>
+                            )}
+                          </div>
+                        )}
+                        {plan.timeline_start && plan.timeline_end && (
+                          <p className="text-muted-foreground text-xs">
+                            {format(new Date(plan.timeline_start), "dd/MM/yy")} - {format(new Date(plan.timeline_end), "dd/MM/yy")}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                          <Clock className="h-3 w-3" />
+                          {format(new Date(plan.created_at), "dd/MM/yyyy")}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-4">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(plan)}>
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteId(plan.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Form Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingPlan ? "Editar Plano" : "Novo Plano Estratégico"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cliente *</Label>
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Título *</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Objetivos (um por linha)</Label>
+              <Textarea 
+                value={form.objectives} 
+                onChange={(e) => setForm({ ...form, objectives: e.target.value })}
+                placeholder="Aumentar vendas em 30%&#10;Reduzir CAC em 20%&#10;Gerar 500 leads/mês"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>KPIs (um por linha)</Label>
+              <Textarea 
+                value={form.kpis} 
+                onChange={(e) => setForm({ ...form, kpis: e.target.value })}
+                placeholder="ROAS > 3x&#10;CPA < R$ 50&#10;CTR > 2%"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Personas e Segmentações</Label>
+              <Textarea 
+                value={form.personas} 
+                onChange={(e) => setForm({ ...form, personas: e.target.value })}
+                placeholder="Descreva o público-alvo e segmentações"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Estratégia de Funil</Label>
+              <Textarea 
+                value={form.funnel_strategy} 
+                onChange={(e) => setForm({ ...form, funnel_strategy: e.target.value })}
+                placeholder="Descreva a estratégia para cada etapa do funil"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipos de Campanha</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {campaignTypes.map((type) => (
+                  <div key={type.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={type.id}
+                      checked={form.campaign_types.includes(type.id)}
+                      onCheckedChange={() => toggleCampaignType(type.id)}
+                    />
+                    <Label htmlFor={type.id} className="text-sm font-normal cursor-pointer">
+                      {type.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data Início</Label>
+                <Input type="date" value={form.timeline_start} onChange={(e) => setForm({ ...form, timeline_start: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Data Fim</Label>
+                <Input type="date" value={form.timeline_end} onChange={(e) => setForm({ ...form, timeline_end: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Rascunho</SelectItem>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="completed">Concluído</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={!form.client_id || !form.title || saveMutation.isPending}
+              className="w-full"
+            >
+              {editingPlan ? "Salvar Alterações" : "Criar Plano"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir plano?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

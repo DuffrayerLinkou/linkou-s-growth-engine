@@ -32,6 +32,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminTasks from "./pages/admin/Tasks";
 import AdminAppointments from "./pages/admin/Appointments";
 import AdminTemplates from "./pages/admin/Templates";
+import AdminOnboarding from "./pages/admin/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -76,10 +77,11 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<AdminDashboard />} />
+              <Route index element={<AdminDashboard />} />
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="clientes/:id" element={<AdminClientDetail />} />
+                <Route path="onboarding" element={<AdminOnboarding />} />
                 <Route path="tarefas" element={<AdminTasks />} />
                 <Route path="agendamentos" element={<AdminAppointments />} />
                 <Route path="templates" element={<AdminTemplates />} />

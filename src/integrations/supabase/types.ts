@@ -169,6 +169,60 @@ export type Database = {
           },
         ]
       }
+      briefings: {
+        Row: {
+          budget_mensal: number | null
+          client_id: string
+          concorrentes: string | null
+          content: Json | null
+          created_at: string | null
+          created_by: string | null
+          diferenciais: string | null
+          id: string
+          nicho: string | null
+          objetivos: string | null
+          observacoes: string | null
+          publico_alvo: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          budget_mensal?: number | null
+          client_id: string
+          concorrentes?: string | null
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          diferenciais?: string | null
+          id?: string
+          nicho?: string | null
+          objetivos?: string | null
+          observacoes?: string | null
+          publico_alvo?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          budget_mensal?: number | null
+          client_id?: string
+          concorrentes?: string | null
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          diferenciais?: string | null
+          id?: string
+          nicho?: string | null
+          objetivos?: string | null
+          observacoes?: string | null
+          publico_alvo?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       client_users: {
         Row: {
           client_id: string
@@ -317,6 +371,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contracts: {
+        Row: {
+          client_id: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          manager_name: string | null
+          sent_at: string | null
+          sent_to_email: string | null
+          signed_at: string | null
+          status: string | null
+          template_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          manager_name?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          signed_at?: string | null
+          status?: string | null
+          template_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          manager_name?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          signed_at?: string | null
+          status?: string | null
+          template_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       experiments: {
         Row: {
@@ -621,6 +720,57 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          status: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -714,6 +864,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      strategic_plans: {
+        Row: {
+          budget_allocation: Json | null
+          campaign_types: string[] | null
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          funnel_strategy: string | null
+          id: string
+          kpis: Json | null
+          objectives: Json | null
+          personas: Json | null
+          status: string | null
+          timeline_end: string | null
+          timeline_start: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          budget_allocation?: Json | null
+          campaign_types?: string[] | null
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          funnel_strategy?: string | null
+          id?: string
+          kpis?: Json | null
+          objectives?: Json | null
+          personas?: Json | null
+          status?: string | null
+          timeline_end?: string | null
+          timeline_start?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          budget_allocation?: Json | null
+          campaign_types?: string[] | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          funnel_strategy?: string | null
+          id?: string
+          kpis?: Json | null
+          objectives?: Json | null
+          personas?: Json | null
+          status?: string | null
+          timeline_end?: string | null
+          timeline_start?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       task_templates: {
         Row: {
