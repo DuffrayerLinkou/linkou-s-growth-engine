@@ -1,13 +1,33 @@
 import { motion } from "framer-motion";
-import { FolderKanban, Activity, Clock, CheckCircle2 } from "lucide-react";
+import { 
+  FolderKanban, 
+  Activity, 
+  Clock, 
+  CheckCircle2, 
+  ListTodo,
+  FlaskConical,
+  Lightbulb,
+  FileText,
+  AlertTriangle,
+  ArrowRight,
+  Download,
+  Calendar,
+  CheckSquare,
+  Circle,
+  Loader2,
+  Ban
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, isPast, isToday, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Link } from "react-router-dom";
 
 const phaseLabels: Record<string, string> = {
   diagnostico: "Diagnóstico",
@@ -17,28 +37,72 @@ const phaseLabels: Record<string, string> = {
 };
 
 const phaseColors: Record<string, string> = {
-  diagnostico: "bg-yellow-500/10 text-yellow-600",
-  estruturacao: "bg-blue-500/10 text-blue-600",
-  operacao_guiada: "bg-purple-500/10 text-purple-600",
-  transferencia: "bg-green-500/10 text-green-600",
+  diagnostico: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  estruturacao: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  operacao_guiada: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  transferencia: "bg-green-500/10 text-green-600 dark:text-green-400",
 };
 
-const projectStatusLabels: Record<string, string> = {
-  planning: "Planejamento",
-  active: "Ativo",
-  paused: "Pausado",
+const taskStatusLabels: Record<string, string> = {
+  todo: "A Fazer",
+  in_progress: "Em Andamento",
+  blocked: "Bloqueado",
   completed: "Concluído",
 };
 
-const projectStatusColors: Record<string, string> = {
-  planning: "bg-gray-500/10 text-gray-600",
-  active: "bg-green-500/10 text-green-600",
-  paused: "bg-yellow-500/10 text-yellow-600",
-  completed: "bg-blue-500/10 text-blue-600",
+const taskStatusColors: Record<string, string> = {
+  todo: "text-muted-foreground",
+  in_progress: "text-blue-500",
+  blocked: "text-red-500",
+  completed: "text-green-500",
+};
+
+const taskStatusIcons: Record<string, React.ReactNode> = {
+  todo: <Circle className="h-4 w-4" />,
+  in_progress: <Loader2 className="h-4 w-4 animate-spin" />,
+  blocked: <Ban className="h-4 w-4" />,
+  completed: <CheckCircle2 className="h-4 w-4" />,
+};
+
+const priorityLabels: Record<string, string> = {
+  urgent: "Urgente",
+  high: "Alta",
+  medium: "Média",
+  low: "Baixa",
+};
+
+const priorityColors: Record<string, string> = {
+  urgent: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+  high: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  medium: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  low: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
+};
+
+const experimentStatusLabels: Record<string, string> = {
+  draft: "Rascunho",
+  running: "Em Execução",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+};
+
+const experimentStatusColors: Record<string, string> = {
+  draft: "bg-gray-500/10 text-gray-600",
+  running: "bg-blue-500/10 text-blue-600",
+  completed: "bg-green-500/10 text-green-600",
+  cancelled: "bg-red-500/10 text-red-600",
+};
+
+const fileTypeIcons: Record<string, React.ReactNode> = {
+  document: <FileText className="h-5 w-5 text-blue-500" />,
+  spreadsheet: <FileText className="h-5 w-5 text-green-500" />,
+  presentation: <FileText className="h-5 w-5 text-orange-500" />,
+  image: <FileText className="h-5 w-5 text-purple-500" />,
+  default: <FileText className="h-5 w-5 text-muted-foreground" />,
 };
 
 export default function ClienteDashboard() {
   const { profile, clientInfo } = useAuth();
+  const isPontoFocal = profile?.ponto_focal === true;
 
   // Query: Dados do cliente (fase e status)
   const { data: clientData, isLoading: loadingClient } = useQuery({
@@ -56,13 +120,46 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Total de Projetos do Cliente
-  const { data: totalProjects, isLoading: loadingTotalProjects } = useQuery({
-    queryKey: ["client-total-projects", clientInfo?.id],
+  // Query: Tarefas pendentes (não concluídas)
+  const { data: pendingTasksCount, isLoading: loadingPendingTasks } = useQuery({
+    queryKey: ["client-pending-tasks", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return 0;
       const { count, error } = await supabase
-        .from("projects")
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .eq("client_id", clientInfo.id)
+        .eq("visible_to_client", true)
+        .neq("status", "completed");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Query: Experimentos ativos (em execução)
+  const { data: activeExperimentsCount, isLoading: loadingActiveExperiments } = useQuery({
+    queryKey: ["client-active-experiments", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return 0;
+      const { count, error } = await supabase
+        .from("experiments")
+        .select("*", { count: "exact", head: true })
+        .eq("client_id", clientInfo.id)
+        .eq("status", "running");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Query: Total de aprendizados
+  const { data: learningsCount, isLoading: loadingLearnings } = useQuery({
+    queryKey: ["client-learnings-count", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return 0;
+      const { count, error } = await supabase
+        .from("learnings")
         .select("*", { count: "exact", head: true })
         .eq("client_id", clientInfo.id);
       if (error) throw error;
@@ -71,50 +168,159 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Última mudança de fase
-  const { data: lastPhaseChange, isLoading: loadingLastPhaseChange } = useQuery({
-    queryKey: ["client-last-phase-change", clientInfo?.id],
+  // Query: Resumo de tarefas por status
+  const { data: tasksSummary, isLoading: loadingTasksSummary } = useQuery({
+    queryKey: ["client-tasks-summary", clientInfo?.id],
     queryFn: async () => {
-      if (!clientInfo?.id) return null;
+      if (!clientInfo?.id) return { todo: 0, in_progress: 0, blocked: 0, completed: 0, total: 0 };
       const { data, error } = await supabase
-        .from("audit_logs")
-        .select("created_at, new_data")
+        .from("tasks")
+        .select("status")
         .eq("client_id", clientInfo.id)
-        .eq("action", "phase_changed")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq("visible_to_client", true);
       if (error) throw error;
-      return data;
+      
+      const summary = { todo: 0, in_progress: 0, blocked: 0, completed: 0, total: data?.length || 0 };
+      data?.forEach((task) => {
+        const status = task.status as keyof typeof summary;
+        if (status in summary) summary[status]++;
+      });
+      return summary;
     },
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Meus Projetos (até 5)
-  const { data: myProjects, isLoading: loadingMyProjects } = useQuery({
-    queryKey: ["client-my-projects", clientInfo?.id],
+  // Query: Próximas 5 tarefas urgentes
+  const { data: upcomingTasks, isLoading: loadingUpcomingTasks } = useQuery({
+    queryKey: ["client-upcoming-tasks", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return [];
       const { data, error } = await supabase
-        .from("projects")
+        .from("tasks")
+        .select("id, title, due_date, status, priority")
+        .eq("client_id", clientInfo.id)
+        .eq("visible_to_client", true)
+        .neq("status", "completed")
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .limit(5);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Query: Experimentos pendentes de aprovação (ponto focal)
+  const { data: pendingExperiments, isLoading: loadingPendingExperiments } = useQuery({
+    queryKey: ["client-pending-experiments", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id || !isPontoFocal) return [];
+      const { data, error } = await supabase
+        .from("experiments")
         .select("id, name, status")
         .eq("client_id", clientInfo.id)
+        .eq("status", "completed")
+        .eq("approved_by_ponto_focal", false);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clientInfo?.id && isPontoFocal,
+  });
+
+  // Query: Aprendizados pendentes de aprovação (ponto focal)
+  const { data: pendingLearnings, isLoading: loadingPendingLearnings } = useQuery({
+    queryKey: ["client-pending-learnings", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id || !isPontoFocal) return [];
+      const { data, error } = await supabase
+        .from("learnings")
+        .select("id, title")
+        .eq("client_id", clientInfo.id)
+        .eq("approved_by_ponto_focal", false);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clientInfo?.id && isPontoFocal,
+  });
+
+  // Query: 3 últimos experimentos
+  const { data: recentExperiments, isLoading: loadingRecentExperiments } = useQuery({
+    queryKey: ["client-recent-experiments", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return [];
+      const { data, error } = await supabase
+        .from("experiments")
+        .select("id, name, status, approved_by_ponto_focal")
+        .eq("client_id", clientInfo.id)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(3);
       if (error) throw error;
       return data || [];
     },
     enabled: !!clientInfo?.id,
   });
 
-  // Query: Histórico Recente (últimos 5 audit_logs)
-  const { data: recentHistory, isLoading: loadingRecentHistory } = useQuery({
-    queryKey: ["client-recent-history", clientInfo?.id],
+  // Query: 3 últimos arquivos
+  const { data: recentFiles, isLoading: loadingRecentFiles } = useQuery({
+    queryKey: ["client-recent-files", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return [];
+      const { data, error } = await supabase
+        .from("files")
+        .select("id, name, file_type, created_at, file_path")
+        .eq("client_id", clientInfo.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Query: Meus Projetos com progresso
+  const { data: myProjects, isLoading: loadingMyProjects } = useQuery({
+    queryKey: ["client-my-projects-progress", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return [];
+      
+      // Get projects
+      const { data: projects, error: projectsError } = await supabase
+        .from("projects")
+        .select("id, name, status, start_date, end_date")
+        .eq("client_id", clientInfo.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (projectsError) throw projectsError;
+      
+      // Get tasks for each project to calculate progress
+      const projectsWithProgress = await Promise.all(
+        (projects || []).map(async (project) => {
+          const { data: tasks } = await supabase
+            .from("tasks")
+            .select("status")
+            .eq("project_id", project.id)
+            .eq("visible_to_client", true);
+          
+          const total = tasks?.length || 0;
+          const completed = tasks?.filter(t => t.status === "completed").length || 0;
+          const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+          
+          return { ...project, progress, totalTasks: total, completedTasks: completed };
+        })
+      );
+      
+      return projectsWithProgress;
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Query: Atividade recente (últimos 5 audit_logs)
+  const { data: recentActivity, isLoading: loadingRecentActivity } = useQuery({
+    queryKey: ["client-recent-activity", clientInfo?.id],
     queryFn: async () => {
       if (!clientInfo?.id) return [];
       const { data, error } = await supabase
         .from("audit_logs")
-        .select("id, created_at, action, old_data, new_data")
+        .select("id, created_at, action, entity_type, old_data, new_data")
         .eq("client_id", clientInfo.id)
         .order("created_at", { ascending: false })
         .limit(5);
@@ -124,17 +330,59 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id,
   });
 
-  const formatAuditAction = (log: { action: string; old_data: any; new_data: any }) => {
+  const formatActivityAction = (log: { action: string; entity_type: string; old_data: any; new_data: any }) => {
     if (log.action === "phase_changed") {
       const from = phaseLabels[log.old_data?.phase] || log.old_data?.phase || "?";
       const to = phaseLabels[log.new_data?.phase] || log.new_data?.phase || "?";
       return `Fase alterada de "${from}" para "${to}"`;
     }
-    return log.action;
+    
+    const entityLabels: Record<string, string> = {
+      tasks: "Tarefa",
+      experiments: "Experimento",
+      learnings: "Aprendizado",
+      files: "Arquivo",
+      projects: "Projeto",
+      clients: "Cliente",
+    };
+    
+    const actionLabels: Record<string, string> = {
+      created: "criado(a)",
+      updated: "atualizado(a)",
+      deleted: "removido(a)",
+      approved: "aprovado(a)",
+    };
+    
+    const entity = entityLabels[log.entity_type] || log.entity_type;
+    const action = actionLabels[log.action] || log.action;
+    
+    return `${entity} ${action}`;
   };
 
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case "phase_changed": return <Activity className="h-4 w-4 text-purple-500" />;
+      case "created": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case "approved": return <CheckSquare className="h-4 w-4 text-blue-500" />;
+      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getDueDateStatus = (dueDate: string | null) => {
+    if (!dueDate) return null;
+    const date = new Date(dueDate);
+    if (isPast(date) && !isToday(date)) return { label: "Vencido", class: "text-red-500 bg-red-500/10" };
+    if (isToday(date)) return { label: "Hoje", class: "text-orange-500 bg-orange-500/10" };
+    const days = differenceInDays(date, new Date());
+    if (days <= 3) return { label: `${days}d`, class: "text-yellow-500 bg-yellow-500/10" };
+    return null;
+  };
+
+  const taskProgress = tasksSummary ? Math.round((tasksSummary.completed / tasksSummary.total) * 100) || 0 : 0;
+  const pendingApprovalsCount = (pendingExperiments?.length || 0) + (pendingLearnings?.length || 0);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <motion.h1
@@ -150,23 +398,19 @@ export default function ClienteDashboard() {
           transition={{ delay: 0.1 }}
           className="text-muted-foreground mt-1"
         >
-          Acompanhe seus projetos e resultados.
+          Acompanhe seu progresso, tarefas e resultados.
         </motion.p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Fase Atual */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        {/* Fase da Jornada */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fase Atual</CardTitle>
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Activity className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium">Fase da Jornada</CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Activity className="h-4 w-4 text-purple-500" />
               </div>
             </CardHeader>
             <CardContent>
@@ -179,188 +423,436 @@ export default function ClienteDashboard() {
               ) : (
                 <span className="text-muted-foreground text-sm">Não definida</span>
               )}
-              <p className="text-xs text-muted-foreground mt-2">Sua jornada Linkou</p>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Status do Cliente */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        {/* Tarefas Pendentes */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Status</CardTitle>
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <CardTitle className="text-sm font-medium">Tarefas Pendentes</CardTitle>
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <ListTodo className="h-4 w-4 text-orange-500" />
               </div>
             </CardHeader>
             <CardContent>
-              {loadingClient ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold capitalize">
-                  {clientData?.status === "active" ? "Ativo" : clientData?.status || "-"}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Situação atual</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Total de Projetos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projetos</CardTitle>
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <FolderKanban className="h-4 w-4 text-purple-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingTotalProjects ? (
+              {loadingPendingTasks ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-bold">{totalProjects}</div>
+                <div className="text-2xl font-bold">{pendingTasksCount}</div>
               )}
-              <p className="text-xs text-muted-foreground">Total de projetos</p>
+              <p className="text-xs text-muted-foreground">tarefas abertas</p>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Última Atualização */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        {/* Experimentos Ativos */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Última Atualização</CardTitle>
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <Clock className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-sm font-medium">Experimentos Ativos</CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <FlaskConical className="h-4 w-4 text-blue-500" />
               </div>
             </CardHeader>
             <CardContent>
-              {loadingLastPhaseChange ? (
-                <Skeleton className="h-8 w-24" />
-              ) : lastPhaseChange?.created_at ? (
-                <div className="text-lg font-bold">
-                  {format(new Date(lastPhaseChange.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                </div>
+              {loadingActiveExperiments ? (
+                <Skeleton className="h-8 w-16" />
               ) : (
-                <span className="text-muted-foreground text-sm">Sem atualizações</span>
+                <div className="text-2xl font-bold">{activeExperimentsCount}</div>
               )}
-              <p className="text-xs text-muted-foreground">Mudança de fase</p>
+              <p className="text-xs text-muted-foreground">em execução</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Aprendizados */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aprendizados</CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Lightbulb className="h-4 w-4 text-green-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingLearnings ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (
+                <div className="text-2xl font-bold">{learningsCount}</div>
+              )}
+              <p className="text-xs text-muted-foreground">registrados</p>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      {/* Lists */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Meus Projetos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Meus Projetos</CardTitle>
-              <CardDescription>Projetos vinculados à sua conta</CardDescription>
+      {/* Ações do Ponto Focal (apenas se for ponto focal e houver pendências) */}
+      {isPontoFocal && pendingApprovalsCount > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="border-orange-500/30 bg-orange-500/5">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                <CardTitle className="text-lg">Ações Pendentes</CardTitle>
+                <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">
+                  {pendingApprovalsCount}
+                </Badge>
+              </div>
+              <CardDescription>Itens aguardando sua aprovação como ponto focal</CardDescription>
             </CardHeader>
             <CardContent>
-              {loadingMyProjects ? (
+              <div className="flex flex-wrap gap-4">
+                {(pendingExperiments?.length || 0) > 0 && (
+                  <Link to="/cliente/experimentos">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <FlaskConical className="h-4 w-4" />
+                      {pendingExperiments?.length} experimento(s) para aprovar
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
+                {(pendingLearnings?.length || 0) > 0 && (
+                  <Link to="/cliente/aprendizados">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Lightbulb className="h-4 w-4" />
+                      {pendingLearnings?.length} aprendizado(s) para aprovar
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Progresso das Tarefas + Próximas Tarefas */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Progresso das Tarefas */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Progresso das Tarefas
+                <Link to="/cliente/tarefas">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    Ver todas <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingTasksSummary ? (
                 <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
-              ) : myProjects && myProjects.length > 0 ? (
-                <div className="space-y-3">
-                  {myProjects.map((project) => (
-                    <div key={project.id} className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FolderKanban className="h-5 w-5 text-primary" />
+              ) : tasksSummary && tasksSummary.total > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Concluídas</span>
+                      <span className="font-medium">{tasksSummary.completed} de {tasksSummary.total}</span>
+                    </div>
+                    <Progress value={taskProgress} className="h-3" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(taskStatusLabels).map(([status, label]) => (
+                      <div 
+                        key={status} 
+                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                      >
+                        <span className={taskStatusColors[status]}>
+                          {taskStatusIcons[status]}
+                        </span>
+                        <div>
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="font-semibold">{tasksSummary[status as keyof typeof tasksSummary]}</p>
                         </div>
-                        <p className="font-medium text-sm">{project.name}</p>
                       </div>
-                      <Badge className={projectStatusColors[project.status || "planning"]}>
-                        {projectStatusLabels[project.status || "planning"]}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Ainda não há projetos vinculados</p>
-                  <p className="text-sm">Seus projetos aparecerão aqui</p>
+                <div className="text-center py-6 text-muted-foreground">
+                  <ListTodo className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma tarefa registrada</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Histórico Recente */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Card>
+        {/* Próximas Tarefas */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <Card className="h-full">
             <CardHeader>
-              <CardTitle>Histórico Recente</CardTitle>
-              <CardDescription>Últimas atualizações da sua jornada</CardDescription>
+              <CardTitle>Próximas Tarefas</CardTitle>
+              <CardDescription>Tarefas mais urgentes</CardDescription>
             </CardHeader>
             <CardContent>
-              {loadingRecentHistory ? (
+              {loadingUpcomingTasks ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : upcomingTasks && upcomingTasks.length > 0 ? (
+                <div className="space-y-2">
+                  {upcomingTasks.map((task) => {
+                    const dueDateStatus = getDueDateStatus(task.due_date);
+                    return (
+                      <div 
+                        key={task.id} 
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className={taskStatusColors[task.status || "todo"]}>
+                            {taskStatusIcons[task.status || "todo"]}
+                          </span>
+                          <p className="text-sm font-medium truncate">{task.title}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {(task.priority === "urgent" || task.priority === "high") && (
+                            <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>
+                              {priorityLabels[task.priority]}
+                            </Badge>
+                          )}
+                          {dueDateStatus && (
+                            <Badge variant="outline" className={`text-xs ${dueDateStatus.class}`}>
+                              {dueDateStatus.label}
+                            </Badge>
+                          )}
+                          {task.due_date && !dueDateStatus && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma tarefa pendente</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Experimentos Recentes + Arquivos Recentes */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Experimentos Recentes */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Experimentos Recentes
+                <Link to="/cliente/experimentos">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    Ver todos <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingRecentExperiments ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : recentExperiments && recentExperiments.length > 0 ? (
+                <div className="space-y-2">
+                  {recentExperiments.map((exp) => (
+                    <div key={exp.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FlaskConical className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <p className="text-sm font-medium truncate">{exp.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge className={experimentStatusColors[exp.status || "draft"]}>
+                          {experimentStatusLabels[exp.status || "draft"]}
+                        </Badge>
+                        {exp.approved_by_ponto_focal && (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : recentHistory && recentHistory.length > 0 ? (
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <FlaskConical className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum experimento registrado</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Arquivos Recentes */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Arquivos Recentes
+                <Link to="/cliente/arquivos">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    Ver todos <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingRecentFiles ? (
                 <div className="space-y-3">
-                  {recentHistory.map((log) => (
-                    <div key={log.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                        <Activity className="h-5 w-5 text-muted-foreground" />
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : recentFiles && recentFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {recentFiles.map((file) => (
+                    <div key={file.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {fileTypeIcons[file.file_type || "default"] || fileTypeIcons.default}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(file.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{formatAuditAction(log)}</p>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={async () => {
+                          const { data } = await supabase.storage
+                            .from("client-files")
+                            .createSignedUrl(file.file_path, 60);
+                          if (data?.signedUrl) {
+                            window.open(data.signedUrl, "_blank");
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum arquivo disponível</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Meus Projetos + Atividade Recente */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Meus Projetos */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Meus Projetos</CardTitle>
+              <CardDescription>Projetos com progresso de tarefas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingMyProjects ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : myProjects && myProjects.length > 0 ? (
+                <div className="space-y-3">
+                  {myProjects.map((project) => (
+                    <div key={project.id} className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <FolderKanban className="h-4 w-4 text-primary" />
+                          <p className="font-medium text-sm">{project.name}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {project.status === "active" ? "Ativo" : project.status === "completed" ? "Concluído" : project.status}
+                        </Badge>
+                      </div>
+                      {project.totalTasks > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Tarefas</span>
+                            <span>{project.completedTasks}/{project.totalTasks}</span>
+                          </div>
+                          <Progress value={project.progress} className="h-1.5" />
+                        </div>
+                      )}
+                      {project.start_date && (
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {format(new Date(project.start_date), "dd/MM/yyyy", { locale: ptBR })}
+                          {project.end_date && ` - ${format(new Date(project.end_date), "dd/MM/yyyy", { locale: ptBR })}`}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <FolderKanban className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum projeto vinculado</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Atividade Recente */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Atividade Recente</CardTitle>
+              <CardDescription>Últimas atualizações</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingRecentActivity ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : recentActivity && recentActivity.length > 0 ? (
+                <div className="space-y-2">
+                  {recentActivity.map((log) => (
+                    <div key={log.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        {getActivityIcon(log.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{formatActivityAction(log)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          {format(new Date(log.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma mudança recente na jornada</p>
-                  <p className="text-sm">O histórico aparecerá aqui</p>
+                <div className="text-center py-6 text-muted-foreground">
+                  <Activity className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma atividade recente</p>
                 </div>
               )}
             </CardContent>
