@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -142,6 +143,7 @@ const segments = [
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [users, setUsers] = useState<ClientUser[]>([]);
@@ -495,7 +497,7 @@ export default function ClientDetail() {
           visible_to_client: template.visible_to_client,
           assigned_to: templateFormData.assigned_to || null,
           due_date: dueDate.toISOString().split("T")[0],
-          status: "todo",
+          status: "backlog",
           created_by: user.id,
         };
       });
@@ -503,6 +505,10 @@ export default function ClientDetail() {
       const { error } = await supabase.from("tasks").insert(tasksToCreate);
 
       if (error) throw error;
+
+      // Invalidate task queries so lists update
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["client-tasks"] });
 
       toast({
         title: "Tarefas criadas",
