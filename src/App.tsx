@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 // Client pages
 import ClienteDashboard from "./pages/cliente/Dashboard";
 import MinhaConta from "./pages/cliente/MinhaConta";
+import MinhaJornada from "./pages/cliente/MinhaJornada";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -49,6 +50,7 @@ const App = () => (
               >
                 <Route index element={<ClienteDashboard />} />
                 <Route path="minha-conta" element={<MinhaConta />} />
+                <Route path="minha-jornada" element={<MinhaJornada />} />
               </Route>
 
               {/* Admin routes */}
