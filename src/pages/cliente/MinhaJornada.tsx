@@ -9,6 +9,7 @@ import {
   Loader2,
   Clock,
   FileCheck,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +43,7 @@ export default function MinhaJornada() {
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const { toast } = useToast();
 
-  const currentPhase = (clientInfo as any)?.phase as Phase || "diagnostico";
+  const currentPhase = clientInfo?.phase as Phase || "diagnostico";
   const isPontoFocal = profile?.ponto_focal || false;
 
   const currentPhaseAck = acknowledgements.find(
@@ -50,7 +51,10 @@ export default function MinhaJornada() {
   );
 
   const fetchData = async () => {
-    if (!clientInfo?.id) return;
+    if (!clientInfo?.id) {
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -126,6 +130,18 @@ export default function MinhaJornada() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!clientInfo) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Sem cliente vinculado</h2>
+        <p className="text-muted-foreground max-w-md">
+          Você ainda não está vinculado a nenhum cliente. Entre em contato com o administrador para ser associado a um cliente.
+        </p>
       </div>
     );
   }
