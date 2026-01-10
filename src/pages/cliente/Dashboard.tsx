@@ -137,7 +137,7 @@ export default function ClienteDashboard() {
     queryFn: async () => {
       if (!clientInfo?.id) return 0;
       const { count, error } = await supabase
-        .from("experiments")
+        .from("campaigns")
         .select("*", { count: "exact", head: true })
         .eq("client_id", clientInfo.id)
         .eq("status", "running");
@@ -195,10 +195,10 @@ export default function ClienteDashboard() {
     queryFn: async () => {
       if (!clientInfo?.id || !isPontoFocal) return [];
       const { data, error } = await supabase
-        .from("experiments")
+        .from("campaigns")
         .select("id, name, status")
         .eq("client_id", clientInfo.id)
-        .eq("status", "completed")
+        .eq("status", "pending_approval")
         .eq("approved_by_ponto_focal", false);
       if (error) throw error;
       return data || [];
@@ -213,7 +213,7 @@ export default function ClienteDashboard() {
     queryFn: async () => {
       if (!clientInfo?.id) return [];
       const { data, error } = await supabase
-        .from("experiments")
+        .from("campaigns")
         .select("id, name, status, approved_by_ponto_focal")
         .eq("client_id", clientInfo.id)
         .order("created_at", { ascending: false })
