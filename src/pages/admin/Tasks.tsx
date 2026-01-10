@@ -1,25 +1,19 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import {
   Plus,
   Search,
-  GripVertical,
   Calendar,
-  User,
   AlertCircle,
-  Clock,
-  Eye,
-  EyeOff,
   Route,
   Star,
   Users,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -34,16 +28,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-
-type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
-type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
+import { TasksKanban } from "@/components/admin/TasksKanban";
+import {
+  TaskStatus,
+  JourneyPhase,
+  statusConfig,
+  journeyPhaseConfig,
+  statusColumns,
+  allPhases,
+} from "@/lib/task-config";
 
 interface Task {
   id: string;
@@ -62,33 +70,10 @@ interface Task {
   clients?: { name: string } | null;
 }
 
-const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-  todo: { label: "A Fazer", color: "bg-slate-500/20 text-slate-600" },
-  backlog: { label: "Backlog", color: "bg-muted text-muted-foreground" },
-  in_progress: { label: "Em Andamento", color: "bg-blue-500/20 text-blue-600" },
-  blocked: { label: "Bloqueado", color: "bg-red-500/20 text-red-600" },
-  completed: { label: "Concluído", color: "bg-green-500/20 text-green-600" },
-};
-
-const priorityConfig: Record<string, { label: string; color: string }> = {
-  low: { label: "Baixa", color: "text-muted-foreground" },
-  medium: { label: "Média", color: "text-yellow-600" },
-  high: { label: "Alta", color: "text-orange-600" },
-  urgent: { label: "Urgente", color: "text-red-600" },
-};
-
-const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: string }> = {
-  diagnostico: { label: "Diagnóstico", color: "bg-purple-500/20 text-purple-600" },
-  estruturacao: { label: "Estruturação", color: "bg-blue-500/20 text-blue-600" },
-  operacao_guiada: { label: "Operação Guiada", color: "bg-orange-500/20 text-orange-600" },
-  transferencia: { label: "Transferência", color: "bg-green-500/20 text-green-600" },
-};
-
-const columns: TaskStatus[] = ["todo", "backlog", "in_progress", "blocked", "completed"];
-
 export default function AdminTasks() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
@@ -178,6 +163,16 @@ export default function AdminTasks() {
     enabled: !!formData.client_id,
   });
 
+  // Build assignee names map
+  const assigneeNames = useMemo(() => {
+    const map = new Map<string, string>();
+    internalAssignees.forEach((user) => {
+      map.set(user.id, user.full_name || "Sem nome");
+    });
+    // Also add client users from all clients for display purposes
+    return map;
+  }, [internalAssignees]);
+
   // Create/Update task mutation
   const taskMutation = useMutation({
     mutationFn: async (data: typeof formData & { id?: string }) => {
@@ -225,7 +220,7 @@ export default function AdminTasks() {
     },
   });
 
-  // Update task status mutation (for drag and drop simulation)
+  // Update task status mutation (for drag and drop)
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
@@ -236,6 +231,35 @@ export default function AdminTasks() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+      setIsDialogOpen(false);
+      setEditingTask(null);
+      setIsDeleteDialogOpen(false);
+      resetForm();
+      toast({
+        title: "Tarefa excluída!",
+        description: "A tarefa foi removida com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir tarefa",
+        description: error.message,
+      });
     },
   });
 
@@ -286,16 +310,13 @@ export default function AdminTasks() {
     taskMutation.mutate(editingTask ? { ...formData, id: editingTask.id } : formData);
   };
 
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    await updateStatusMutation.mutateAsync({ id: taskId, status: newStatus });
+  };
+
   const filteredTasks = tasks.filter((task) =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const getTasksByStatus = (status: TaskStatus) =>
-    filteredTasks.filter((task) => (task.status || "backlog") === status);
-
-  const moveTask = (taskId: string, newStatus: TaskStatus) => {
-    updateStatusMutation.mutate({ id: taskId, status: newStatus });
-  };
 
   return (
     <div className="space-y-6">
@@ -464,10 +485,11 @@ export default function AdminTasks() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sem fase</SelectItem>
-                      <SelectItem value="diagnostico">Diagnóstico</SelectItem>
-                      <SelectItem value="estruturacao">Estruturação</SelectItem>
-                      <SelectItem value="operacao_guiada">Operação Guiada</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
+                      {allPhases.map((phase) => (
+                        <SelectItem key={phase} value={phase}>
+                          {journeyPhaseConfig[phase].label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -506,7 +528,7 @@ export default function AdminTasks() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {columns.map((col) => (
+                      {statusColumns.map((col) => (
                         <SelectItem key={col} value={col}>
                           {statusConfig[col].label}
                         </SelectItem>
@@ -540,22 +562,57 @@ export default function AdminTasks() {
                 </Label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={taskMutation.isPending}>
-                  {taskMutation.isPending ? "Salvando..." : "Salvar"}
-                </Button>
+              {/* Form Actions */}
+              <div className={`flex pt-4 border-t ${editingTask ? 'justify-between' : 'justify-end'}`}>
+                {editingTask && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    disabled={deleteTaskMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={taskMutation.isPending}>
+                    {taskMutation.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
               </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A tarefa "{editingTask?.title}" será removida permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => editingTask && deleteTaskMutation.mutate(editingTask.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTaskMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -587,10 +644,11 @@ export default function AdminTasks() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as Fases</SelectItem>
-            <SelectItem value="diagnostico">Diagnóstico</SelectItem>
-            <SelectItem value="estruturacao">Estruturação</SelectItem>
-            <SelectItem value="operacao_guiada">Operação Guiada</SelectItem>
-            <SelectItem value="transferencia">Transferência</SelectItem>
+            {allPhases.map((phase) => (
+              <SelectItem key={phase} value={phase}>
+                {journeyPhaseConfig[phase].label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -601,124 +659,12 @@ export default function AdminTasks() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {columns.map((status) => (
-            <div key={status} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <span
-                    className={`px-2 py-1 rounded-md text-xs ${statusConfig[status].color}`}
-                  >
-                    {statusConfig[status].label}
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    ({getTasksByStatus(status).length})
-                  </span>
-                </h3>
-              </div>
-
-              <div className="space-y-2 min-h-[200px] bg-muted/30 rounded-lg p-2">
-                {getTasksByStatus(status).map((task) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="cursor-pointer"
-                    onClick={() => openEditDialog(task)}
-                  >
-                    <Card className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-medium text-sm line-clamp-2">
-                            {task.title}
-                          </h4>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {task.visible_to_client === false && (
-                              <EyeOff className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                          <Badge variant="outline" className="text-xs">
-                            {task.clients?.name || "Sem cliente"}
-                          </Badge>
-                          {task.executor_type === "client" && (
-                            <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
-                              <Users className="h-3 w-3 mr-1" />
-                              Cliente
-                            </Badge>
-                          )}
-                          {task.journey_phase && journeyPhaseConfig[task.journey_phase as JourneyPhase] && (
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-xs ${journeyPhaseConfig[task.journey_phase as JourneyPhase].color}`}
-                            >
-                              <Route className="h-3 w-3 mr-1" />
-                              {journeyPhaseConfig[task.journey_phase as JourneyPhase].label}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          {task.priority && (
-                            <span
-                              className={`flex items-center gap-1 ${
-                                priorityConfig[task.priority]?.color ||
-                                "text-muted-foreground"
-                              }`}
-                            >
-                              <AlertCircle className="h-3 w-3" />
-                              {priorityConfig[task.priority]?.label || task.priority}
-                            </span>
-                          )}
-
-                          {task.due_date && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(task.due_date), "dd/MM", {
-                                locale: ptBR,
-                              })}
-                            </span>
-                          )}
-                        </div>
-
-
-                        {/* Quick status change buttons */}
-                        <div className="flex gap-1 pt-1">
-                          {columns
-                            .filter((s) => s !== status)
-                            .slice(0, 2)
-                            .map((newStatus) => (
-                              <Button
-                                key={newStatus}
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  moveTask(task.id, newStatus);
-                                }}
-                              >
-                                → {statusConfig[newStatus].label}
-                              </Button>
-                            ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-
-                {getTasksByStatus(status).length === 0 && (
-                  <div className="text-center text-muted-foreground text-sm py-8">
-                    Nenhuma tarefa
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <TasksKanban
+          tasks={filteredTasks}
+          onStatusChange={handleStatusChange}
+          onTaskClick={openEditDialog}
+          assigneeNames={assigneeNames}
+        />
       )}
     </div>
   );
