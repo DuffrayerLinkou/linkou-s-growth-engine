@@ -23,6 +23,7 @@ import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
 import AdminClientDetail from "./pages/admin/ClientDetail";
 import AdminProjects from "./pages/admin/Projects";
+import AdminUsers from "./pages/admin/Users";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="clientes/:id" element={<AdminClientDetail />} />
                 <Route path="projetos" element={<AdminProjects />} />
+                <Route path="usuarios" element={<AdminUsers />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
