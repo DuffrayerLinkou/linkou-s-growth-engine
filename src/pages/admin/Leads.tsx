@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 import {
   Target,
   Search,
@@ -14,6 +15,8 @@ import {
   Phone,
   Loader2,
   RefreshCw,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +50,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
+import { LeadsKanban } from "@/components/admin/LeadsKanban";
+import { ExportLeads } from "@/components/admin/ExportLeads";
 
 interface Lead {
   id: string;
@@ -87,13 +94,27 @@ export default function AdminLeads() {
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">(
+    (searchParams.get("view") as "list" | "kanban") || "list"
+  );
   const { toast } = useToast();
+
+  // Date range state
+  const [selectedPreset, setSelectedPreset] = useState("last30days");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const preset = presets.find((p) => p.value === "last30days");
+    return preset?.getRange();
+  });
 
   // Sincronizar filtro com query params
   useEffect(() => {
     const urlStatus = searchParams.get("status");
     if (urlStatus && urlStatus !== statusFilter) {
       setStatusFilter(urlStatus);
+    }
+    const urlView = searchParams.get("view") as "list" | "kanban";
+    if (urlView && urlView !== viewMode) {
+      setViewMode(urlView);
     }
   }, [searchParams]);
 
@@ -107,6 +128,12 @@ export default function AdminLeads() {
     setSearchParams(searchParams);
   };
 
+  const handleViewModeChange = (mode: "list" | "kanban") => {
+    setViewMode(mode);
+    searchParams.set("view", mode);
+    setSearchParams(searchParams);
+  };
+
   const fetchLeads = async () => {
     setIsLoading(true);
     try {
@@ -115,7 +142,20 @@ export default function AdminLeads() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (statusFilter !== "all") {
+      // Filtro por período
+      if (dateRange?.from) {
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", fromDate.toISOString());
+      }
+      if (dateRange?.to) {
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", toDate.toISOString());
+      }
+
+      // Filtro por status (apenas na lista, kanban mostra todos)
+      if (statusFilter !== "all" && viewMode === "list") {
         query = query.eq("status", statusFilter);
       }
 
@@ -138,7 +178,7 @@ export default function AdminLeads() {
   useEffect(() => {
     fetchLeads();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+  }, [statusFilter, dateRange, viewMode]);
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
     try {
@@ -169,17 +209,40 @@ export default function AdminLeads() {
     }
   };
 
-  const filteredLeads = leads.filter(
-    (lead) =>
-      lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.phone?.includes(searchQuery)
-  );
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+    
+    // Aplicar filtro de busca
+    if (searchQuery) {
+      result = result.filter(
+        (lead) =>
+          lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lead.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lead.phone?.includes(searchQuery)
+      );
+    }
+
+    // Aplicar filtro de status apenas na lista
+    if (statusFilter !== "all" && viewMode === "list") {
+      result = result.filter((lead) => lead.status === statusFilter);
+    }
+
+    return result;
+  }, [leads, searchQuery, statusFilter, viewMode]);
 
   const openLeadDetail = (lead: Lead) => {
     setSelectedLead(lead);
     setIsDetailOpen(true);
   };
+
+  // Calcular contagem por status (todos os leads do período, sem filtro de status)
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    Object.keys(statusLabels).forEach((status) => {
+      counts[status] = leads.filter((l) => (l.status || "new") === status).length;
+    });
+    return counts;
+  }, [leads]);
 
   return (
     <div className="space-y-6">
@@ -197,23 +260,59 @@ export default function AdminLeads() {
         </Button>
       </div>
 
+      {/* Controls Row */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-wrap gap-2 items-center">
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            selectedPreset={selectedPreset}
+            onPresetChange={setSelectedPreset}
+          />
+          <ExportLeads
+            leads={filteredLeads}
+            dateRange={dateRange}
+            statusFilter={statusFilter}
+          />
+        </div>
+
+        {/* View Toggle */}
+        <Tabs value={viewMode} onValueChange={(v) => handleViewModeChange(v as "list" | "kanban")}>
+          <TabsList>
+            <TabsTrigger value="list" className="gap-2">
+              <List className="h-4 w-4" />
+              Lista
+            </TabsTrigger>
+            <TabsTrigger value="kanban" className="gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
         {Object.entries(statusLabels).map(([status, label]) => {
-          const count = leads.filter((l) => l.status === status).length;
+          const count = statusCounts[status] || 0;
           return (
-            <Card key={status} className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => handleStatusFilterChange(status === statusFilter ? "all" : status)}>
-              <CardHeader className="pb-2">
-                <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl">{count}</CardTitle>
+            <Card
+              key={status}
+              className={`cursor-pointer transition-colors ${
+                statusFilter === status ? "border-primary" : "hover:border-primary/50"
+              }`}
+              onClick={() => handleStatusFilterChange(status === statusFilter ? "all" : status)}
+            >
+              <CardHeader className="pb-2 p-4">
+                <CardDescription className="text-xs">{label}</CardDescription>
+                <CardTitle className="text-xl">{count}</CardTitle>
               </CardHeader>
             </Card>
           );
         })}
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -224,122 +323,132 @@ export default function AdminLeads() {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {viewMode === "list" && (
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Target className="h-12 w-12 mb-4 opacity-50" />
-              <p>Nenhum lead encontrado</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="hidden md:table-cell">Contato</TableHead>
-                  <TableHead className="hidden lg:table-cell">Segmento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Data</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.map((lead, index) => (
-                  <motion.tr
-                    key={lead.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group cursor-pointer hover:bg-muted/50"
-                    onClick={() => openLeadDetail(lead)}
-                  >
-                    <TableCell>
-                      <div className="font-medium">{lead.name}</div>
-                      <div className="text-sm text-muted-foreground md:hidden">
-                        {lead.email}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm">{lead.email}</span>
-                        {lead.phone && (
-                          <span className="text-sm text-muted-foreground">
-                            {lead.phone}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {lead.segment || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={statusColors[lead.status || "new"]}
-                      >
-                        {statusLabels[lead.status || "new"]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
-                      {format(new Date(lead.created_at), "dd/MM/yy", {
-                        locale: ptBR,
-                      })}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openLeadDetail(lead)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => updateLeadStatus(lead.id, "contacted")}
-                          >
-                            <Phone className="h-4 w-4 mr-2" />
-                            Marcar como contatado
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => updateLeadStatus(lead.id, "qualified")}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Qualificar lead
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : viewMode === "kanban" ? (
+        <LeadsKanban
+          leads={filteredLeads}
+          onStatusChange={updateLeadStatus}
+          onLeadClick={openLeadDetail}
+        />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {filteredLeads.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Target className="h-12 w-12 mb-4 opacity-50" />
+                <p>Nenhum lead encontrado</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead className="hidden md:table-cell">Contato</TableHead>
+                    <TableHead className="hidden lg:table-cell">Segmento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden sm:table-cell">Data</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead, index) => (
+                    <motion.tr
+                      key={lead.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="group cursor-pointer hover:bg-muted/50"
+                      onClick={() => openLeadDetail(lead)}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{lead.name}</div>
+                        <div className="text-sm text-muted-foreground md:hidden">
+                          {lead.email}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm">{lead.email}</span>
+                          {lead.phone && (
+                            <span className="text-sm text-muted-foreground">
+                              {lead.phone}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {lead.segment || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={statusColors[lead.status || "new"]}
+                        >
+                          {statusLabels[lead.status || "new"]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {format(new Date(lead.created_at), "dd/MM/yy", {
+                          locale: ptBR,
+                        })}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openLeadDetail(lead)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => updateLeadStatus(lead.id, "contacted")}
+                            >
+                              <Phone className="h-4 w-4 mr-2" />
+                              Marcar como contatado
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => updateLeadStatus(lead.id, "qualified")}
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Qualificar lead
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </motion.tr>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lead Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
