@@ -12,14 +12,14 @@ import {
   CheckSquare,
   Calendar,
   FileText,
+  UsersRound,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-
-import { UsersRound } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -54,6 +54,7 @@ export function AdminLayout() {
             <span className="font-bold text-lg">Linkou Admin</span>
           </Link>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -128,9 +129,9 @@ export function AdminLayout() {
             })}
           </nav>
 
-          {/* Footer */}
           <div className="p-4 border-t space-y-2">
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
             </div>
             <Button

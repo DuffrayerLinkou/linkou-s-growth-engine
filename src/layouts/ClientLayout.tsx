@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
@@ -47,6 +48,7 @@ export function ClientLayout() {
             <span className="font-bold text-lg">Linkou</span>
           </Link>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -117,7 +119,8 @@ export function ClientLayout() {
 
           {/* Footer */}
           <div className="p-4 border-t space-y-2">
-            <div className="hidden lg:block">
+            <div className="hidden lg:flex items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
             </div>
             <Button

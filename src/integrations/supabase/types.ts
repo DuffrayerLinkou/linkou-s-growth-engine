@@ -466,6 +466,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          reference_id: string | null
+          reference_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          reference_id?: string | null
+          reference_type?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          reference_id?: string | null
+          reference_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
