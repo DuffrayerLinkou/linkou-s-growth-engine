@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
@@ -26,7 +25,6 @@ export function AuthForm() {
 
   const { signIn } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -82,7 +80,7 @@ export function AuthForm() {
           title: "Bem-vindo!",
           description: "Login realizado com sucesso.",
         });
-        navigate("/cliente");
+        // Redirecionamento é feito pelo Auth.tsx baseado na role
       }
     } finally {
       setIsLoading(false);
