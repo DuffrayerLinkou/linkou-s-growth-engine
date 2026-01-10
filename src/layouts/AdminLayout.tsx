@@ -15,9 +15,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
+import { UsersRound } from "lucide-react";
+
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
+  { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
 ];
 
 export function AdminLayout() {
