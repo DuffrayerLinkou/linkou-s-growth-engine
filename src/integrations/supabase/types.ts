@@ -823,6 +823,91 @@ export type Database = {
           },
         ]
       }
+      traffic_metrics: {
+        Row: {
+          alcance: number | null
+          client_id: string
+          cliques: number | null
+          created_at: string | null
+          created_by: string | null
+          custo_por_clique: number | null
+          custo_por_lead: number | null
+          custo_por_venda: number | null
+          frequencia: number | null
+          id: string
+          impressoes: number | null
+          investimento: number | null
+          month: number
+          quantidade_leads: number | null
+          quantidade_vendas: number | null
+          updated_at: string | null
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          alcance?: number | null
+          client_id: string
+          cliques?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          custo_por_clique?: number | null
+          custo_por_lead?: number | null
+          custo_por_venda?: number | null
+          frequencia?: number | null
+          id?: string
+          impressoes?: number | null
+          investimento?: number | null
+          month: number
+          quantidade_leads?: number | null
+          quantidade_vendas?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          alcance?: number | null
+          client_id?: string
+          cliques?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          custo_por_clique?: number | null
+          custo_por_lead?: number | null
+          custo_por_venda?: number | null
+          frequencia?: number | null
+          id?: string
+          impressoes?: number | null
+          investimento?: number | null
+          month?: number
+          quantidade_leads?: number | null
+          quantidade_vendas?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traffic_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traffic_metrics_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traffic_metrics_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
