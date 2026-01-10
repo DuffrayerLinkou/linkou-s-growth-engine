@@ -16,6 +16,8 @@ import {
   Mail,
   Route,
   ArrowRight,
+  FileText,
+  CheckSquare,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +90,23 @@ interface AuditLog {
   action: string;
   old_data: { phase?: string } | null;
   new_data: { phase?: string } | null;
+}
+
+interface TaskTemplate {
+  id: string;
+  journey_phase: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  order_index: number;
+  visible_to_client: boolean;
+  is_active: boolean;
+}
+
+interface Profile {
+  id: string;
+  full_name: string | null;
+  email: string;
 }
 
 const userSchema = z.object({
@@ -131,9 +151,18 @@ export default function ClientDetail() {
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
   const [isPhaseDialogOpen, setIsPhaseDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPhase, setSelectedPhase] = useState<Phase>("diagnostico");
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+  const [assignees, setAssignees] = useState<Profile[]>([]);
+  const [templateFormData, setTemplateFormData] = useState({
+    assigned_to: "",
+    base_date: new Date().toISOString().split("T")[0],
+    interval_days: 7,
+  });
   const { toast } = useToast();
 
   const [userFormData, setUserFormData] = useState({
@@ -217,10 +246,44 @@ export default function ClientDetail() {
     }
   };
 
+  const fetchTemplates = async (phase: Phase) => {
+    const { data, error } = await supabase
+      .from("task_templates")
+      .select("*")
+      .eq("journey_phase", phase)
+      .eq("is_active", true)
+      .order("order_index", { ascending: true });
+
+    if (!error && data) {
+      setTemplates(data as TaskTemplate[]);
+      setSelectedTemplates(data.map((t) => t.id));
+    }
+  };
+
+  const fetchAssignees = async () => {
+    // Fetch admin and account_manager users
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "account_manager"]);
+
+    if (roleError || !roleData) return;
+
+    const userIds = roleData.map((r) => r.user_id);
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", userIds);
+
+    if (profileData) {
+      setAssignees(profileData as Profile[]);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs()]);
+      await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs(), fetchAssignees()]);
       setIsLoading(false);
     };
     loadData();
@@ -405,6 +468,61 @@ export default function ClientDetail() {
     }
   };
 
+  const handleOpenTemplateDialog = async () => {
+    if (!client) return;
+    await fetchTemplates(client.phase);
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleCreateTasksFromTemplates = async () => {
+    if (!client || !user || selectedTemplates.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const selectedItems = templates.filter((t) => selectedTemplates.includes(t.id));
+      const baseDate = new Date(templateFormData.base_date);
+
+      const tasksToCreate = selectedItems.map((template, index) => {
+        const dueDate = new Date(baseDate);
+        dueDate.setDate(dueDate.getDate() + index * templateFormData.interval_days);
+
+        return {
+          client_id: id,
+          title: template.title,
+          description: template.description,
+          priority: template.priority,
+          journey_phase: template.journey_phase,
+          visible_to_client: template.visible_to_client,
+          assigned_to: templateFormData.assigned_to || null,
+          due_date: dueDate.toISOString().split("T")[0],
+          status: "todo",
+          created_by: user.id,
+        };
+      });
+
+      const { error } = await supabase.from("tasks").insert(tasksToCreate);
+
+      if (error) throw error;
+
+      toast({
+        title: "Tarefas criadas",
+        description: `${tasksToCreate.length} tarefas foram criadas com sucesso.`,
+      });
+
+      setIsTemplateDialogOpen(false);
+      setSelectedTemplates([]);
+    } catch (error) {
+      console.error("Error creating tasks:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar tarefas",
+        description: "Tente novamente.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteClient = async () => {
     try {
       const { error } = await supabase
@@ -515,12 +633,18 @@ export default function ClientDetail() {
                   Acompanhe e gerencie a fase atual do cliente.
                 </CardDescription>
               </div>
-              <Button onClick={() => {
-                setSelectedPhase(client.phase);
-                setIsPhaseDialogOpen(true);
-              }}>
-                Alterar Fase
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleOpenTemplateDialog}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Criar Tarefas do Template
+                </Button>
+                <Button onClick={() => {
+                  setSelectedPhase(client.phase);
+                  setIsPhaseDialogOpen(true);
+                }}>
+                  Alterar Fase
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <JourneyStepper currentPhase={client.phase} />
@@ -909,6 +1033,170 @@ export default function ClientDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Template Tasks Dialog */}
+      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-primary" />
+              Criar Tarefas do Template
+            </DialogTitle>
+            <DialogDescription>
+              Crie tarefas em lote para a fase "{getPhaseLabel(client.phase)}".
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {templates.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p>Nenhum template ativo para esta fase.</p>
+                <p className="text-sm">Crie templates em Admin → Templates.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Selecione os templates</Label>
+                  <div className="space-y-2 border rounded-lg p-3">
+                    {templates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="flex items-start gap-3 p-2 rounded hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={template.id}
+                          checked={selectedTemplates.includes(template.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedTemplates([...selectedTemplates, template.id]);
+                            } else {
+                              setSelectedTemplates(
+                                selectedTemplates.filter((id) => id !== template.id)
+                              );
+                            }
+                          }}
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor={template.id}
+                            className="font-medium cursor-pointer text-sm"
+                          >
+                            {template.order_index}. {template.title}
+                          </label>
+                          {template.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                              {template.description}
+                            </p>
+                          )}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {template.priority === "high"
+                            ? "Alta"
+                            : template.priority === "low"
+                            ? "Baixa"
+                            : template.priority === "urgent"
+                            ? "Urgente"
+                            : "Média"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedTemplates(templates.map((t) => t.id))}
+                    >
+                      Selecionar todos
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedTemplates([])}
+                    >
+                      Limpar seleção
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="assigned_to">Responsável</Label>
+                  <Select
+                    value={templateFormData.assigned_to}
+                    onValueChange={(value) =>
+                      setTemplateFormData({ ...templateFormData, assigned_to: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um responsável" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignees.map((assignee) => (
+                        <SelectItem key={assignee.id} value={assignee.id}>
+                          {assignee.full_name || assignee.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="base_date">Data base</Label>
+                    <Input
+                      id="base_date"
+                      type="date"
+                      value={templateFormData.base_date}
+                      onChange={(e) =>
+                        setTemplateFormData({ ...templateFormData, base_date: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="interval_days">Intervalo (dias)</Label>
+                    <Input
+                      id="interval_days"
+                      type="number"
+                      min="0"
+                      value={templateFormData.interval_days}
+                      onChange={(e) =>
+                        setTemplateFormData({
+                          ...templateFormData,
+                          interval_days: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  {selectedTemplates.length} tarefa(s) serão criadas
+                  {templateFormData.interval_days > 0 &&
+                    `, com intervalo de ${templateFormData.interval_days} dia(s) entre cada uma`}
+                  .
+                </p>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateTasksFromTemplates}
+              disabled={isSubmitting || selectedTemplates.length === 0}
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Criar {selectedTemplates.length} Tarefas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

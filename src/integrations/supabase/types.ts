@@ -560,6 +560,45 @@ export type Database = {
           },
         ]
       }
+      task_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          journey_phase: string
+          order_index: number | null
+          priority: string | null
+          title: string
+          updated_at: string | null
+          visible_to_client: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          journey_phase: string
+          order_index?: number | null
+          priority?: string | null
+          title: string
+          updated_at?: string | null
+          visible_to_client?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          journey_phase?: string
+          order_index?: number | null
+          priority?: string | null
+          title?: string
+          updated_at?: string | null
+          visible_to_client?: boolean | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to: string | null

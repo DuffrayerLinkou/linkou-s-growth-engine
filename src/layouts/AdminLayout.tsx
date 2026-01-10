@@ -11,6 +11,7 @@ import {
   UserPlus,
   CheckSquare,
   Calendar,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/admin/clientes", icon: Users, label: "Clientes" },
   { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
   { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
+  { href: "/admin/templates", icon: FileText, label: "Templates" },
   { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
 ];
 
