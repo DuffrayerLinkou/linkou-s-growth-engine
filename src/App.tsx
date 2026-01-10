@@ -18,7 +18,7 @@ import MinhaConta from "./pages/cliente/MinhaConta";
 import MinhaJornada from "./pages/cliente/MinhaJornada";
 import ClienteTarefas from "./pages/cliente/Tarefas";
 import ClienteAgendamentos from "./pages/cliente/Agendamentos";
-import ClienteExperimentos from "./pages/cliente/Experimentos";
+import ClienteMetricasTrafego from "./pages/cliente/MetricasTrafego";
 import ClienteAprendizados from "./pages/cliente/Aprendizados";
 import ClienteArquivos from "./pages/cliente/Arquivos";
 
@@ -61,7 +61,7 @@ const App = () => (
                 <Route path="minha-conta" element={<MinhaConta />} />
                 <Route path="minha-jornada" element={<MinhaJornada />} />
                 <Route path="tarefas" element={<ClienteTarefas />} />
-                <Route path="experimentos" element={<ClienteExperimentos />} />
+                <Route path="metricas-trafego" element={<ClienteMetricasTrafego />} />
                 <Route path="aprendizados" element={<ClienteAprendizados />} />
                 <Route path="arquivos" element={<ClienteArquivos />} />
                 <Route path="agendamentos" element={<ClienteAgendamentos />} />
