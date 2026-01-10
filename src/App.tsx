@@ -16,6 +16,8 @@ import NotFound from "./pages/NotFound";
 import ClienteDashboard from "./pages/cliente/Dashboard";
 import MinhaConta from "./pages/cliente/MinhaConta";
 import MinhaJornada from "./pages/cliente/MinhaJornada";
+import ClienteTarefas from "./pages/cliente/Tarefas";
+import ClienteAgendamentos from "./pages/cliente/Agendamentos";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -24,6 +26,8 @@ import AdminClients from "./pages/admin/Clients";
 import AdminClientDetail from "./pages/admin/ClientDetail";
 import AdminProjects from "./pages/admin/Projects";
 import AdminUsers from "./pages/admin/Users";
+import AdminTasks from "./pages/admin/Tasks";
+import AdminAppointments from "./pages/admin/Appointments";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +56,8 @@ const App = () => (
                 <Route index element={<ClienteDashboard />} />
                 <Route path="minha-conta" element={<MinhaConta />} />
                 <Route path="minha-jornada" element={<MinhaJornada />} />
+                <Route path="tarefas" element={<ClienteTarefas />} />
+                <Route path="agendamentos" element={<ClienteAgendamentos />} />
               </Route>
 
               {/* Admin routes */}
@@ -67,6 +73,8 @@ const App = () => (
                 <Route path="leads" element={<AdminLeads />} />
                 <Route path="clientes" element={<AdminClients />} />
                 <Route path="clientes/:id" element={<AdminClientDetail />} />
+                <Route path="tarefas" element={<AdminTasks />} />
+                <Route path="agendamentos" element={<AdminAppointments />} />
                 <Route path="projetos" element={<AdminProjects />} />
                 <Route path="usuarios" element={<AdminUsers />} />
               </Route>
