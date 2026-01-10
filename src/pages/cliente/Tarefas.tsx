@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 
-type TaskStatus = "backlog" | "in_progress" | "blocked" | "completed";
+type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
 type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
 
 interface Task {
@@ -34,6 +34,7 @@ interface Task {
 }
 
 const statusConfig: Record<TaskStatus, { label: string; color: string; icon: typeof Circle }> = {
+  todo: { label: "A Fazer", color: "bg-slate-500/20 text-slate-600", icon: Circle },
   backlog: { label: "Backlog", color: "bg-muted text-muted-foreground", icon: Circle },
   in_progress: { label: "Em Andamento", color: "bg-blue-500/20 text-blue-600", icon: Loader2 },
   blocked: { label: "Bloqueado", color: "bg-red-500/20 text-red-600", icon: Ban },
@@ -181,6 +182,7 @@ export default function ClienteTarefas() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>
+            <SelectItem value="todo">A Fazer</SelectItem>
             <SelectItem value="backlog">Backlog</SelectItem>
             <SelectItem value="in_progress">Em Andamento</SelectItem>
             <SelectItem value="blocked">Bloqueado</SelectItem>

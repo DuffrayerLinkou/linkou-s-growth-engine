@@ -39,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type TaskStatus = "backlog" | "in_progress" | "blocked" | "completed";
+type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
 type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
 
 interface Task {
@@ -59,6 +59,7 @@ interface Task {
 }
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
+  todo: { label: "A Fazer", color: "bg-slate-500/20 text-slate-600" },
   backlog: { label: "Backlog", color: "bg-muted text-muted-foreground" },
   in_progress: { label: "Em Andamento", color: "bg-blue-500/20 text-blue-600" },
   blocked: { label: "Bloqueado", color: "bg-red-500/20 text-red-600" },
@@ -79,7 +80,7 @@ const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: string }>
   transferencia: { label: "Transferência", color: "bg-green-500/20 text-green-600" },
 };
 
-const columns: TaskStatus[] = ["backlog", "in_progress", "blocked", "completed"];
+const columns: TaskStatus[] = ["todo", "backlog", "in_progress", "blocked", "completed"];
 
 export default function AdminTasks() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
