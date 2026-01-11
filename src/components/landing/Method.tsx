@@ -7,7 +7,7 @@ const phases = [
     phase: "01",
     title: "Diagnóstico",
     description:
-      "Auditoria completa do seu ecossistema atual. Entendemos onde você está, quais são os gargalos e oportunidades escondidas.",
+      "Antes de mexer em qualquer campanha, a gente entende onde você está. Quais são os buracos? Onde está vazando dinheiro? O que dá pra resolver rápido?",
     details: ["Análise de contas de anúncios", "Mapeamento de funil", "Identificação de quick wins"],
   },
   {
@@ -15,7 +15,7 @@ const phases = [
     phase: "02",
     title: "Estruturação",
     description:
-      "Construímos a fundação sólida. Tracking, pixel, CAPI, CRM, dashboards — tudo configurado para escalar.",
+      "Montamos a base que falta. Tracking funcionando, dados conectados, dashboards que fazem sentido. Sem isso, otimizar é chutar no escuro.",
     details: ["Setup técnico completo", "Integração de ferramentas", "Criação de dashboards"],
   },
   {
@@ -23,7 +23,7 @@ const phases = [
     phase: "03",
     title: "Operação Guiada",
     description:
-      "Gestão ativa com metodologia de experimentos. Testamos, medimos, aprendemos e iteramos continuamente.",
+      "Campanhas rodando, mas com método. Cada mudança é um experimento com hipótese, teste e aprendizado. Nada de 'mexer porque sim'.",
     details: ["Campanhas otimizadas", "Experimentos A/B", "Reuniões de acompanhamento"],
   },
   {
@@ -31,7 +31,7 @@ const phases = [
     phase: "04",
     title: "Transferência",
     description:
-      "Treinamos seu Ponto Focal para dominar o sistema. Você ganha autonomia sem perder performance.",
+      "Seu time aprende a operar o sistema. Você ganha autonomia de verdade — não fica preso a agência nenhuma, nem a nós.",
     details: ["Treinamento hands-on", "Documentação completa", "Suporte na transição"],
   },
 ];
@@ -46,7 +46,7 @@ export function Method() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Método Linkou
@@ -56,9 +56,20 @@ export function Method() {
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Um processo estruturado em 4 fases que transforma seu marketing em um 
-            sistema que aprende, evolui e — no final — você controla.
+            sistema que aprende, evolui e — no final — <span className="text-foreground font-medium">você controla</span>.
           </p>
         </motion.div>
+
+        {/* Intro paragraph */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-center text-muted-foreground max-w-3xl mx-auto mb-16"
+        >
+          A maioria dos negócios já investiu em tráfego. O problema não é falta de verba — <span className="text-foreground">é falta de estrutura</span>. Nosso método organiza o caos antes de otimizar.
+        </motion.p>
 
         {/* Phases */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
@@ -76,7 +87,7 @@ export function Method() {
                 <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary/50 to-transparent -translate-x-4" />
               )}
 
-              <div className="bg-card border border-border/50 rounded-2xl p-6 h-full hover:shadow-lg transition-shadow">
+              <div className="bg-card border border-border/50 rounded-2xl p-6 h-full hover:shadow-lg hover:scale-[1.02] transition-all duration-300">
                 {/* Phase Number & Icon */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">

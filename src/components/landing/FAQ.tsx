@@ -10,42 +10,42 @@ const faqs = [
   {
     question: "O que é o 'Ponto Focal'?",
     answer:
-      "O Ponto Focal é uma pessoa do seu time que treinamos para dominar todo o sistema de marketing e vendas que construímos. Essa pessoa será capaz de operar, analisar e otimizar as campanhas com autonomia. É assim que garantimos que você nunca fique refém de agência.",
+      "É alguém do seu time que a gente treina pra dominar o sistema. Pode ser um analista, um coordenador, quem você escolher. A ideia é simples: quando a gente sair, você continua rodando sem precisar de agência nenhuma.",
   },
   {
     question: "Vou ter acesso total às contas e dados?",
     answer:
-      "Sim, 100%. Todas as contas de anúncios, ferramentas e dashboards são criados em nome da sua empresa. Você é dono de tudo desde o primeiro dia. Trabalhamos com total transparência — você acompanha cada centavo investido e cada resultado gerado.",
+      "Sim, 100%. Todas as contas são criadas no seu nome. Você é dono de tudo desde o dia 1. Se a gente desaparecer amanhã, você não perde nada. Transparência total, sem letra miúda.",
   },
   {
     question: "Qual o prazo mínimo de contrato?",
     answer:
-      "Trabalhamos com contratos de 6 meses, que é o tempo mínimo para implementar as 4 fases do nosso método e transferir o conhecimento para seu time. Após esse período, você pode continuar em modelo de mentoria ou seguir 100% independente.",
+      "6 meses. Esse é o tempo pra implementar as 4 fases e transferir o conhecimento pro seu time. Depois disso, você decide: continua em mentoria, ou segue sozinho. Sem amarras.",
   },
   {
     question: "Quanto tempo até ver resultados?",
     answer:
-      "Resultados iniciais (quick wins) costumam aparecer nas primeiras semanas. Resultados consistentes e escaláveis geralmente surgem entre o segundo e terceiro mês, quando o ecossistema começa a 'aprender' com os dados acumulados.",
+      "Resultados rápidos (quick wins) costumam aparecer nas primeiras semanas. Resultados sólidos e escaláveis, entre o segundo e terceiro mês. A gente não promete milagre — promete método.",
   },
   {
     question: "Vocês trabalham com qual investimento mínimo em mídia?",
     answer:
-      "Recomendamos um investimento mínimo de R$ 10.000/mês em mídia para que os experimentos tenham volume estatístico relevante. Negócios com tickets muito altos podem operar com menos, desde que o volume de leads necessário seja compatível.",
+      "Recomendamos R$ 10.000/mês em mídia para que os experimentos tenham volume estatístico relevante. Negócios com tickets muito altos podem operar com menos, desde que o volume de leads necessário seja compatível.",
   },
   {
     question: "O que acontece se eu quiser parar antes do prazo?",
     answer:
-      "Você pode cancelar a qualquer momento. Todas as contas, dados e acessos permanecem com você. A única coisa que pedimos é um aviso prévio de 30 dias para uma transição organizada e transferência de conhecimento.",
+      "Você pode cancelar quando quiser. Tudo que foi construído — contas, dados, acessos — continua seu. Só pedimos 30 dias de aviso pra fazer uma transição organizada. Sem drama, sem briga.",
   },
   {
     question: "Vocês fazem os criativos das campanhas?",
     answer:
-      "Sim, produzimos os criativos (imagens, vídeos, copies) como parte do serviço de gestão de tráfego. Trabalhamos com metodologia de testes para descobrir quais formatos performam melhor para seu público específico.",
+      "Sim, produzimos os criativos (imagens, vídeos, copies) como parte do serviço de gestão de tráfego. Trabalhamos com metodologia de testes para descobrir quais formatos performam melhor para seu público.",
   },
   {
     question: "Como funciona a metodologia de experimentos?",
     answer:
-      "Cada otimização é tratada como um experimento científico: definimos hipótese, variação, métrica-alvo e prazo. Ao final, analisamos o resultado e decidimos juntos se mantemos, iteramos ou descartamos. Isso gera um histórico de aprendizados valiosos.",
+      "Cada otimização é tratada como um experimento: hipótese, teste, análise. Ao final, decidimos juntos se mantemos, iteramos ou descartamos. Isso gera um histórico de aprendizados que fica com você.",
   },
 ];
 
@@ -65,10 +65,10 @@ export function FAQ() {
             FAQ
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Perguntas frequentes
+            Dúvidas comuns (e respostas honestas)
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Tire suas dúvidas sobre como trabalhamos e o que você pode esperar.
+            Se você tá considerando, provavelmente tem algumas dessas perguntas. Aqui a gente responde <span className="text-foreground font-medium">sem rodeio</span>.
           </p>
         </motion.div>
 

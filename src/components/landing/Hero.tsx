@@ -37,14 +37,14 @@ export function Hero() {
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border bg-card/50 backdrop-blur-sm mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-sm font-medium text-muted-foreground">
-              Performance · Tráfego · Vendas
+              Para quem cansou de depender de agência
             </span>
           </motion.div>
 
@@ -60,6 +60,16 @@ export function Hero() {
             que aprendem e evoluem.
           </motion.h1>
 
+          {/* Secondary Line - NEW */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="text-base md:text-lg text-foreground/80 mb-4 max-w-3xl mx-auto"
+          >
+            Se você sente que investe em tráfego, mas não sabe de onde vem cada venda — e se preocupa em ficar na mão de terceiros — <span className="text-primary font-medium">a gente resolve isso.</span>
+          </motion.p>
+
           {/* Subheadline */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -67,8 +77,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
           >
-            Ecossistemas de tráfego e vendas que aprendem. Você não fica refém de agência. 
-            Treinamos seu ponto focal para assumir.
+            Construímos sistemas de marketing que você entende, acompanha e, no final, <span className="font-medium text-foreground">controla</span>. Seu ponto focal sai treinado para tocar o dia a dia.
           </motion.p>
 
           {/* CTAs */}
@@ -78,14 +87,19 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Button
-              size="lg"
-              onClick={() => scrollToSection("#contato")}
-              className="text-base font-semibold px-8 h-12 group"
-            >
-              Quero uma auditoria
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            <div className="flex flex-col items-center">
+              <Button
+                size="lg"
+                onClick={() => scrollToSection("#contato")}
+                className="text-base font-semibold px-8 h-12 group"
+              >
+                Quero uma auditoria gratuita
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+              <span className="text-xs text-muted-foreground mt-2">
+                Sem compromisso. Você sai com clareza mesmo que não avancemos.
+              </span>
+            </div>
             <Button
               size="lg"
               variant="outline"
@@ -105,10 +119,10 @@ export function Hero() {
             className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 pt-16 border-t"
           >
             {[
-              { value: "150+", label: "Campanhas Otimizadas" },
-              { value: "R$ 2M+", label: "Em Vendas Geradas" },
-              { value: "35%", label: "Redução de CAC Médio" },
-              { value: "100%", label: "Transparência" },
+              { value: "150+", label: "negócios com tráfego organizado" },
+              { value: "R$ 2M+", label: "em vendas rastreadas de ponta a ponta" },
+              { value: "35%", label: "menos desperdício em mídia (média)" },
+              { value: "100%", label: "de acesso — tudo é seu desde o dia 1" },
             ].map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-2xl md:text-3xl font-bold text-primary mb-1">
