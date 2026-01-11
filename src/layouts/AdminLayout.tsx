@@ -63,7 +63,7 @@ export function AdminLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou Admin"
-              className="h-8 w-auto"
+              className="h-10 w-auto"
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export function AdminLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou"
-              className="h-8 w-auto"
+              className="h-10 w-auto"
             />
             {isAdmin && (
               <span className="ml-auto px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full flex items-center gap-1">
@@ -106,9 +106,17 @@ export function AdminLayout() {
           {/* User Info */}
           <div className="p-4 border-b mt-16 lg:mt-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={profile.full_name || "Avatar"}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
                   {profile?.full_name || "Administrador"}
