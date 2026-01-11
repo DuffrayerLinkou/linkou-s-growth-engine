@@ -4,6 +4,9 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
+import { useTheme } from "@/hooks/useTheme";
+import logoRoxo from "@/assets/logo-linkou-roxo.png";
+import logoClaro from "@/assets/logo-linkou-claro.png";
 
 const navLinks = [
   { href: "#resultados", label: "Resultados" },
@@ -15,6 +18,7 @@ const navLinks = [
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme } = useTheme();
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -29,11 +33,12 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">L</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight">Linkou</span>
+          <Link to="/" className="flex items-center">
+            <img 
+              src={theme === "dark" ? logoClaro : logoRoxo} 
+              alt="Linkou - Auditoria e Consultoria de Tráfego"
+              className="h-8 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
