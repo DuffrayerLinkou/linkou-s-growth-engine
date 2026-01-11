@@ -39,6 +39,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -230,6 +231,8 @@ export default function ClientDetail() {
   const [fileSearch, setFileSearch] = useState("");
   const [fileFilter, setFileFilter] = useState("all");
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<string>("deliverable");
+  const [uploadDescription, setUploadDescription] = useState("");
   const { toast } = useToast();
 
   const [userFormData, setUserFormData] = useState({
@@ -2082,7 +2085,13 @@ export default function ClientDetail() {
       </Dialog>
 
       {/* Upload File Dialog */}
-      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+      <Dialog open={isUploadDialogOpen} onOpenChange={(open) => {
+        setIsUploadDialogOpen(open);
+        if (!open) {
+          setUploadCategory("deliverable");
+          setUploadDescription("");
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -2094,18 +2103,49 @@ export default function ClientDetail() {
             </DialogDescription>
           </DialogHeader>
 
-          <FileUploader
-            clientId={id!}
-            category="deliverable"
-            onUploadComplete={() => {
-              fetchFiles();
-              setIsUploadDialogOpen(false);
-              toast({
-                title: "Arquivo enviado",
-                description: "O arquivo foi enviado com sucesso.",
-              });
-            }}
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="upload-category">Categoria</Label>
+              <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deliverable">Entregável</SelectItem>
+                  <SelectItem value="campaign_asset">Mídia para Campanha</SelectItem>
+                  <SelectItem value="document_request">Documento Solicitado</SelectItem>
+                  <SelectItem value="general">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="upload-description">Descrição (opcional)</Label>
+              <Textarea
+                id="upload-description"
+                placeholder="Descreva o arquivo..."
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <FileUploader
+              clientId={id!}
+              category={uploadCategory as "general" | "campaign_asset" | "document_request" | "deliverable"}
+              description={uploadDescription}
+              onUploadComplete={() => {
+                fetchFiles();
+                setIsUploadDialogOpen(false);
+                setUploadCategory("deliverable");
+                setUploadDescription("");
+                toast({
+                  title: "Arquivo enviado",
+                  description: "O arquivo foi enviado com sucesso.",
+                });
+              }}
+            />
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
