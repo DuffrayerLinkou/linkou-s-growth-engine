@@ -13,6 +13,7 @@ import {
   Megaphone,
   FileDown,
   Star,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Métricas de Tráfego" },
   { href: "/cliente/campanhas", icon: Megaphone, label: "Campanhas" },
   { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
+  { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
