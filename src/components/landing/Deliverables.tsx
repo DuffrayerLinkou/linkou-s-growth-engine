@@ -68,17 +68,8 @@ export function Deliverables() {
   };
 
   return (
-    <section id="entregas" className="py-20 md:py-32 relative overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/images/deliverables-bg.png')" }}
-      />
-      
-      {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-background/90 dark:bg-background/95 backdrop-blur-[2px]" />
-      
-      <div className="container mx-auto px-4 relative z-10">
+    <section id="entregas" className="py-20 md:py-32 bg-secondary/30">
+      <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -107,7 +98,7 @@ export function Deliverables() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-2xl p-6 lg:p-8 hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
+              className="bg-card border border-border/50 rounded-2xl p-6 lg:p-8 hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
             >
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
