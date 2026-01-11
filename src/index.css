@@ -205,4 +205,20 @@
   .responsive-card-sm {
     @apply p-2 sm:p-3 md:p-4;
   }
+
+  /* Mobile table wrapper - prevents page overflow */
+  .table-mobile-scroll {
+    @apply overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Compact text for mobile */
+  .text-mobile-compact {
+    @apply text-xs sm:text-sm;
+  }
+
+  /* Touch-friendly spacing for mobile */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
 }

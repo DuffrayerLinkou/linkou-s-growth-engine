@@ -221,30 +221,30 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex gap-4"
+              className="flex gap-3"
             >
               {/* Timeline Line */}
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center border-2 flex-shrink-0",
+                    "w-8 h-8 rounded-full flex items-center justify-center border-2 flex-shrink-0",
                     status === "completed" && "bg-primary border-primary text-primary-foreground",
                     status === "current" && "bg-primary border-primary text-primary-foreground ring-2 ring-primary/20",
                     status === "upcoming" && "bg-muted border-muted-foreground/20 text-muted-foreground"
                   )}
                 >
                   {status === "completed" ? (
-                    <Check className="h-5 w-5" />
+                    <Check className="h-4 w-4" />
                   ) : status === "current" ? (
-                    <Circle className="h-4 w-4 fill-current" />
+                    <Circle className="h-3 w-3 fill-current" />
                   ) : (
-                    <span className="font-semibold text-sm">{index + 1}</span>
+                    <span className="font-semibold text-xs">{index + 1}</span>
                   )}
                 </div>
                 {!isLast && (
                   <div
                     className={cn(
-                      "w-0.5 flex-1 min-h-[60px]",
+                      "w-0.5 flex-1 min-h-[48px]",
                       status === "completed" ? "bg-primary" : "bg-muted"
                     )}
                   />
@@ -252,11 +252,11 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
               </div>
 
               {/* Content */}
-              <div className={cn("pb-6 flex-1", isLast && "pb-0")}>
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className={cn("pb-4 flex-1 min-w-0", isLast && "pb-0")}>
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p
                     className={cn(
-                      "font-medium",
+                      "font-medium text-sm",
                       status === "current" ? "text-primary" : status === "completed" ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
@@ -265,34 +265,34 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
                   
                   {/* Status Badge */}
                   {status === "completed" && (
-                    <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600">
-                      <Check className="h-3 w-3 mr-1" />
-                      Concluída
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-600">
+                      <Check className="h-2.5 w-2.5 mr-0.5" />
+                      OK
                     </Badge>
                   )}
                   {status === "current" && (
                     <Badge
                       variant="secondary"
                       className={cn(
-                        "text-xs",
+                        "text-[10px] px-1.5 py-0 h-5",
                         deadline.status === "overdue" && "bg-red-500/10 text-red-600",
                         deadline.status === "warning" && "bg-yellow-500/10 text-yellow-600",
                         (deadline.status === "ok" || deadline.status === "none") && "bg-blue-500/10 text-blue-600"
                       )}
                     >
-                      {deadline.status === "overdue" && `${deadline.daysLeft}d atrasado`}
-                      {deadline.status === "warning" && `${deadline.daysLeft}d restantes`}
-                      {deadline.status === "ok" && `${deadline.daysLeft}d restantes`}
-                      {deadline.status === "none" && "Em andamento"}
+                      {deadline.status === "overdue" && `${deadline.daysLeft}d atraso`}
+                      {deadline.status === "warning" && `${deadline.daysLeft}d`}
+                      {deadline.status === "ok" && `${deadline.daysLeft}d`}
+                      {deadline.status === "none" && "Atual"}
                     </Badge>
                   )}
                   {status === "upcoming" && (
-                    <Badge variant="outline" className="text-xs">Prevista</Badge>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">Prev.</Badge>
                   )}
                 </div>
                 
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                  <Calendar className="h-2.5 w-2.5" />
                   {formatDateRange(dates.start, dates.end)}
                 </p>
               </div>

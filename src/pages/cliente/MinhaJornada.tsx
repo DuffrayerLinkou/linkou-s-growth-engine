@@ -213,13 +213,13 @@ export default function MinhaJornada() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-4 sm:space-y-6 max-w-full lg:max-w-5xl">
       {/* Header */}
       <div>
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold tracking-tight"
+          className="text-2xl sm:text-3xl font-bold tracking-tight"
         >
           Minha Jornada
         </motion.h1>
@@ -227,7 +227,7 @@ export default function MinhaJornada() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-muted-foreground mt-1"
+          className="text-sm sm:text-base text-muted-foreground mt-1"
         >
           Acompanhe o progresso da sua jornada com a Linkou.
         </motion.p>
@@ -253,16 +253,16 @@ export default function MinhaJornada() {
         transition={{ delay: 0.2 }}
       >
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
               Linha do Tempo
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Visualize os prazos e o progresso de cada etapa da jornada
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             <JourneyTimeline 
               currentPhase={currentPhase} 
               phaseDates={phaseDates} 
@@ -403,27 +403,27 @@ export default function MinhaJornada() {
         transition={{ delay: 0.3 }}
       >
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   Tarefas desta Fase
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Tarefas da etapa "{getPhaseLabel(currentPhase)}"
                 </CardDescription>
               </div>
               {totalTasks > 0 && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Progresso</p>
-                    <p className="font-semibold">{completedTasks} de {totalTasks}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Progresso</p>
+                    <p className="font-semibold text-sm sm:text-base">{completedTasks} de {totalTasks}</p>
                   </div>
-                  <div className="w-20">
-                    <Progress value={progressPercentage} className="h-2" />
+                  <div className="w-16 sm:w-20">
+                    <Progress value={progressPercentage} className="h-1.5 sm:h-2" />
                   </div>
-                  <span className="text-sm font-medium min-w-[3ch]">{progressPercentage}%</span>
+                  <span className="text-xs sm:text-sm font-medium min-w-[3ch]">{progressPercentage}%</span>
                 </div>
               )}
             </div>
