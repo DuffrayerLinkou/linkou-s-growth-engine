@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Node {
@@ -67,12 +67,49 @@ const calculateConnections = (nodes: Node[], maxDistance: number): Connection[] 
   return connections;
 };
 
+// Calculate repulsion offset based on mouse position
+const calculateRepulsion = (
+  nodeX: number, 
+  nodeY: number, 
+  mouseX: number | undefined, 
+  mouseY: number | undefined,
+  repulsionRadius: number = 15,
+  repulsionStrength: number = 30
+): { x: number; y: number } => {
+  if (mouseX === undefined || mouseY === undefined) {
+    return { x: 0, y: 0 };
+  }
+  
+  const dx = nodeX - mouseX;
+  const dy = nodeY - mouseY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  if (distance > repulsionRadius || distance === 0) {
+    return { x: 0, y: 0 };
+  }
+  
+  const force = (1 - distance / repulsionRadius) * repulsionStrength;
+  const angle = Math.atan2(dy, dx);
+  
+  return {
+    x: Math.cos(angle) * force,
+    y: Math.sin(angle) * force,
+  };
+};
+
 export function HeroBackground({ mousePosition }: HeroBackgroundProps) {
   const [nodes] = useState(() => generateNodes(35));
   const [interactiveNodes, setInteractiveNodes] = useState<Node[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const nodeIdCounter = useRef(100);
   const lastNodeTime = useRef(0);
+
+  // Calculate repulsion offsets for all nodes
+  const repulsionOffsets = useMemo(() => {
+    return nodes.map(node => 
+      calculateRepulsion(node.x, node.y, mousePosition?.x, mousePosition?.y)
+    );
+  }, [nodes, mousePosition]);
 
   // Only calculate connections for static nodes
   useEffect(() => {
@@ -157,49 +194,62 @@ export function HeroBackground({ mousePosition }: HeroBackgroundProps) {
         ))}
       </svg>
 
-      {/* Animated nodes */}
-      {nodes.map((node) => (
-        <motion.div
-          key={node.id}
-          className="absolute rounded-full bg-primary"
-          style={{
-            left: `${node.x}%`,
-            top: `${node.y}%`,
-            width: node.size,
-            height: node.size,
-          }}
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{
-            opacity: [0.2, 0.6, 0.2],
-            scale: [1, 1.2, 1],
-            x: [0, 15, -10, 5, 0],
-            y: [0, -10, 15, -5, 0],
-          }}
-          transition={{
-            duration: node.duration,
-            delay: node.delay,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        >
-          {/* Glow effect for larger nodes */}
-          {node.size > 8 && (
-            <motion.div
-              className="absolute inset-0 rounded-full bg-primary blur-md"
-              animate={{
-                opacity: [0.3, 0.6, 0.3],
-                scale: [1.5, 2, 1.5],
-              }}
-              transition={{
-                duration: node.duration * 0.8,
+      {/* Animated nodes with magnetic repulsion */}
+      {nodes.map((node, index) => {
+        const offset = repulsionOffsets[index];
+        return (
+          <motion.div
+            key={node.id}
+            className="absolute rounded-full bg-primary"
+            style={{
+              left: `${node.x}%`,
+              top: `${node.y}%`,
+              width: node.size,
+              height: node.size,
+            }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{
+              opacity: [0.2, 0.6, 0.2],
+              scale: [1, 1.2, 1],
+              x: offset.x,
+              y: offset.y,
+            }}
+            transition={{
+              opacity: {
+                duration: node.duration,
                 delay: node.delay,
                 repeat: Infinity,
                 ease: "easeInOut",
-              }}
-            />
-          )}
-        </motion.div>
-      ))}
+              },
+              scale: {
+                duration: node.duration,
+                delay: node.delay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              },
+              x: { type: "spring", stiffness: 150, damping: 15 },
+              y: { type: "spring", stiffness: 150, damping: 15 },
+            }}
+          >
+            {/* Glow effect for larger nodes */}
+            {node.size > 8 && (
+              <motion.div
+                className="absolute inset-0 rounded-full bg-primary blur-md"
+                animate={{
+                  opacity: [0.3, 0.6, 0.3],
+                  scale: [1.5, 2, 1.5],
+                }}
+                transition={{
+                  duration: node.duration * 0.8,
+                  delay: node.delay,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            )}
+          </motion.div>
+        );
+      })}
 
       {/* Interactive nodes created by mouse */}
       <AnimatePresence>
