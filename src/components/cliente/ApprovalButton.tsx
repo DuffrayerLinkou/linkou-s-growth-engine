@@ -67,6 +67,8 @@ export function ApprovalButton({
           approved_by_ponto_focal: true,
           approved_at: new Date().toISOString(),
           approved_by: profile?.id,
+          // Quando campanha é aprovada pelo ponto focal, muda status para "running"
+          ...(entityType === "campaign" ? { status: "running" } : {}),
         })
         .eq("id", entityId);
 
