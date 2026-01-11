@@ -62,7 +62,7 @@ const clientSchema = z.object({
   status: z.string().default("ativo"),
 });
 
-import { clientSegments } from "@/lib/segments-config";
+import { clientSegments, getSegmentIcon } from "@/lib/segments-config";
 import {
   clientStatusLabels as statusLabels,
   clientStatusColors as statusColors,
@@ -301,22 +301,33 @@ export default function AdminClients() {
                     onClick={() => navigate(`/admin/clientes/${client.id}`)}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="font-medium flex items-center gap-2">
-                          {client.name}
-                          {client.user_count! > 0 && !client.has_ponto_focal && (
-                            <span title="Sem ponto focal">
-                              <AlertCircle className="h-4 w-4 text-destructive" />
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {(() => {
+                        const SegmentIcon = getSegmentIcon(client.segment);
+                        return (
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                              <SegmentIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="font-medium flex items-center gap-2">
+                              {client.name}
+                              {client.user_count! > 0 && !client.has_ponto_focal && (
+                                <span title="Sem ponto focal">
+                                  <AlertCircle className="h-4 w-4 text-destructive" />
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {client.segment || "-"}
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const Icon = getSegmentIcon(client.segment);
+                          return <Icon className="h-4 w-4 text-muted-foreground" />;
+                        })()}
+                        {client.segment || "-"}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -395,11 +406,17 @@ export default function AdminClients() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {segments.map((seg) => (
-                      <SelectItem key={seg} value={seg}>
-                        {seg}
-                      </SelectItem>
-                    ))}
+                    {segments.map((seg) => {
+                      const Icon = getSegmentIcon(seg);
+                      return (
+                        <SelectItem key={seg} value={seg}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            {seg}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

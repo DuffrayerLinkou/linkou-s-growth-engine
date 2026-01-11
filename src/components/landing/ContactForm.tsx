@@ -25,7 +25,7 @@ const leadSchema = z.object({
   objective: z.string().max(1000).optional(),
 });
 
-import { landingSegments as segments } from "@/lib/segments-config";
+import { landingSegments as segments, getSegmentIcon } from "@/lib/segments-config";
 
 const investments = [
   "Até R$ 5.000/mês",
@@ -252,11 +252,17 @@ export function ContactForm() {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        {segments.map((seg) => (
-                          <SelectItem key={seg} value={seg}>
-                            {seg}
-                          </SelectItem>
-                        ))}
+                        {segments.map((seg) => {
+                          const Icon = getSegmentIcon(seg);
+                          return (
+                            <SelectItem key={seg} value={seg}>
+                              <span className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                {seg}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
