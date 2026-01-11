@@ -228,32 +228,34 @@ export default function ClienteTarefas() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Minhas Tarefas</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">Minhas Tarefas</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Acompanhe o andamento das tarefas do seu projeto
           </p>
         </div>
         
         {/* View Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             variant={viewMode === "list" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("list")}
+            className="text-xs sm:text-sm"
           >
-            <List className="h-4 w-4 mr-2" />
+            <List className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Lista
           </Button>
           <Button
             variant={viewMode === "kanban" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("kanban")}
+            className="text-xs sm:text-sm"
           >
-            <Columns3 className="h-4 w-4 mr-2" />
+            <Columns3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Kanban
           </Button>
         </div>
@@ -376,25 +378,25 @@ export default function ClienteTarefas() {
       </Card>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-wrap gap-2 sm:gap-4">
         <Button
           variant={showOnlyMyTasks ? "default" : "outline"}
           size="sm"
           onClick={() => setShowOnlyMyTasks(!showOnlyMyTasks)}
-          className={showOnlyMyTasks ? "bg-amber-500 hover:bg-amber-600" : ""}
+          className={cn("text-xs sm:text-sm", showOnlyMyTasks ? "bg-amber-500 hover:bg-amber-600" : "")}
         >
-          <Star className={cn("h-4 w-4 mr-2", showOnlyMyTasks && "fill-current")} />
-          Minhas Tarefas
+          <Star className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2", showOnlyMyTasks && "fill-current")} />
+          <span className="hidden xs:inline">Minhas </span>Tarefas
           {myPendingTasks.length > 0 && (
-            <Badge variant="secondary" className="ml-2 bg-white/20">
+            <Badge variant="secondary" className="ml-1.5 sm:ml-2 bg-white/20 text-[10px] sm:text-xs">
               {myPendingTasks.length}
             </Badge>
           )}
         </Button>
         <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-          <SelectTrigger className="w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar por fase" />
+          <SelectTrigger className="w-[140px] sm:w-[200px] text-xs sm:text-sm">
+            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <SelectValue placeholder="Fase" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as Fases</SelectItem>
@@ -406,8 +408,8 @@ export default function ClienteTarefas() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por status" />
+          <SelectTrigger className="w-[130px] sm:w-[200px] text-xs sm:text-sm">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Status</SelectItem>

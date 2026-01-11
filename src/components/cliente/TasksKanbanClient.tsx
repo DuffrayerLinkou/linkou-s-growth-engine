@@ -95,7 +95,7 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0">
         {statusColumns.map((status) => {
           const config = statusConfig[status];
           const columnTasks = getTasksByStatus(status);
@@ -103,7 +103,7 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
           return (
             <div
               key={status}
-              className="flex-shrink-0 w-[260px] md:w-[280px]"
+              className="flex-shrink-0 w-[220px] sm:w-[240px] md:w-[260px] lg:w-[280px]"
             >
               {/* Column Header */}
               <div
@@ -126,12 +126,12 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
               {/* Droppable Area */}
               <Droppable droppableId={status}>
                 {(provided, snapshot) => (
-                  <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
+                  <ScrollArea className="h-[calc(100vh-300px)] sm:h-[calc(100vh-340px)] md:h-[calc(100vh-380px)] min-h-[300px] sm:min-h-[350px] md:min-h-[400px]">
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "min-h-[400px] rounded-b-lg border border-dashed p-2 transition-colors",
+                        "min-h-[300px] sm:min-h-[350px] md:min-h-[400px] rounded-b-lg border border-dashed p-1.5 sm:p-2 transition-colors",
                         snapshot.isDraggingOver
                           ? "border-primary bg-primary/5"
                           : "border-muted-foreground/20"
@@ -165,17 +165,17 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                                   overdue && !isMyTask && "border-red-500/50 bg-red-500/5"
                                 )}
                               >
-                                <CardContent className="p-3 space-y-2">
+                                <CardContent className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
                                   {/* Title + My Task indicator */}
-                                  <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start justify-between gap-1.5 sm:gap-2">
                                     <h4 className={cn(
-                                      "font-medium text-sm line-clamp-2",
+                                      "font-medium text-xs sm:text-sm line-clamp-2",
                                       task.status === "completed" && "line-through text-muted-foreground"
                                     )}>
                                       {task.title}
                                     </h4>
                                     {isMyTask && (
-                                      <Star className="h-4 w-4 text-amber-500 fill-amber-500 flex-shrink-0" />
+                                      <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 fill-amber-500 flex-shrink-0" />
                                     )}
                                   </div>
 

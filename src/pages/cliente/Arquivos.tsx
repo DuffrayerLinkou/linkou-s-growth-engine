@@ -230,12 +230,12 @@ export default function ClienteArquivos() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Arquivos & Entregáveis</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">Arquivos & Entregáveis</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Acesse os arquivos e materiais do seu projeto
           </p>
         </div>
@@ -244,12 +244,12 @@ export default function ClienteArquivos() {
         {canUploadFiles && (
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 flex-shrink-0 text-sm">
                 <Upload className="h-4 w-4" />
-                Enviar Arquivo
+                <span className="hidden xs:inline">Enviar </span>Arquivo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg mx-4 sm:mx-auto">
               <DialogHeader>
                 <DialogTitle>Enviar Arquivo</DialogTitle>
               </DialogHeader>
@@ -293,55 +293,55 @@ export default function ClienteArquivos() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FolderOpen className="h-5 w-5 text-primary" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+                <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{totalFiles}</p>
-                <p className="text-xs text-muted-foreground">Total de Arquivos</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{totalFiles}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total Arquivos</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <FileDown className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10">
+                <FileDown className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{formatFileSize(totalSize)}</p>
-                <p className="text-xs text-muted-foreground">Tamanho Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <User className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{myUploadsCount}</p>
-                <p className="text-xs text-muted-foreground">Seus Envios</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{formatFileSize(totalSize)}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Tamanho Total</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Users className="h-5 w-5 text-green-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{teamUploadsCount}</p>
-                <p className="text-xs text-muted-foreground">Da Equipe</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{myUploadsCount}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Seus Envios</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{teamUploadsCount}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Da Equipe</p>
               </div>
             </div>
           </CardContent>
@@ -349,54 +349,56 @@ export default function ClienteArquivos() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:flex-wrap">
+        <div className="relative flex-1 min-w-0 max-w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar arquivos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 text-sm"
           />
         </div>
-        <Select value={originFilter} onValueChange={setOriginFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Origem" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="mine">Meus Envios</SelectItem>
-            <SelectItem value="team">Da Equipe</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Tipo de arquivo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Tipos</SelectItem>
-            <SelectItem value="document">Documentos</SelectItem>
-            <SelectItem value="spreadsheet">Planilhas</SelectItem>
-            <SelectItem value="image">Imagens</SelectItem>
-            <SelectItem value="video">Vídeos</SelectItem>
-          </SelectContent>
-        </Select>
-        {projects.length > 0 && (
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Projeto" />
+        <div className="flex flex-wrap gap-2 sm:gap-4">
+          <Select value={originFilter} onValueChange={setOriginFilter}>
+            <SelectTrigger className="w-[130px] sm:w-[160px] text-xs sm:text-sm">
+              <SelectValue placeholder="Origem" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os Projetos</SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project} value={project}>
-                  {project}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="mine">Meus Envios</SelectItem>
+              <SelectItem value="team">Da Equipe</SelectItem>
             </SelectContent>
           </Select>
-        )}
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[130px] sm:w-[160px] text-xs sm:text-sm">
+              <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Tipos</SelectItem>
+              <SelectItem value="document">Documentos</SelectItem>
+              <SelectItem value="spreadsheet">Planilhas</SelectItem>
+              <SelectItem value="image">Imagens</SelectItem>
+              <SelectItem value="video">Vídeos</SelectItem>
+            </SelectContent>
+          </Select>
+          {projects.length > 0 && (
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-[130px] sm:w-[160px] text-xs sm:text-sm">
+                <SelectValue placeholder="Projeto" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Projetos</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project} value={project}>
+                    {project}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       {/* Files Grid */}
@@ -417,7 +419,7 @@ export default function ClienteArquivos() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredFiles.map((file, index) => {
             const ext = getFileExtension(file.name);
             const config = fileTypeConfig[ext] || { icon: File, color: "text-muted-foreground" };

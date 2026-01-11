@@ -190,4 +190,19 @@
   .glass-dark {
     @apply bg-card/60 backdrop-blur-lg border border-border/30;
   }
+
+  /* Responsive scrolling for Kanban boards */
+  .kanban-scroll {
+    @apply overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Responsive card padding utility */
+  .responsive-card {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+
+  .responsive-card-sm {
+    @apply p-2 sm:p-3 md:p-4;
+  }
 }

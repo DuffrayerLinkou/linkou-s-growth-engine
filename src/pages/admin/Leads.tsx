@@ -306,23 +306,23 @@ export default function AdminLeads() {
   }, [leads]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leads</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gerencie os leads capturados pela landing page.
           </p>
         </div>
-        <Button onClick={fetchLeads} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={fetchLeads} variant="outline" size="sm" className="flex-shrink-0 text-xs sm:text-sm">
+          <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
           Atualizar
         </Button>
       </div>
 
       {/* Controls Row */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2 items-center">
           <DateRangeFilter
             dateRange={dateRange}
@@ -339,13 +339,13 @@ export default function AdminLeads() {
 
         {/* View Toggle */}
         <Tabs value={viewMode} onValueChange={(v) => handleViewModeChange(v as "list" | "kanban")}>
-          <TabsList>
-            <TabsTrigger value="list" className="gap-2">
-              <List className="h-4 w-4" />
+          <TabsList className="h-8 sm:h-9">
+            <TabsTrigger value="list" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <List className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Lista
             </TabsTrigger>
-            <TabsTrigger value="kanban" className="gap-2">
-              <LayoutGrid className="h-4 w-4" />
+            <TabsTrigger value="kanban" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Kanban
             </TabsTrigger>
           </TabsList>
@@ -353,7 +353,7 @@ export default function AdminLeads() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
+      <div className="grid gap-2 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         {Object.entries(statusLabels).map(([status, label]) => {
           const count = statusCounts[status] || 0;
           return (
@@ -364,9 +364,9 @@ export default function AdminLeads() {
               }`}
               onClick={() => handleStatusFilterChange(status === statusFilter ? "all" : status)}
             >
-              <CardHeader className="pb-2 p-4">
-                <CardDescription className="text-xs">{label}</CardDescription>
-                <CardTitle className="text-xl">{count}</CardTitle>
+              <CardHeader className="p-2.5 sm:p-4 pb-2">
+                <CardDescription className="text-[10px] sm:text-xs truncate">{label}</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{count}</CardTitle>
               </CardHeader>
             </Card>
           );
@@ -374,21 +374,21 @@ export default function AdminLeads() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, email ou telefone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-sm"
           />
         </div>
         {viewMode === "list" && (
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filtrar status" />
+            <SelectTrigger className="w-full sm:w-[160px] text-xs sm:text-sm">
+              <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>

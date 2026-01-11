@@ -162,65 +162,65 @@ export default function ClienteCampanhas() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Campanhas</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">Campanhas</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Acompanhe as campanhas de marketing do seu projeto
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Megaphone className="h-5 w-5 text-primary" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+                <Megaphone className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{totalCampaigns}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{totalCampaigns}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Play className="h-5 w-5 text-green-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                <Play className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{activeCampaigns}</p>
-                <p className="text-xs text-muted-foreground">Ativas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Target className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{completedCampaigns}</p>
-                <p className="text-xs text-muted-foreground">Concluídas</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{activeCampaigns}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Ativas</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{approvedCampaigns}</p>
-                <p className="text-xs text-muted-foreground">Aprovadas</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{completedCampaigns}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Concluídas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/10">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{approvedCampaigns}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Aprovadas</p>
               </div>
             </div>
           </CardContent>
