@@ -4,31 +4,31 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const results = [
   {
-    icon: TrendingUp,
-    metric: "+312%",
-    title: "Leads que o comercial consegue atender",
-    description: "Construtora que achava que o problema era volume. Era qualificação. Ajustamos o funil e os leads passaram a converter.",
+    icon: DollarSign,
+    metric: "26%",
+    title: "do orçamento de mídia é desperdiçado em média",
+    description: "Mais de 1/4 do investimento em ads vai para cliques que nunca convertem. Uma auditoria identifica onde está o vazamento.",
     color: "text-primary",
   },
   {
-    icon: DollarSign,
-    metric: "R$ 1.2M",
-    title: "Origem de cada venda mapeada",
-    description: "Incorporadora que não sabia qual canal trazia resultado. Hoje, cada venda tem rastreabilidade completa.",
-    color: "text-success",
-  },
-  {
     icon: Target,
-    metric: "-42%",
-    title: "Desperdício cortado do orçamento",
-    description: "Concessionária que gastava em campanhas que não geravam nada. Auditoria mostrou onde estava o buraco.",
+    metric: "65%",
+    title: "das empresas não confiam nos próprios dados",
+    description: "Tracking mal configurado gera métricas que não refletem a realidade. Sem dados confiáveis, toda decisão é um chute.",
     color: "text-chart-3",
   },
   {
+    icon: TrendingUp,
+    metric: "37%",
+    title: "dos leads são perdidos por falta de atribuição",
+    description: "Quando você não sabe qual canal gerou o lead, não consegue otimizar o que funciona. A origem se perde no caminho.",
+    color: "text-success",
+  },
+  {
     icon: Users,
-    metric: "8x",
-    title: "Retorno sobre o investimento em consultoria",
-    description: "Negócio B2B que precisava provar ROI. Montamos o tracking do zero e documentamos cada conversão.",
+    metric: "3 em 4",
+    title: "contas de ads têm erros de configuração básica",
+    description: "Pixels quebrados, conversões duplicadas, eventos mal configurados. A maioria das contas nunca foi auditada corretamente.",
     color: "text-chart-4",
   },
 ];
@@ -46,13 +46,13 @@ export function Results() {
           className="text-center mb-16"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-            Resultados
+            O problema
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            O que muda após uma auditoria bem feita
+            Por que uma auditoria de tráfego é urgente
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Nossos clientes param de gastar no escuro e passam a tomar <span className="text-foreground font-medium">decisões com base em dados reais</span>. Alguns exemplos.
+            Esses são dados de mercado sobre os problemas mais comuns em contas de mídia paga. Se algum deles parece familiar, <span className="text-foreground font-medium">vale uma conversa</span>.
           </p>
         </motion.div>
 
@@ -92,7 +92,7 @@ export function Results() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="text-center text-sm text-muted-foreground mt-8"
         >
-          * Resultados reais de clientes. Cada negócio tem seu contexto — esses números são exemplos, não promessas.
+          * Dados baseados em benchmarks de mercado e experiência em auditorias. Cada negócio tem seu contexto.
         </motion.p>
       </div>
     </section>
