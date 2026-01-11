@@ -17,7 +17,7 @@ export function Footer() {
               <img 
                 src={theme === "dark" ? logoClaro : logoRoxo} 
                 alt="Linkou"
-                className="h-10 md:h-12 w-auto"
+                className="block w-[220px] md:w-[260px] h-auto max-w-none object-contain"
               />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm mb-4">

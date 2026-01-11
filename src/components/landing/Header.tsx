@@ -33,11 +33,11 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center shrink-0">
             <img 
               src={theme === "dark" ? logoClaro : logoRoxo} 
               alt="Linkou - Auditoria e Consultoria de Tráfego"
-              className="h-8 md:h-10 w-auto"
+              className="block w-[180px] md:w-[220px] lg:w-[260px] h-auto shrink-0 max-w-none object-contain"
             />
           </Link>
 
