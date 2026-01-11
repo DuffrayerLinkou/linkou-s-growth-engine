@@ -168,37 +168,38 @@ export function ContractTab({ clientId }: ContractTabProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Modelo de Contrato
+        {/* CardHeader responsivo - empilhado em mobile */}
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="truncate">Modelo de Contrato</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm mt-1">
               {clientId 
                 ? "Contratos do cliente selecionado" 
-                : "Preencha as informações e envie automaticamente para o email do cliente"}
+                : "Preencha e envie para o cliente"}
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Contrato
+              <Button size="sm" className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Novo Contrato</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
-                <DialogTitle>Criar Novo Contrato</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">Criar Novo Contrato</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label>Cliente</Label>
+                    <Label className="text-xs sm:text-sm">Cliente</Label>
                     <Select value={selectedClient} onValueChange={setSelectedClient} disabled={!!clientId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9 sm:h-10">
                         <SelectValue placeholder="Selecione o cliente" />
                       </SelectTrigger>
                       <SelectContent>
@@ -211,23 +212,24 @@ export function ContractTab({ clientId }: ContractTabProps) {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Nome do Gestor</Label>
+                    <Label className="text-xs sm:text-sm">Nome do Gestor</Label>
                     <Input
                       value={managerName}
                       onChange={(e) => setManagerName(e.target.value)}
                       placeholder="Seu nome completo"
+                      className="h-9 sm:h-10"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Conteúdo do Contrato</Label>
+                  <Label className="text-xs sm:text-sm">Conteúdo do Contrato</Label>
                   <Textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
+                    className="min-h-[250px] sm:min-h-[400px] font-mono text-xs sm:text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use os placeholders: [NOME_CLIENTE], [SUA_EMPRESA], [NOME_GESTOR], [DATA_ATUAL], [CIDADE]
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Use: [NOME_CLIENTE], [SUA_EMPRESA], [NOME_GESTOR], [DATA_ATUAL], [CIDADE]
                   </p>
                 </div>
                 <Button
@@ -241,71 +243,80 @@ export function ContractTab({ clientId }: ContractTabProps) {
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">Carregando...</div>
           ) : contractsError ? (
-            <div className="text-center py-8 text-destructive">
+            <div className="text-center py-6 sm:py-8 text-destructive text-sm">
               Não foi possível carregar os contratos.
             </div>
           ) : contracts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
               {clientId ? "Nenhum contrato para este cliente" : "Nenhum contrato criado ainda"}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {contracts.map((contract: any) => {
                 const status = statusConfig[contract.status as keyof typeof statusConfig] || statusConfig.draft;
                 const StatusIcon = status.icon;
                 return (
                   <div
                     key={contract.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                    className="flex flex-col gap-3 p-3 sm:p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-muted">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{getClientName(contract.client_id)}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {contract.created_at ? format(new Date(contract.created_at), "dd/MM/yyyy") : "Sem data"}
-                          {contract.manager_name && (
-                            <span>• Gestor: {contract.manager_name}</span>
-                          )}
+                    {/* Linha 1: Cliente e status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="p-1.5 sm:p-2 rounded-lg bg-muted shrink-0">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{getClientName(contract.client_id)}</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                            <Clock className="h-3 w-3" />
+                            {contract.created_at ? format(new Date(contract.created_at), "dd/MM/yy") : "Sem data"}
+                            {contract.manager_name && (
+                              <span className="hidden sm:inline">• {contract.manager_name}</span>
+                            )}
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className={status.color}>
+                      <Badge className={`${status.color} shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2`}>
                         <StatusIcon className="h-3 w-3 mr-1" />
-                        {status.label}
+                        <span className="hidden sm:inline">{status.label}</span>
                       </Badge>
+                    </div>
+                    
+                    {/* Linha 2: Ações */}
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-8 text-xs"
                         onClick={() => setViewingContract(contract)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3 w-3 mr-1" />
+                        Ver
                       </Button>
                       {contract.status === "draft" && (
                         <Button
                           size="sm"
+                          className="h-8 text-xs flex-1 sm:flex-none"
                           onClick={() => updateStatusMutation.mutate({ id: contract.id, status: "sent" })}
                         >
-                          <Send className="h-4 w-4 mr-1" />
-                          Marcar como Enviado
+                          <Send className="h-3 w-3 mr-1" />
+                          <span className="truncate">Enviado</span>
                         </Button>
                       )}
                       {contract.status === "sent" && (
                         <Button
                           size="sm"
                           variant="outline"
+                          className="h-8 text-xs flex-1 sm:flex-none"
                           onClick={() => updateStatusMutation.mutate({ id: contract.id, status: "signed" })}
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Marcar como Assinado
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          <span className="truncate">Assinado</span>
                         </Button>
                       )}
                     </div>

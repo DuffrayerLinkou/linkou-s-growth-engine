@@ -168,72 +168,72 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5" />
               Briefings de Clientes
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm mt-1">
               {clientId ? "Briefings do cliente selecionado" : "Gerencie os briefings dos seus clientes"}
             </CardDescription>
           </div>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Briefing
+          <Button onClick={openNew} size="sm" className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Novo Briefing</span>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">Carregando...</div>
           ) : briefingsError ? (
-            <div className="text-center py-8 text-destructive">
+            <div className="text-center py-6 sm:py-8 text-destructive text-sm">
               Não foi possível carregar os briefings.
             </div>
           ) : briefings.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
               {clientId ? "Nenhum briefing para este cliente" : "Nenhum briefing criado ainda"}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {briefings.map((briefing: any) => {
                 const status = statusConfig[briefing.status as keyof typeof statusConfig] || statusConfig.pending;
                 const StatusIcon = status.icon;
                 return (
                   <Card key={briefing.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-base">{briefing.title}</CardTitle>
-                          <CardDescription>{getClientName(briefing.client_id)}</CardDescription>
+                    <CardHeader className="p-3 sm:pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <CardTitle className="text-sm sm:text-base truncate">{briefing.title}</CardTitle>
+                          <CardDescription className="text-xs">{getClientName(briefing.client_id)}</CardDescription>
                         </div>
-                        <Badge className={status.color}>
+                        <Badge className={`${status.color} shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2`}>
                           <StatusIcon className="h-3 w-3 mr-1" />
-                          {status.label}
+                          <span className="hidden sm:inline">{status.label}</span>
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="space-y-2 text-sm">
+                    <CardContent className="p-3 pt-0 sm:pt-2">
+                      <div className="space-y-1.5 text-xs sm:text-sm">
                         {briefing.nicho && (
-                          <p><span className="font-medium">Nicho:</span> {briefing.nicho}</p>
+                          <p className="truncate"><span className="font-medium">Nicho:</span> {briefing.nicho}</p>
                         )}
                         {briefing.budget_mensal && (
                           <p><span className="font-medium">Budget:</span> R$ {Number(briefing.budget_mensal).toLocaleString('pt-BR')}</p>
                         )}
-                        <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                        <div className="flex items-center gap-1 text-muted-foreground text-[10px] sm:text-xs">
                           <Clock className="h-3 w-3" />
                           {safeFormatDate(briefing.created_at)}
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(briefing)}>
+                      <div className="flex gap-2 mt-3">
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openEdit(briefing)}>
                           <Edit className="h-3 w-3 mr-1" />
                           Editar
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteId(briefing.id)}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setDeleteId(briefing.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -248,16 +248,16 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
 
       {/* Form Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingBriefing ? "Editar Briefing" : "Novo Briefing"}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingBriefing ? "Editar Briefing" : "Novo Briefing"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label className="text-xs sm:text-sm">Cliente *</Label>
                 <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -268,46 +268,46 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Título *</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Título *</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Nicho</Label>
-                <Input value={form.nicho} onChange={(e) => setForm({ ...form, nicho: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Nicho</Label>
+                <Input value={form.nicho} onChange={(e) => setForm({ ...form, nicho: e.target.value })} className="h-9 sm:h-10" />
               </div>
               <div className="space-y-2">
-                <Label>Budget Mensal (R$)</Label>
-                <Input type="number" value={form.budget_mensal} onChange={(e) => setForm({ ...form, budget_mensal: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Budget Mensal (R$)</Label>
+                <Input type="number" value={form.budget_mensal} onChange={(e) => setForm({ ...form, budget_mensal: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Público-Alvo</Label>
-              <Textarea value={form.publico_alvo} onChange={(e) => setForm({ ...form, publico_alvo: e.target.value })} />
+              <Label className="text-xs sm:text-sm">Público-Alvo</Label>
+              <Textarea value={form.publico_alvo} onChange={(e) => setForm({ ...form, publico_alvo: e.target.value })} className="min-h-[80px]" />
             </div>
             <div className="space-y-2">
-              <Label>Objetivos</Label>
-              <Textarea value={form.objetivos} onChange={(e) => setForm({ ...form, objetivos: e.target.value })} />
+              <Label className="text-xs sm:text-sm">Objetivos</Label>
+              <Textarea value={form.objetivos} onChange={(e) => setForm({ ...form, objetivos: e.target.value })} className="min-h-[80px]" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Concorrentes</Label>
-                <Textarea value={form.concorrentes} onChange={(e) => setForm({ ...form, concorrentes: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Concorrentes</Label>
+                <Textarea value={form.concorrentes} onChange={(e) => setForm({ ...form, concorrentes: e.target.value })} className="min-h-[80px]" />
               </div>
               <div className="space-y-2">
-                <Label>Diferenciais</Label>
-                <Textarea value={form.diferenciais} onChange={(e) => setForm({ ...form, diferenciais: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Diferenciais</Label>
+                <Textarea value={form.diferenciais} onChange={(e) => setForm({ ...form, diferenciais: e.target.value })} className="min-h-[80px]" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+              <Label className="text-xs sm:text-sm">Observações</Label>
+              <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} className="min-h-[80px]" />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-xs sm:text-sm">Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

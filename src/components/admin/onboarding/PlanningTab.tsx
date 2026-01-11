@@ -186,83 +186,83 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Target className="h-4 w-4 sm:h-5 sm:w-5" />
               Planos Estratégicos
             </CardTitle>
-            <CardDescription>
-              {clientId ? "Planos do cliente selecionado" : "Gerencie os planos estratégicos dos seus clientes"}
+            <CardDescription className="text-xs sm:text-sm mt-1">
+              {clientId ? "Planos do cliente selecionado" : "Gerencie os planos estratégicos"}
             </CardDescription>
           </div>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Plano
+          <Button onClick={openNew} size="sm" className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Novo Plano</span>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">Carregando...</div>
           ) : plansError ? (
-            <div className="text-center py-8 text-destructive">
+            <div className="text-center py-6 sm:py-8 text-destructive text-sm">
               Não foi possível carregar os planos.
             </div>
           ) : plans.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
               {clientId ? "Nenhum plano para este cliente" : "Nenhum plano criado ainda"}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan: any) => {
                 const status = statusConfig[plan.status as keyof typeof statusConfig] || statusConfig.draft;
                 const StatusIcon = status.icon;
                 return (
                   <Card key={plan.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-base">{plan.title}</CardTitle>
-                          <CardDescription>{getClientName(plan.client_id)}</CardDescription>
+                    <CardHeader className="p-3 sm:pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <CardTitle className="text-sm sm:text-base truncate">{plan.title}</CardTitle>
+                          <CardDescription className="text-xs">{getClientName(plan.client_id)}</CardDescription>
                         </div>
-                        <Badge className={status.color}>
+                        <Badge className={`${status.color} shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2`}>
                           <StatusIcon className="h-3 w-3 mr-1" />
-                          {status.label}
+                          <span className="hidden sm:inline">{status.label}</span>
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="space-y-2 text-sm">
+                    <CardContent className="p-3 pt-0 sm:pt-2">
+                      <div className="space-y-1.5 text-xs sm:text-sm">
                         {plan.campaign_types && plan.campaign_types.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {plan.campaign_types.slice(0, 3).map((type: string) => (
-                              <Badge key={type} variant="secondary" className="text-xs">
+                            {plan.campaign_types.slice(0, 2).map((type: string) => (
+                              <Badge key={type} variant="secondary" className="text-[10px] sm:text-xs px-1.5">
                                 {campaignTypes.find(t => t.id === type)?.label.split(" ")[0] || type}
                               </Badge>
                             ))}
-                            {plan.campaign_types.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">+{plan.campaign_types.length - 3}</Badge>
+                            {plan.campaign_types.length > 2 && (
+                              <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5">+{plan.campaign_types.length - 2}</Badge>
                             )}
                           </div>
                         )}
                         {plan.timeline_start && plan.timeline_end && (
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-muted-foreground text-[10px] sm:text-xs">
                             {safeFormatDate(plan.timeline_start, "dd/MM/yy", "")} - {safeFormatDate(plan.timeline_end, "dd/MM/yy", "")}
                           </p>
                         )}
-                        <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                        <div className="flex items-center gap-1 text-muted-foreground text-[10px] sm:text-xs">
                           <Clock className="h-3 w-3" />
                           {safeFormatDate(plan.created_at)}
                         </div>
                       </div>
-                      <div className="flex gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => openEdit(plan)}>
+                      <div className="flex gap-2 mt-3">
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openEdit(plan)}>
                           <Edit className="h-3 w-3 mr-1" />
                           Editar
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteId(plan.id)}>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setDeleteId(plan.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -277,16 +277,16 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
 
       {/* Form Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingPlan ? "Editar Plano" : "Novo Plano Estratégico"}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingPlan ? "Editar Plano" : "Novo Plano Estratégico"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label className="text-xs sm:text-sm">Cliente *</Label>
                 <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -297,45 +297,49 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Título *</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Título *</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Objetivos (um por linha)</Label>
+              <Label className="text-xs sm:text-sm">Objetivos (um por linha)</Label>
               <Textarea 
                 value={form.objectives} 
                 onChange={(e) => setForm({ ...form, objectives: e.target.value })}
-                placeholder="Aumentar vendas em 30%&#10;Reduzir CAC em 20%&#10;Gerar 500 leads/mês"
+                placeholder="Aumentar vendas em 30%&#10;Reduzir CAC em 20%"
+                className="min-h-[80px]"
               />
             </div>
             <div className="space-y-2">
-              <Label>KPIs (um por linha)</Label>
+              <Label className="text-xs sm:text-sm">KPIs (um por linha)</Label>
               <Textarea 
                 value={form.kpis} 
                 onChange={(e) => setForm({ ...form, kpis: e.target.value })}
-                placeholder="ROAS > 3x&#10;CPA < R$ 50&#10;CTR > 2%"
+                placeholder="ROAS > 3x&#10;CPA < R$ 50"
+                className="min-h-[80px]"
               />
             </div>
             <div className="space-y-2">
-              <Label>Personas e Segmentações</Label>
+              <Label className="text-xs sm:text-sm">Personas e Segmentações</Label>
               <Textarea 
                 value={form.personas} 
                 onChange={(e) => setForm({ ...form, personas: e.target.value })}
-                placeholder="Descreva o público-alvo e segmentações"
+                placeholder="Descreva o público-alvo"
+                className="min-h-[80px]"
               />
             </div>
             <div className="space-y-2">
-              <Label>Estratégia de Funil</Label>
+              <Label className="text-xs sm:text-sm">Estratégia de Funil</Label>
               <Textarea 
                 value={form.funnel_strategy} 
                 onChange={(e) => setForm({ ...form, funnel_strategy: e.target.value })}
-                placeholder="Descreva a estratégia para cada etapa do funil"
+                placeholder="Descreva a estratégia"
+                className="min-h-[80px]"
               />
             </div>
             <div className="space-y-2">
-              <Label>Tipos de Campanha</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <Label className="text-xs sm:text-sm">Tipos de Campanha</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {campaignTypes.map((type) => (
                   <div key={type.id} className="flex items-center space-x-2">
                     <Checkbox
@@ -343,27 +347,27 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                       checked={form.campaign_types.includes(type.id)}
                       onCheckedChange={() => toggleCampaignType(type.id)}
                     />
-                    <Label htmlFor={type.id} className="text-sm font-normal cursor-pointer">
+                    <Label htmlFor={type.id} className="text-xs sm:text-sm font-normal cursor-pointer">
                       {type.label}
                     </Label>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Data Início</Label>
-                <Input type="date" value={form.timeline_start} onChange={(e) => setForm({ ...form, timeline_start: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Data Início</Label>
+                <Input type="date" value={form.timeline_start} onChange={(e) => setForm({ ...form, timeline_start: e.target.value })} className="h-9 sm:h-10" />
               </div>
               <div className="space-y-2">
-                <Label>Data Fim</Label>
-                <Input type="date" value={form.timeline_end} onChange={(e) => setForm({ ...form, timeline_end: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Data Fim</Label>
+                <Input type="date" value={form.timeline_end} onChange={(e) => setForm({ ...form, timeline_end: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-xs sm:text-sm">Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

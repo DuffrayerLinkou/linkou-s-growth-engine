@@ -107,14 +107,14 @@ const essentialMetrics = [
 
 export function GuideTab() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
             Guia de Onboarding
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             Checklist completo e boas práticas para um onboarding de sucesso
           </CardDescription>
         </CardHeader>
@@ -122,32 +122,32 @@ export function GuideTab() {
 
       {/* Checklist */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             Checklist de Onboarding
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 pt-0">
           <Accordion type="multiple" className="space-y-2">
             {checklistSections.map((section, index) => (
-              <AccordionItem key={index} value={`section-${index}`} className="border rounded-lg px-4">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <section.icon className="h-4 w-4 text-primary" />
+              <AccordionItem key={index} value={`section-${index}`} className="border rounded-lg px-3 sm:px-4">
+                <AccordionTrigger className="hover:no-underline py-2 sm:py-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+                      <section.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                     </div>
-                    <span className="font-medium">{section.title}</span>
-                    <Badge variant="secondary" className="ml-2">
-                      {section.items.length} itens
+                    <span className="font-medium text-xs sm:text-sm text-left">{section.title}</span>
+                    <Badge variant="secondary" className="ml-auto text-[10px] sm:text-xs px-1.5 sm:px-2">
+                      {section.items.length}
                     </Badge>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <ul className="space-y-2 pl-12 pb-2">
+                  <ul className="space-y-1.5 sm:space-y-2 pl-8 sm:pl-12 pb-2">
                     {section.items.map((item, itemIndex) => (
-                      <li key={itemIndex} className="flex items-start gap-2 text-sm">
-                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-2 flex-shrink-0" />
+                      <li key={itemIndex} className="flex items-start gap-2 text-xs sm:text-sm">
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-1.5 sm:mt-2 flex-shrink-0" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -160,20 +160,20 @@ export function GuideTab() {
       </Card>
 
       {/* Best Practices */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
         {bestPractices.map((practice, index) => (
           <Card key={index}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <practice.icon className="h-4 w-4 text-primary" />
+            <CardHeader className="p-3 sm:pb-3">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <practice.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                 {practice.title}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
+            <CardContent className="p-3 pt-0">
+              <ul className="space-y-1.5 sm:space-y-2">
                 {practice.tips.map((tip, tipIndex) => (
-                  <li key={tipIndex} className="flex items-start gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                  <li key={tipIndex} className="flex items-start gap-2 text-xs sm:text-sm">
+                    <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600 flex-shrink-0 mt-0.5" />
                     <span>{tip}</span>
                   </li>
                 ))}
@@ -185,33 +185,33 @@ export function GuideTab() {
 
       {/* Essential Metrics */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             Métricas Essenciais
           </CardTitle>
-          <CardDescription>
-            Principais métricas para acompanhar o desempenho das campanhas
+          <CardDescription className="text-xs sm:text-sm">
+            Principais métricas para acompanhar desempenho
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
+        <CardContent className="p-3 sm:p-4 pt-0">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
             {essentialMetrics.map((group, groupIndex) => (
-              <div key={groupIndex} className="space-y-3">
+              <div key={groupIndex} className="space-y-2 sm:space-y-3">
                 <div className="flex items-center gap-2">
-                  <group.icon className="h-4 w-4 text-primary" />
-                  <h4 className="font-medium">{group.category}</h4>
+                  <group.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <h4 className="font-medium text-xs sm:text-sm">{group.category}</h4>
                 </div>
                 <div className="space-y-2">
                   {group.metrics.map((metric, metricIndex) => (
-                    <div key={metricIndex} className="p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{metric.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          Ideal: {metric.ideal}
+                    <div key={metricIndex} className="p-2 sm:p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-medium text-xs sm:text-sm truncate">{metric.name}</span>
+                        <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 shrink-0">
+                          {metric.ideal}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{metric.description}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">{metric.description}</p>
                     </div>
                   ))}
                 </div>
