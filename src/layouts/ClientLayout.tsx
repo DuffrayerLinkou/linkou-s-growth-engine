@@ -56,7 +56,7 @@ export function ClientLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou"
-              className="h-10 w-auto"
+              className="w-[120px] h-auto"
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export function ClientLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou"
-              className="h-10 w-auto"
+              className="w-[140px] h-auto"
             />
           </div>
 
