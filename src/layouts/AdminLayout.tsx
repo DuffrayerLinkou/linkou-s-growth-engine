@@ -63,7 +63,7 @@ export function AdminLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou Admin"
-              className="h-10 w-auto"
+              className="w-[120px] h-auto"
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export function AdminLayout() {
             <img 
               src={theme === "dark" ? logoBranca : logoRoxo}
               alt="Linkou"
-              className="h-10 w-auto"
+              className="w-[140px] h-auto"
             />
             {isAdmin && (
               <span className="ml-auto px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full flex items-center gap-1">
