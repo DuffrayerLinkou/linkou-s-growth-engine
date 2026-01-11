@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
-import logoRoxo from "@/assets/logo-linkou-roxo.png";
-import logoClaro from "@/assets/logo-linkou-claro.png";
+import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
+import logoClaro from "@/assets/logo-linkou-horizontal-preto.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -17,7 +17,7 @@ export function Footer() {
               <img 
                 src={theme === "dark" ? logoClaro : logoRoxo} 
                 alt="Linkou"
-                className="h-20 md:h-24 w-auto"
+                className="h-10 md:h-12 w-auto"
               />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm mb-4">
