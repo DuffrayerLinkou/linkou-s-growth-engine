@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroBackground } from "./HeroBackground";
 import { useRef, useState, useCallback } from "react";
@@ -69,45 +69,24 @@ export function Hero() {
             A <span className="text-primary font-medium">Agência Linkou</span> ajuda construtoras, incorporadoras e concessionárias a entender, organizar e otimizar seu tráfego dentro de um <span className="text-primary font-medium">ecossistema de vendas</span> que faz sentido.
           </motion.p>
 
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
-          >
-            Antes de escalar, você precisa de estrutura. Mostramos onde está o problema, organizamos os dados e treinamos seu time para ter <span className="font-medium text-foreground">controle real</span>.
-          </motion.p>
-
-          {/* CTAs */}
+          {/* CTA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-col items-center justify-center"
           >
-            <div className="flex flex-col items-center">
-              <Button
-                size="lg"
-                onClick={() => scrollToSection("#contato")}
-                className="text-base font-semibold px-8 h-12 group"
-              >
-                Quero uma auditoria gratuita
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <span className="text-xs text-muted-foreground mt-2">
-                Primeiro passo é entender seu cenário. Sem compromisso financeiro.
-              </span>
-            </div>
             <Button
               size="lg"
-              variant="outline"
-              onClick={() => scrollToSection("#metodo")}
-              className="text-base font-medium px-8 h-12"
+              onClick={() => scrollToSection("#contato")}
+              className="text-base font-semibold px-8 h-12 group"
             >
-              <Play className="mr-2 h-4 w-4" />
-              Ver como funciona
+              Quero uma auditoria gratuita
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
+            <span className="text-xs text-muted-foreground mt-3">
+              Primeiro passo é entender seu cenário. Sem compromisso financeiro.
+            </span>
           </motion.div>
 
           {/* Stats */}
@@ -118,10 +97,10 @@ export function Hero() {
             className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 pt-16 border-t"
           >
             {[
-              { value: "150+", label: "auditorias realizadas" },
-              { value: "R$ 2M+", label: "em desperdício identificado e corrigido" },
-              { value: "35%", label: "de economia média após auditoria" },
-              { value: "100%", label: "de transparência — tudo é seu" },
+              { value: "25-40%", label: "do orçamento de mídia é desperdiçado em campanhas mal configuradas" },
+              { value: "72%", label: "das empresas não têm tracking corretamente implementado" },
+              { value: "5x", label: "mais caro converter leads sem rastreabilidade clara" },
+              { value: "60%", label: "das contas de ads têm problemas de atribuição que escondem o ROI real" },
             ].map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-2xl md:text-3xl font-bold text-primary mb-1">
