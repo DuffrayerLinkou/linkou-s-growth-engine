@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
+import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
+import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
@@ -24,6 +27,7 @@ export function AuthForm() {
   });
 
   const { signIn } = useAuth();
+  const { theme } = useTheme();
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,9 +100,11 @@ export function AuthForm() {
         className="glass p-8 rounded-2xl border shadow-2xl"
       >
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <span className="text-primary-foreground font-bold text-xl">L</span>
-          </div>
+          <img 
+            src={theme === "dark" ? logoBranca : logoRoxo}
+            alt="Linkou"
+            className="w-[140px] h-auto mx-auto mb-4"
+          />
           <h1 className="text-2xl font-bold tracking-tight">
             Bem-vindo de volta
           </h1>
