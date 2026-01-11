@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Node {
   id: number;
@@ -8,6 +8,8 @@ interface Node {
   size: number;
   delay: number;
   duration: number;
+  isInteractive?: boolean;
+  createdAt?: number;
 }
 
 interface Connection {
@@ -51,27 +53,69 @@ const calculateConnections = (nodes: Node[], maxDistance: number): Connection[] 
 
 export function HeroBackground() {
   const [nodes] = useState(() => generateNodes(20));
+  const [interactiveNodes, setInteractiveNodes] = useState<Node[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const nodeIdCounter = useRef(100);
+  const lastNodeTime = useRef(0);
 
+  // Recalculate connections including interactive nodes
   useEffect(() => {
-    setConnections(calculateConnections(nodes, 35));
-  }, [nodes]);
+    const allNodes = [...nodes, ...interactiveNodes];
+    setConnections(calculateConnections(allNodes, 35));
+  }, [nodes, interactiveNodes]);
+
+  // Auto-remove old interactive nodes
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      setInteractiveNodes(prev => 
+        prev.filter(node => Date.now() - (node.createdAt || 0) < 4000)
+      );
+    }, 500);
+    
+    return () => clearInterval(cleanup);
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastNodeTime.current < 120) return;
+    lastNodeTime.current = now;
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    const newNode: Node = {
+      id: nodeIdCounter.current++,
+      x,
+      y,
+      size: 3 + Math.random() * 5,
+      delay: 0,
+      duration: 3 + Math.random() * 2,
+      isInteractive: true,
+      createdAt: Date.now(),
+    };
+    
+    setInteractiveNodes(prev => [...prev, newNode].slice(-15));
+  }, []);
 
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 overflow-hidden pointer-events-none"
+      className="absolute inset-0 overflow-hidden"
       aria-hidden="true"
+      onMouseMove={handleMouseMove}
     >
       {/* Base gradient blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* SVG for connection lines */}
       <svg 
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full pointer-events-none"
         preserveAspectRatio="none"
       >
         <defs>
@@ -147,6 +191,46 @@ export function HeroBackground() {
           )}
         </motion.div>
       ))}
+
+      {/* Interactive nodes created by mouse */}
+      <AnimatePresence>
+        {interactiveNodes.map((node) => (
+          <motion.div
+            key={node.id}
+            className="absolute rounded-full bg-primary pointer-events-none"
+            style={{
+              left: `${node.x}%`,
+              top: `${node.y}%`,
+              width: node.size,
+              height: node.size,
+              marginLeft: -node.size / 2,
+              marginTop: -node.size / 2,
+            }}
+            initial={{ opacity: 0.8, scale: 0 }}
+            animate={{
+              opacity: [0.8, 0.5, 0],
+              scale: [0, 1.5, 2.5],
+            }}
+            exit={{ opacity: 0, scale: 0 }}
+            transition={{
+              duration: 3,
+              ease: "easeOut",
+            }}
+          >
+            <motion.div
+              className="absolute inset-0 rounded-full bg-primary blur-md"
+              animate={{
+                opacity: [0.6, 0.3, 0],
+                scale: [1, 2, 3],
+              }}
+              transition={{
+                duration: 3,
+                ease: "easeOut",
+              }}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* Central accent glow */}
       <motion.div
