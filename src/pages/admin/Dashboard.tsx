@@ -926,16 +926,16 @@ export default function AdminDashboard() {
       </motion.div>
 
       {/* BLOCO 4 e 5: Grid de duas colunas */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* BLOCO 4: Fila de Ação Expandida */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                Requer Atenção
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 shrink-0" />
+                <span className="truncate">Requer Atenção</span>
                 {totalAlerts > 0 && (
-                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-full">
+                  <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium bg-amber-500/10 text-amber-600 rounded-full shrink-0">
                     {totalAlerts}
                   </span>
                 )}
@@ -954,24 +954,24 @@ export default function AdminDashboard() {
                   <p>Tudo em dia! Nenhum item requer atenção.</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[280px] sm:max-h-[320px] overflow-y-auto overflow-x-hidden pr-1">
                   {/* Clientes com fase atrasada - CRÍTICO */}
                   {clientsOverduePhase?.map((client) => (
                     <button
                       key={`overdue-${client.id}`}
                       onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left overflow-hidden"
                     >
                       <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           "{client.name}" - fase atrasada
                         </p>
-                        <p className="text-xs text-red-500">
-                          {client.daysOverdue} dias além do prazo em {phaseLabels[client.phase]}
+                        <p className="text-[10px] sm:text-xs text-red-500 truncate">
+                          {client.daysOverdue}d além em {phaseLabels[client.phase]}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                     </button>
                   ))}
 
@@ -980,18 +980,18 @@ export default function AdminDashboard() {
                     <button
                       key={`task-${task.id}`}
                       onClick={() => navigate(`/admin/tarefas`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-left overflow-hidden"
                     >
                       <ListTodo className="h-4 w-4 text-red-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           "{task.title}" vencida
                         </p>
-                        <p className="text-xs text-red-500">
-                          {task.clients?.name} • Vencida {formatRelativeTime(task.due_date)}
+                        <p className="text-[10px] sm:text-xs text-red-500 truncate">
+                          {task.clients?.name} • {formatRelativeTime(task.due_date)}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                     </button>
                   ))}
 
@@ -1000,18 +1000,18 @@ export default function AdminDashboard() {
                     <button
                       key={`lead-${lead.id}`}
                       onClick={() => navigate(`/admin/leads?status=new`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors text-left"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors text-left overflow-hidden"
                     >
                       <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           Lead "{lead.name}" sem contato
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                           {formatRelativeTime(lead.created_at)}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                     </button>
                   ))}
 
@@ -1020,16 +1020,16 @@ export default function AdminDashboard() {
                     <button
                       key={`focal-${client.id}`}
                       onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 hover:bg-violet-500/10 transition-colors text-left"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 hover:bg-violet-500/10 transition-colors text-left overflow-hidden"
                     >
                       <UserPlus className="h-4 w-4 text-violet-500 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           "{client.name}" sem ponto focal
                         </p>
-                        <p className="text-xs text-muted-foreground">Definir responsável</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Definir responsável</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1041,10 +1041,10 @@ export default function AdminDashboard() {
         {/* BLOCO 5: Agendamentos da Semana */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <CalendarClock className="h-5 w-5 text-muted-foreground" />
-                Próximos Agendamentos
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                <span className="truncate">Próximos Agendamentos</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1060,35 +1060,35 @@ export default function AdminDashboard() {
                   <p>Nenhum agendamento nos próximos 7 dias.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 overflow-x-hidden">
                   {weekAppointments.map((apt: any) => (
                     <button
                       key={apt.id}
                       onClick={() => navigate("/admin/agendamentos")}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-border"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-border overflow-hidden"
                     >
-                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                      <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0 ${
                         isToday(new Date(apt.appointment_date)) ? 'bg-primary/10' : 'bg-muted'
                       }`}>
-                        <Calendar className={`h-5 w-5 ${
+                        <Calendar className={`h-4 w-4 sm:h-5 sm:w-5 ${
                           isToday(new Date(apt.appointment_date)) ? 'text-primary' : 'text-muted-foreground'
                         }`} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{apt.title}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">{apt.title}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                           {apt.clients?.name} • {formatAppointmentDate(apt.appointment_date)}
                         </p>
                       </div>
                       <Badge 
                         variant="outline" 
-                        className={`shrink-0 ${
+                        className={`shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 ${
                           apt.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' :
                           apt.status === 'pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
                           'bg-muted text-muted-foreground'
                         }`}
                       >
-                        {apt.status === 'confirmed' ? 'Confirmado' : apt.status === 'pending' ? 'Pendente' : apt.status}
+                        {apt.status === 'confirmed' ? 'OK' : apt.status === 'pending' ? 'Pend.' : apt.status}
                       </Badge>
                     </button>
                   ))}
@@ -1100,14 +1100,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* BLOCO 6 e 7: Grid de duas colunas */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* BLOCO 6: Tarefas por Cliente */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <ListTodo className="h-5 w-5 text-muted-foreground" />
-                Tarefas Pendentes por Cliente
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <ListTodo className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                <span className="truncate">Tarefas Pendentes</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1123,7 +1123,7 @@ export default function AdminDashboard() {
                   <p>Nenhuma tarefa pendente.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3 overflow-x-hidden">
                   {tasksByClient.map((client) => {
                     const pending = client.total - client.completed;
                     const percentage = client.total > 0 ? Math.round((client.completed / client.total) * 100) : 0;
@@ -1131,18 +1131,18 @@ export default function AdminDashboard() {
                       <button
                         key={client.id}
                         onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                        className="w-full text-left hover:bg-muted/50 rounded-lg p-3 transition-colors border border-transparent hover:border-border"
+                        className="w-full text-left hover:bg-muted/50 rounded-lg p-2 sm:p-3 transition-colors border border-transparent hover:border-border overflow-hidden"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium truncate flex-1">{client.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            {client.completed}/{client.total} ({percentage}%)
+                        <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
+                          <span className="text-xs sm:text-sm font-medium truncate flex-1 min-w-0">{client.name}</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                            {percentage}%
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Progress value={percentage} className="h-2 flex-1" />
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                          <Progress value={percentage} className="h-1.5 sm:h-2 w-full" />
                           {client.overdue > 0 && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-red-500/10 text-red-600 border-red-500/30 shrink-0">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-red-500/10 text-red-600 border-red-500/30 shrink-0 w-fit">
                               {client.overdue} venc.
                             </Badge>
                           )}
@@ -1159,10 +1159,10 @@ export default function AdminDashboard() {
         {/* BLOCO 7: Atividade Recente */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                Atividade Recente
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                <span className="truncate">Atividade Recente</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1178,7 +1178,7 @@ export default function AdminDashboard() {
                   <p>Nenhuma atividade registrada ainda.</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[280px] sm:max-h-[320px] overflow-y-auto overflow-x-hidden pr-1">
                   {recentActivity.map((log) => (
                     <button
                       key={log.id}
@@ -1189,20 +1189,20 @@ export default function AdminDashboard() {
                           navigate(`/admin/leads`);
                         }
                       }}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-transparent hover:border-border"
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-transparent hover:border-border overflow-hidden"
                     >
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                         {getActionIcon(log.action)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                           {getActionText(log)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           {formatRelativeTime(log.created_at)}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
                     </button>
                   ))}
                 </div>
