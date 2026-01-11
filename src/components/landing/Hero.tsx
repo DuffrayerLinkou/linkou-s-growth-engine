@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AnimatedCTA } from "./AnimatedCTA";
 
 export function Hero() {
   const scrollToSection = (href: string) => {
@@ -70,14 +70,21 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="flex flex-col items-center justify-center"
           >
-            <Button
+            <AnimatedCTA
               size="lg"
               onClick={() => scrollToSection("#contato")}
-              className="text-base font-semibold px-8 h-12 group"
+              className="group"
             >
               Quero uma auditoria gratuita
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+              <motion.span
+                className="inline-block"
+                initial={{ x: 0 }}
+                whileHover={{ x: 4 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </motion.span>
+            </AnimatedCTA>
             <span className="text-xs text-muted-foreground mt-3">
               Primeiro passo é entender seu cenário. Sem compromisso financeiro.
             </span>
