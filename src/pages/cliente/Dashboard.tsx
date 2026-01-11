@@ -28,21 +28,21 @@ import { format, isPast, isToday, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 
-import { phaseLabels, phaseColors as importedPhaseColors } from "@/lib/status-config";
+import { 
+  phaseLabels, 
+  phaseColorsDashboard as phaseColors,
+  campaignStatusLabels,
+  campaignStatusColors 
+} from "@/lib/status-config";
+import { 
+  statusConfig, 
+  priorityConfig 
+} from "@/lib/task-config";
 
-const phaseColors: Record<string, string> = {
-  diagnostico: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  estruturacao: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  operacao_guiada: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  transferencia: "bg-green-500/10 text-green-600 dark:text-green-400",
-};
-
-const taskStatusLabels: Record<string, string> = {
-  todo: "A Fazer",
-  in_progress: "Em Andamento",
-  blocked: "Bloqueado",
-  completed: "Concluído",
-};
+// Derivar labels e cores de task-config para manter consistência
+const taskStatusLabels: Record<string, string> = Object.fromEntries(
+  Object.entries(statusConfig).map(([key, config]) => [key, config.label])
+);
 
 const taskStatusColors: Record<string, string> = {
   todo: "text-muted-foreground",
@@ -58,32 +58,15 @@ const taskStatusIcons: Record<string, React.ReactNode> = {
   completed: <CheckCircle2 className="h-4 w-4" />,
 };
 
-const priorityLabels: Record<string, string> = {
-  urgent: "Urgente",
-  high: "Alta",
-  medium: "Média",
-  low: "Baixa",
-};
+const priorityLabels: Record<string, string> = Object.fromEntries(
+  Object.entries(priorityConfig).map(([key, config]) => [key, config.label])
+);
 
 const priorityColors: Record<string, string> = {
   urgent: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   high: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
   medium: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
   low: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
-};
-
-const campaignStatusLabels: Record<string, string> = {
-  draft: "Rascunho",
-  running: "Ativa",
-  completed: "Concluída",
-  paused: "Pausada",
-};
-
-const campaignStatusColors: Record<string, string> = {
-  draft: "bg-gray-500/10 text-gray-600",
-  running: "bg-green-500/10 text-green-600",
-  completed: "bg-blue-500/10 text-blue-600",
-  paused: "bg-yellow-500/10 text-yellow-600",
 };
 
 const fileTypeIcons: Record<string, React.ReactNode> = {

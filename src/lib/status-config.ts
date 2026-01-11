@@ -60,4 +60,44 @@ export const phaseColors: Record<string, string> = {
   transferencia: "bg-green-500/10 text-green-600",
 };
 
+// Cores alternativas para Dashboard cliente (com dark mode)
+export const phaseColorsDashboard: Record<string, string> = {
+  diagnostico: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  estruturacao: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  operacao_guiada: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  transferencia: "bg-green-500/10 text-green-600 dark:text-green-400",
+};
+
 export const phaseOrder = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
+
+// ============= CAMPAIGN STATUS =============
+export const campaignStatusLabels: Record<string, string> = {
+  draft: "Rascunho",
+  pending_approval: "Aguardando Aprovação",
+  running: "Ativa",
+  completed: "Concluída",
+  paused: "Pausada",
+};
+
+export const campaignStatusColors: Record<string, string> = {
+  draft: "bg-gray-500/10 text-gray-600",
+  pending_approval: "bg-orange-500/10 text-orange-600",
+  running: "bg-green-500/10 text-green-600",
+  completed: "bg-blue-500/10 text-blue-600",
+  paused: "bg-yellow-500/10 text-yellow-600",
+};
+
+// ============= FILE CATEGORIES =============
+export const fileCategoryLabels: Record<string, string> = {
+  deliverable: "Entregável",
+  campaign_asset: "Mídia para Campanha",
+  document_request: "Documento Solicitado",
+  general: "Outro",
+};
+
+export const fileCategoryColors: Record<string, string> = {
+  deliverable: "bg-green-500/10 text-green-600",
+  campaign_asset: "bg-purple-500/10 text-purple-600",
+  document_request: "bg-blue-500/10 text-blue-600",
+  general: "bg-gray-500/10 text-gray-600",
+};
