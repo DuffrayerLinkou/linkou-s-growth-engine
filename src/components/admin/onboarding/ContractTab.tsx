@@ -95,12 +95,12 @@ export function ContractTab({ clientId }: ContractTabProps) {
     },
   });
 
-  const { data: contracts = [], isLoading } = useQuery({
+  const { data: contracts = [], isLoading, error: contractsError } = useQuery({
     queryKey: ["contracts", clientId],
     queryFn: async () => {
       let query = supabase
         .from("contracts")
-        .select("*, clients(name)")
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (clientId) {
@@ -112,6 +112,9 @@ export function ContractTab({ clientId }: ContractTabProps) {
       return data;
     },
   });
+
+  // Helper to get client name by id
+  const getClientName = (id: string) => clients.find(c => c.id === id)?.name || "Cliente";
 
   const createContractMutation = useMutation({
     mutationFn: async () => {
@@ -134,6 +137,7 @@ export function ContractTab({ clientId }: ContractTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts-progress"] });
       setIsDialogOpen(false);
       if (!clientId) setSelectedClient("");
       setManagerName("");
@@ -158,6 +162,7 @@ export function ContractTab({ clientId }: ContractTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts-progress"] });
       toast({ title: "Status atualizado!" });
     },
   });
@@ -239,6 +244,10 @@ export function ContractTab({ clientId }: ContractTabProps) {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : contractsError ? (
+            <div className="text-center py-8 text-destructive">
+              Não foi possível carregar os contratos.
+            </div>
           ) : contracts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {clientId ? "Nenhum contrato para este cliente" : "Nenhum contrato criado ainda"}
@@ -258,7 +267,7 @@ export function ContractTab({ clientId }: ContractTabProps) {
                         <FileText className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="font-medium">{contract.clients?.name || "Cliente"}</p>
+                        <p className="font-medium">{getClientName(contract.client_id)}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {contract.created_at ? format(new Date(contract.created_at), "dd/MM/yyyy") : "Sem data"}
