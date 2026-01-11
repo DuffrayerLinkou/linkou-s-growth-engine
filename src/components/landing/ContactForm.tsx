@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { AnimatedCTA } from "./AnimatedCTA";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -305,24 +305,30 @@ export function ContactForm() {
                   />
                 </div>
 
-                <Button
+                <AnimatedCTA
                   type="submit"
                   size="lg"
-                  className="w-full font-semibold"
+                  className="w-full"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Enviando...
                     </>
                   ) : (
                     <>
-                      <Send className="mr-2 h-4 w-4" />
+                      <motion.span
+                        initial={{ rotate: 0 }}
+                        whileHover={{ rotate: -15, scale: 1.1 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <Send className="h-4 w-4" />
+                      </motion.span>
                       Solicitar auditoria gratuita
                     </>
                   )}
-                </Button>
+                </AnimatedCTA>
 
                 <p className="text-xs text-muted-foreground text-center">
                   Seus dados estão seguros. A gente só usa pra entrar em contato.
