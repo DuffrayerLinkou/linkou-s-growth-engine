@@ -261,7 +261,7 @@ export function ContractTab({ clientId }: ContractTabProps) {
                         <p className="font-medium">{contract.clients?.name || "Cliente"}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(contract.created_at), "dd/MM/yyyy")}
+                          {contract.created_at ? format(new Date(contract.created_at), "dd/MM/yyyy") : "Sem data"}
                           {contract.manager_name && (
                             <span>• Gestor: {contract.manager_name}</span>
                           )}
