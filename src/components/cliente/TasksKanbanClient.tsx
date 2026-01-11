@@ -29,15 +29,17 @@ interface Task {
   journey_phase: string | null;
   visible_to_client: boolean | null;
   executor_type: string | null;
+  project_id: string | null;
 }
 
 interface TasksKanbanClientProps {
   tasks: Task[];
   onStatusChange: (taskId: string, newStatus: string) => Promise<void>;
   currentUserId?: string;
+  onTaskClick?: (task: Task) => void;
 }
 
-export function TasksKanbanClient({ tasks, onStatusChange, currentUserId }: TasksKanbanClientProps) {
+export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTaskClick }: TasksKanbanClientProps) {
   const { toast } = useToast();
 
   // Check if user can move this task
@@ -152,13 +154,14 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId }: Task
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
+                                onClick={() => onTaskClick?.(task)}
                                 className={cn(
                                   "mb-2 transition-all",
-                                  isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-default",
+                                  isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
                                   snapshot.isDragging && "shadow-lg ring-2 ring-primary",
                                   isMyTask 
                                     ? "border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent shadow-sm" 
-                                    : "",
+                                    : "hover:border-primary/50",
                                   overdue && !isMyTask && "border-red-500/50 bg-red-500/5"
                                 )}
                               >
