@@ -963,38 +963,36 @@ export default function ClientDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/admin/clientes")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{client.name}</h1>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span>{client.segment || "Sem segmento"}</span>
-                <span>•</span>
-                <Badge
-                  variant="secondary"
-                  className={statusColors[client.status || "ativo"]}
-                >
-                  {statusLabels[client.status || "ativo"]}
-                </Badge>
-              </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => navigate("/admin/clientes")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{client.name}</h1>
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <span className="truncate">{client.segment || "Sem segmento"}</span>
+              <span className="hidden sm:inline">•</span>
+              <Badge
+                variant="secondary"
+                className={`${statusColors[client.status || "ativo"]} flex-shrink-0`}
+              >
+                {statusLabels[client.status || "ativo"]}
+              </Badge>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsEditClientOpen(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
+        <div className="flex gap-2 ml-auto sm:ml-0 pl-10 sm:pl-0">
+          <Button variant="outline" size="sm" className="sm:size-default" onClick={() => setIsEditClientOpen(true)}>
+            <Pencil className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Editar</span>
           </Button>
-          <Button variant="destructive" onClick={() => setIsDeleteClientOpen(true)}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Excluir
+          <Button variant="destructive" size="sm" className="sm:size-default" onClick={() => setIsDeleteClientOpen(true)}>
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Excluir</span>
           </Button>
         </div>
       </div>
@@ -1012,37 +1010,44 @@ export default function ClientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="journey" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="journey" className="flex items-center gap-2">
-            <Route className="h-4 w-4" />
-            Jornada
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Usuários ({users.length})
-          </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center gap-2">
-            <FolderOpen className="h-4 w-4" />
-            Arquivos ({files.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-full">
+            <TabsTrigger value="journey" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <Route className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Jornada</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Usuários</span>
+              <span className="xs:hidden">Users</span>
+              <span className="ml-0.5">({users.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="files" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Arquivos</span>
+              <span className="xs:hidden">Files</span>
+              <span className="ml-0.5">({files.length})</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Journey Tab */}
         <TabsContent value="journey" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
               <div>
-                <CardTitle>Jornada Linkou</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Jornada Linkou</CardTitle>
+                <CardDescription className="text-sm">
                   Acompanhe e gerencie a fase atual do cliente.
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleOpenTemplateDialog}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Criar Tarefas do Template
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm" onClick={handleOpenTemplateDialog}>
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden sm:inline">Criar Tarefas do Template</span>
+                  <span className="sm:hidden">Templates</span>
                 </Button>
-                <Button onClick={() => {
+                <Button size="sm" className="text-xs sm:text-sm" onClick={() => {
                   setSelectedPhase(client.phase);
                   setIsPhaseDialogOpen(true);
                 }}>
@@ -1128,7 +1133,8 @@ export default function ClientDetail() {
                   </Button>
                 </div>
               ) : (
-                <Table>
+                <div className="overflow-x-auto">
+                <Table className="min-w-[500px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Usuário</TableHead>
@@ -1228,6 +1234,7 @@ export default function ClientDetail() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

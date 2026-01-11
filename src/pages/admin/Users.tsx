@@ -240,18 +240,18 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Usuários</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Usuários</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gerencie todos os usuários da plataforma
           </p>
         </div>
 
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} size="sm" className="w-fit sm:size-default">
               <UserPlus className="mr-2 h-4 w-4" />
               Novo Usuário
             </Button>
@@ -482,15 +482,15 @@ export default function AdminUsers() {
       </Dialog>
 
       {/* Users Table */}
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Usuário</TableHead>
-              <TableHead>Função</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Criado em</TableHead>
-              <TableHead className="w-[100px]">Ações</TableHead>
+              <TableHead className="min-w-[150px]">Usuário</TableHead>
+              <TableHead className="min-w-[100px]">Função</TableHead>
+              <TableHead className="hidden sm:table-cell min-w-[120px]">Cliente</TableHead>
+              <TableHead className="hidden md:table-cell min-w-[100px]">Criado em</TableHead>
+              <TableHead className="w-[80px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
