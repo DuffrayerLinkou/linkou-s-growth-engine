@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ interface TaskTemplate {
 const phases = [
   { value: "diagnostico", label: "Diagnóstico" },
   { value: "estruturacao", label: "Estruturação" },
-  { value: "operacao_guiada", label: "Operação Guiada" },
+  { value: "operacao_guiada", label: "Op. Guiada" },
   { value: "transferencia", label: "Transferência" },
 ];
 
@@ -215,166 +215,250 @@ const Templates = () => {
   const getPriorityBadge = (priority: string) => {
     const p = priorities.find((pr) => pr.value === priority);
     return p ? (
-      <Badge className={`${p.color} border-0`}>{p.label}</Badge>
+      <Badge className={`${p.color} border-0 text-[10px] sm:text-xs`}>{p.label}</Badge>
     ) : (
-      <Badge variant="outline">{priority}</Badge>
+      <Badge variant="outline" className="text-[10px] sm:text-xs">{priority}</Badge>
     );
   };
 
   const filteredTemplates = templates.filter((t) => t.journey_phase === activePhase);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Templates de Tarefas</h1>
-            <p className="text-muted-foreground">
-              Gerencie os templates padrão para cada fase da jornada
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+      {/* Header responsivo */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
+              Templates de Tarefas
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Gerencie os templates padrão para cada fase
             </p>
           </div>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Template
+        <Button onClick={() => handleOpenDialog()} size="sm" className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="text-xs sm:text-sm">Novo Template</span>
         </Button>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="p-3 sm:p-4 pb-3">
           <Tabs value={activePhase} onValueChange={setActivePhase}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="flex w-full overflow-x-auto gap-1 p-1 sm:grid sm:grid-cols-4 sm:overflow-visible">
               {phases.map((phase) => (
-                <TabsTrigger key={phase.value} value={phase.value}>
+                <TabsTrigger 
+                  key={phase.value} 
+                  value={phase.value}
+                  className="min-w-[75px] sm:min-w-0 shrink-0 text-xs sm:text-sm px-2 sm:px-3 py-1.5"
+                >
                   {phase.label}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6 pt-0">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <div className="flex items-center justify-center py-6 sm:py-8">
+              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-primary" />
             </div>
           ) : filteredTemplates.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum template encontrado para esta fase</p>
-              <Button variant="outline" className="mt-4" onClick={() => handleOpenDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar primeiro template
+            <div className="text-center py-6 sm:py-8 text-muted-foreground">
+              <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">Nenhum template encontrado para esta fase</p>
+              <Button variant="outline" size="sm" className="mt-3 sm:mt-4" onClick={() => handleOpenDialog()}>
+                <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="text-xs sm:text-sm">Criar primeiro template</span>
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Título</TableHead>
-                  <TableHead className="w-24">Prioridade</TableHead>
-                  <TableHead className="w-24">Visível</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile: Cards empilhados */}
+              <div className="block sm:hidden space-y-3">
                 {filteredTemplates.map((template) => (
-                  <TableRow
+                  <div
                     key={template.id}
-                    className={!template.is_active ? "opacity-50" : ""}
+                    className={`p-3 rounded-lg border bg-card ${!template.is_active ? "opacity-50" : ""}`}
                   >
-                    <TableCell className="font-medium">{template.order_index}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{template.title}</p>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-1">
-                            {template.description}
-                          </p>
-                        )}
+                    {/* Linha 1: Ordem + Título + Prioridade */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-medium text-muted-foreground shrink-0">
+                          #{template.order_index}
+                        </span>
+                        <p className="font-medium text-sm truncate">{template.title}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>{getPriorityBadge(template.priority)}</TableCell>
-                    <TableCell>
-                      {template.visible_to_client ? (
-                        <Eye className="h-4 w-4 text-primary" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={template.is_active}
-                        onCheckedChange={() => handleToggleActive(template)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      {getPriorityBadge(template.priority)}
+                    </div>
+
+                    {/* Linha 2: Descrição */}
+                    {template.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        {template.description}
+                      </p>
+                    )}
+
+                    {/* Linha 3: Status + Ações */}
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          {template.visible_to_client ? (
+                            <Eye className="h-3.5 w-3.5 text-primary" />
+                          ) : (
+                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {template.visible_to_client ? "Visível" : "Oculto"}
+                          </span>
+                        </div>
+                        <Switch
+                          checked={template.is_active}
+                          onCheckedChange={() => handleToggleActive(template)}
+                          className="scale-90"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleOpenDialog(template)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => {
                             setDeletingTemplate(template);
                             setIsDeleteDialogOpen(true);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop: Tabela */}
+              <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead className="w-24">Prioridade</TableHead>
+                      <TableHead className="w-24">Visível</TableHead>
+                      <TableHead className="w-24">Status</TableHead>
+                      <TableHead className="w-24 text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTemplates.map((template) => (
+                      <TableRow
+                        key={template.id}
+                        className={!template.is_active ? "opacity-50" : ""}
+                      >
+                        <TableCell className="font-medium">{template.order_index}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{template.title}</p>
+                            {template.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">
+                                {template.description}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(template.priority)}</TableCell>
+                        <TableCell>
+                          {template.visible_to_client ? (
+                            <Eye className="h-4 w-4 text-primary" />
+                          ) : (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={template.is_active}
+                            onCheckedChange={() => handleToggleActive(template)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenDialog(template)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setDeletingTemplate(template);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* Dialog para criar/editar template */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               {editingTemplate ? "Editar Template" : "Novo Template"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
+          <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="title" className="text-xs sm:text-sm">Título *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Ex: Mapear funil atual de vendas"
+                className="h-9 sm:h-10 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="description" className="text-xs sm:text-sm">Descrição</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Descreva o que deve ser feito nesta tarefa..."
+                placeholder="Descreva o que deve ser feito..."
                 rows={3}
+                className="text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridade</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="priority" className="text-xs sm:text-sm">Prioridade</Label>
                 <Select
                   value={formData.priority}
                   onValueChange={(value) => setFormData({ ...formData, priority: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -386,8 +470,8 @@ const Templates = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="order">Ordem</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="order" className="text-xs sm:text-sm">Ordem</Label>
                 <Input
                   id="order"
                   type="number"
@@ -396,14 +480,15 @@ const Templates = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, order_index: parseInt(e.target.value) || 1 })
                   }
+                  className="h-9 sm:h-10 text-sm"
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Visível para cliente</Label>
-                <p className="text-sm text-muted-foreground">
-                  A tarefa aparecerá no painel do cliente
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5 min-w-0 pr-4">
+                <Label className="text-xs sm:text-sm">Visível para cliente</Label>
+                <p className="text-[10px] sm:text-sm text-muted-foreground">
+                  Aparecerá no painel do cliente
                 </p>
               </div>
               <Switch
@@ -413,10 +498,10 @@ const Templates = () => {
                 }
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Template ativo</Label>
-                <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5 min-w-0 pr-4">
+                <Label className="text-xs sm:text-sm">Template ativo</Label>
+                <p className="text-[10px] sm:text-sm text-muted-foreground">
                   Disponível para criação em lote
                 </p>
               </div>
@@ -426,11 +511,11 @@ const Templates = () => {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleCloseDialog} size="sm" className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} size="sm" className="w-full sm:w-auto">
               {editingTemplate ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>
@@ -439,19 +524,19 @@ const Templates = () => {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Excluir Template</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Excluir Template</DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Tem certeza que deseja excluir o template{" "}
             <strong>"{deletingTemplate?.title}"</strong>? Esta ação não pode ser desfeita.
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} size="sm" className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button variant="destructive" onClick={handleDelete} size="sm" className="w-full sm:w-auto">
               Excluir
             </Button>
           </DialogFooter>
