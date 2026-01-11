@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,13 +55,24 @@ const initialForm: PlanForm = {
   status: "draft",
 };
 
-export function PlanningTab() {
+interface PlanningTabProps {
+  clientId?: string;
+}
+
+export function PlanningTab({ clientId }: PlanningTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<PlanForm>(initialForm);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Set client_id in form when clientId prop changes
+  useEffect(() => {
+    if (clientId && !editingPlan) {
+      setForm(prev => ({ ...prev, client_id: clientId }));
+    }
+  }, [clientId, editingPlan]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -73,12 +84,18 @@ export function PlanningTab() {
   });
 
   const { data: plans = [], isLoading } = useQuery({
-    queryKey: ["strategic-plans"],
+    queryKey: ["strategic-plans", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("strategic_plans")
         .select("*, clients(name)")
         .order("created_at", { ascending: false });
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -111,7 +128,7 @@ export function PlanningTab() {
       queryClient.invalidateQueries({ queryKey: ["strategic-plans"] });
       setIsDialogOpen(false);
       setEditingPlan(null);
-      setForm(initialForm);
+      setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
       toast({ title: editingPlan ? "Plano atualizado!" : "Plano criado!" });
     },
     onError: () => {
@@ -150,7 +167,7 @@ export function PlanningTab() {
 
   const openNew = () => {
     setEditingPlan(null);
-    setForm(initialForm);
+    setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
     setIsDialogOpen(true);
   };
 
@@ -172,7 +189,9 @@ export function PlanningTab() {
               <Target className="h-5 w-5" />
               Planos Estratégicos
             </CardTitle>
-            <CardDescription>Gerencie os planos estratégicos dos seus clientes</CardDescription>
+            <CardDescription>
+              {clientId ? "Planos do cliente selecionado" : "Gerencie os planos estratégicos dos seus clientes"}
+            </CardDescription>
           </div>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" />
@@ -183,7 +202,9 @@ export function PlanningTab() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
           ) : plans.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Nenhum plano criado ainda</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {clientId ? "Nenhum plano para este cliente" : "Nenhum plano criado ainda"}
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan: any) => {
@@ -255,7 +276,7 @@ export function PlanningTab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
-                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>

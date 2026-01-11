@@ -40,6 +40,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isAccountManager: boolean;
   isClient: boolean;
+  hasClientAccess: boolean;
   refreshProfile: () => Promise<void>;
 }
 
@@ -181,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasRole = (role: AppRole) => roles.includes(role);
 
+  const hasClientAccess = profile?.client_id !== null && profile?.client_id !== undefined;
+
   const value: AuthContextType = {
     user,
     session,
@@ -196,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: hasRole("admin"),
     isAccountManager: hasRole("account_manager"),
     isClient: hasRole("client"),
+    hasClientAccess,
     refreshProfile,
   };
 

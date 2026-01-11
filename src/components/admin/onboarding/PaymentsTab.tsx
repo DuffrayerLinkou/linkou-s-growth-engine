@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CreditCard, Clock, CheckCircle, AlertCircle, XCircle, Edit, Trash2, DollarSign } from "lucide-react";
+import { Plus, CreditCard, Clock, CheckCircle, AlertCircle, XCircle, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const statusConfig = {
@@ -54,15 +53,25 @@ const initialForm: PaymentForm = {
   notes: "",
 };
 
-export function PaymentsTab() {
+interface PaymentsTabProps {
+  clientId?: string;
+}
+
+export function PaymentsTab({ clientId }: PaymentsTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<PaymentForm>(initialForm);
-  const [filterClient, setFilterClient] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Set client_id in form when clientId prop changes
+  useEffect(() => {
+    if (clientId && !editingPayment) {
+      setForm(prev => ({ ...prev, client_id: clientId }));
+    }
+  }, [clientId, editingPayment]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -74,19 +83,24 @@ export function PaymentsTab() {
   });
 
   const { data: payments = [], isLoading } = useQuery({
-    queryKey: ["payments"],
+    queryKey: ["payments", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("payments")
         .select("*, clients(name)")
         .order("due_date", { ascending: true });
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
   });
 
   const filteredPayments = payments.filter((p: any) => {
-    if (filterClient !== "all" && p.client_id !== filterClient) return false;
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
     return true;
   });
@@ -124,7 +138,7 @@ export function PaymentsTab() {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       setIsDialogOpen(false);
       setEditingPayment(null);
-      setForm(initialForm);
+      setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
       toast({ title: editingPayment ? "Pagamento atualizado!" : "Pagamento registrado!" });
     },
     onError: () => {
@@ -162,7 +176,7 @@ export function PaymentsTab() {
 
   const openNew = () => {
     setEditingPayment(null);
-    setForm(initialForm);
+    setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
     setIsDialogOpen(true);
   };
 
@@ -216,9 +230,11 @@ export function PaymentsTab() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Novo Pagamento
+              {clientId ? "Pagamentos do Cliente" : "Pagamentos"}
             </CardTitle>
-            <CardDescription>Registre um novo pagamento ou contrato com cliente</CardDescription>
+            <CardDescription>
+              {clientId ? "Pagamentos do cliente selecionado" : "Registre um novo pagamento ou contrato com cliente"}
+            </CardDescription>
           </div>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" />
@@ -228,17 +244,6 @@ export function PaymentsTab() {
         <CardContent>
           {/* Filters */}
           <div className="flex gap-4 mb-4">
-            <Select value={filterClient} onValueChange={setFilterClient}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Todos os clientes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os clientes</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Todos os status" />
@@ -256,13 +261,15 @@ export function PaymentsTab() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
           ) : filteredPayments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Nenhum pagamento encontrado</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {clientId ? "Nenhum pagamento para este cliente" : "Nenhum pagamento encontrado"}
+            </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cliente</TableHead>
+                    {!clientId && <TableHead>Cliente</TableHead>}
                     <TableHead>Tipo</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead>Valor</TableHead>
@@ -278,7 +285,7 @@ export function PaymentsTab() {
                     const StatusIcon = status.icon;
                     return (
                       <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.clients?.name}</TableCell>
+                        {!clientId && <TableCell className="font-medium">{payment.clients?.name}</TableCell>}
                         <TableCell>
                           <Badge className={type.color}>{type.label}</Badge>
                         </TableCell>
@@ -325,7 +332,7 @@ export function PaymentsTab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
-                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
