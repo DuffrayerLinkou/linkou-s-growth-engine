@@ -82,12 +82,12 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
     },
   });
 
-  const { data: payments = [], isLoading } = useQuery({
+  const { data: payments = [], isLoading, error: paymentsError } = useQuery({
     queryKey: ["payments", clientId],
     queryFn: async () => {
       let query = supabase
         .from("payments")
-        .select("*, clients(name)")
+        .select("*")
         .order("due_date", { ascending: true });
       
       if (clientId) {
@@ -99,6 +99,9 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
       return data;
     },
   });
+
+  // Helper to get client name by id
+  const getClientName = (id: string) => clients.find(c => c.id === id)?.name || "Cliente";
 
   const filteredPayments = payments.filter((p: any) => {
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
@@ -136,6 +139,7 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payments-progress"] });
       setIsDialogOpen(false);
       setEditingPayment(null);
       setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
@@ -153,6 +157,7 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payments-progress"] });
       setDeleteId(null);
       toast({ title: "Pagamento excluído!" });
     },
@@ -260,6 +265,10 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
 
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : paymentsError ? (
+            <div className="text-center py-8 text-destructive">
+              Não foi possível carregar os pagamentos.
+            </div>
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {clientId ? "Nenhum pagamento para este cliente" : "Nenhum pagamento encontrado"}
@@ -285,7 +294,7 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
                     const StatusIcon = status.icon;
                     return (
                       <TableRow key={payment.id}>
-                        {!clientId && <TableCell className="font-medium">{payment.clients?.name}</TableCell>}
+                        {!clientId && <TableCell className="font-medium">{getClientName(payment.client_id)}</TableCell>}
                         <TableCell>
                           <Badge className={type.color}>{type.label}</Badge>
                         </TableCell>

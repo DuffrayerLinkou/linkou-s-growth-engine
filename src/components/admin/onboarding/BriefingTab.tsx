@@ -74,12 +74,12 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
     },
   });
 
-  const { data: briefings = [], isLoading } = useQuery({
+  const { data: briefings = [], isLoading, error: briefingsError } = useQuery({
     queryKey: ["briefings", clientId],
     queryFn: async () => {
       let query = supabase
         .from("briefings")
-        .select("*, clients(name)")
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (clientId) {
@@ -91,6 +91,9 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
       return data;
     },
   });
+
+  // Helper to get client name by id
+  const getClientName = (id: string) => clients.find(c => c.id === id)?.name || "Cliente";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -117,6 +120,7 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["briefings"] });
+      queryClient.invalidateQueries({ queryKey: ["briefings-progress"] });
       setIsDialogOpen(false);
       setEditingBriefing(null);
       setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
@@ -134,6 +138,7 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["briefings"] });
+      queryClient.invalidateQueries({ queryKey: ["briefings-progress"] });
       setDeleteId(null);
       toast({ title: "Briefing excluído!" });
     },
@@ -183,6 +188,10 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : briefingsError ? (
+            <div className="text-center py-8 text-destructive">
+              Não foi possível carregar os briefings.
+            </div>
           ) : briefings.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {clientId ? "Nenhum briefing para este cliente" : "Nenhum briefing criado ainda"}
@@ -198,7 +207,7 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
                       <div className="flex items-start justify-between">
                         <div>
                           <CardTitle className="text-base">{briefing.title}</CardTitle>
-                          <CardDescription>{briefing.clients?.name}</CardDescription>
+                          <CardDescription>{getClientName(briefing.client_id)}</CardDescription>
                         </div>
                         <Badge className={status.color}>
                           <StatusIcon className="h-3 w-3 mr-1" />

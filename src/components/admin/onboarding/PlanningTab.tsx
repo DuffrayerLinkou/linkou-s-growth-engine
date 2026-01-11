@@ -83,12 +83,12 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
     },
   });
 
-  const { data: plans = [], isLoading } = useQuery({
+  const { data: plans = [], isLoading, error: plansError } = useQuery({
     queryKey: ["strategic-plans", clientId],
     queryFn: async () => {
       let query = supabase
         .from("strategic_plans")
-        .select("*, clients(name)")
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (clientId) {
@@ -100,6 +100,9 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
       return data;
     },
   });
+
+  // Helper to get client name by id
+  const getClientName = (id: string) => clients.find(c => c.id === id)?.name || "Cliente";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -126,6 +129,7 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["strategic-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["strategic-plans-progress"] });
       setIsDialogOpen(false);
       setEditingPlan(null);
       setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
@@ -143,6 +147,7 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["strategic-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["strategic-plans-progress"] });
       setDeleteId(null);
       toast({ title: "Plano excluído!" });
     },
@@ -201,6 +206,10 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : plansError ? (
+            <div className="text-center py-8 text-destructive">
+              Não foi possível carregar os planos.
+            </div>
           ) : plans.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {clientId ? "Nenhum plano para este cliente" : "Nenhum plano criado ainda"}
@@ -216,7 +225,7 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                       <div className="flex items-start justify-between">
                         <div>
                           <CardTitle className="text-base">{plan.title}</CardTitle>
-                          <CardDescription>{plan.clients?.name}</CardDescription>
+                          <CardDescription>{getClientName(plan.client_id)}</CardDescription>
                         </div>
                         <Badge className={status.color}>
                           <StatusIcon className="h-3 w-3 mr-1" />
