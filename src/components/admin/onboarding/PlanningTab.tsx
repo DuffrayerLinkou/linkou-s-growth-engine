@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const statusConfig = {
@@ -240,12 +240,12 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                         )}
                         {plan.timeline_start && plan.timeline_end && (
                           <p className="text-muted-foreground text-xs">
-                            {format(new Date(plan.timeline_start), "dd/MM/yy")} - {format(new Date(plan.timeline_end), "dd/MM/yy")}
+                            {safeFormatDate(plan.timeline_start, "dd/MM/yy", "")} - {safeFormatDate(plan.timeline_end, "dd/MM/yy", "")}
                           </p>
                         )}
                         <div className="flex items-center gap-1 text-muted-foreground text-xs">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(plan.created_at), "dd/MM/yyyy")}
+                          {safeFormatDate(plan.created_at)}
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">

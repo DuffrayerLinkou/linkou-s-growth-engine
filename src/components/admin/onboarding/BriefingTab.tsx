@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const statusConfig = {
@@ -216,7 +216,7 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
                         )}
                         <div className="flex items-center gap-1 text-muted-foreground text-xs">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(briefing.created_at), "dd/MM/yyyy")}
+                          {safeFormatDate(briefing.created_at)}
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
