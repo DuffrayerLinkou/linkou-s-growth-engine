@@ -12,6 +12,26 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Authenticate using secret token for cron jobs
+  const expectedToken = Deno.env.get("CRON_SECRET_TOKEN");
+  const authHeader = req.headers.get("Authorization");
+  
+  if (!expectedToken) {
+    console.error("CRON_SECRET_TOKEN not configured");
+    return new Response(
+      JSON.stringify({ error: "Server configuration error" }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+  
+  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+    console.warn("Unauthorized access attempt to check-task-deadlines");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   try {
     console.log("Starting check-task-deadlines function");
 
