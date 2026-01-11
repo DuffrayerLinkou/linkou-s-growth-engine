@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Instagram } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
@@ -24,9 +25,20 @@ export function Footer() {
               Ecossistemas de tráfego e vendas que aprendem. Performance, transparência 
               e autonomia para seu negócio.
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-4">
               Performance · Tráfego · Vendas
             </p>
+            <div className="flex gap-3">
+              <a
+                href="https://www.instagram.com/linkou.solucaodigital/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Instagram"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+            </div>
           </div>
 
           {/* Links */}
