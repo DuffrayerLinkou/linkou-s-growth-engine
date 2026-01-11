@@ -151,27 +151,27 @@ export function ContactForm() {
                 Contato
               </span>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-                Vamos conversar?
+                Solicite sua <span className="text-primary">Auditoria de Tráfego</span>
               </h2>
               <p className="text-muted-foreground text-lg mb-8">
-                Preencha o formulário e a gente agenda uma conversa. <span className="text-foreground font-medium">Sem compromisso</span> — mesmo que não avancemos, você sai com clareza sobre seu cenário.
+                Preencha o formulário para agendar uma conversa com a <span className="text-foreground font-medium">Agência Linkou</span>. O primeiro passo é entender seu cenário — sem compromisso.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Diagnóstico honesto</div>
+                    <div className="font-semibold">Auditoria inicial gratuita</div>
                     <div className="text-sm text-muted-foreground">
-                      A gente mostra o que tá funcionando e o que não tá — sem rodeio
+                      Você recebe um diagnóstico claro do seu cenário atual
                     </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Zero pressão</div>
+                    <div className="font-semibold">Conversa sem compromisso</div>
                     <div className="text-sm text-muted-foreground">
-                      Se não fizer sentido, a gente fala. Simples assim.
+                      Se não fizer sentido, a gente avisa. Simples.
                     </div>
                   </div>
                 </div>
@@ -185,11 +185,10 @@ export function ContactForm() {
                   </div>
                 </div>
               </div>
-              
               {/* Emotional security phrase */}
               <div className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-xl">
                 <p className="text-sm text-muted-foreground">
-                  💡 <span className="text-foreground font-medium">A auditoria é de verdade.</span> Você recebe um diagnóstico útil independente de fechar ou não.
+                  💡 <span className="text-foreground font-medium">A auditoria é de verdade.</span> Você sai com clareza sobre seu tráfego — mesmo que não avancemos.
                 </p>
               </div>
             </motion.div>

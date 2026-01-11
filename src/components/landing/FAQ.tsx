@@ -28,19 +28,19 @@ const faqs = [
       "Resultados rápidos (quick wins) costumam aparecer nas primeiras semanas. Resultados sólidos e escaláveis, entre o segundo e terceiro mês. A gente não promete milagre — promete método.",
   },
   {
-    question: "Vocês trabalham com qual investimento mínimo em mídia?",
+    question: "A auditoria funciona para qualquer volume de investimento?",
     answer:
-      "Recomendamos R$ 10.000/mês em mídia para que os experimentos tenham volume estatístico relevante. Negócios com tickets muito altos podem operar com menos, desde que o volume de leads necessário seja compatível.",
+      "Sim. A auditoria funciona para qualquer volume de investimento. O importante é que você já invista em mídia e queira entender melhor o que está acontecendo. Não exigimos valor mínimo para começar a conversa.",
+  },
+  {
+    question: "A consultoria é só para empresas grandes?",
+    answer:
+      "Não. Trabalhamos com negócios de diferentes tamanhos. O que importa é a necessidade de clareza e organização no tráfego. Se você investe em mídia e sente que deveria ter mais controle, a gente pode ajudar.",
   },
   {
     question: "O que acontece se eu quiser parar antes do prazo?",
     answer:
       "Você pode cancelar quando quiser. Tudo que foi construído — contas, dados, acessos — continua seu. Só pedimos 30 dias de aviso pra fazer uma transição organizada. Sem drama, sem briga.",
-  },
-  {
-    question: "Vocês fazem os criativos das campanhas?",
-    answer:
-      "Sim, produzimos os criativos (imagens, vídeos, copies) como parte do serviço de gestão de tráfego. Trabalhamos com metodologia de testes para descobrir quais formatos performam melhor para seu público.",
   },
   {
     question: "Como funciona a metodologia de experimentos?",
@@ -65,10 +65,10 @@ export function FAQ() {
             FAQ
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Dúvidas comuns (e respostas honestas)
+            Perguntas comuns sobre a <span className="text-primary">Auditoria e Consultoria</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Se você tá considerando, provavelmente tem algumas dessas perguntas. Aqui a gente responde <span className="text-foreground font-medium">sem rodeio</span>.
+            Se você está considerando, provavelmente tem algumas dessas dúvidas. Aqui a gente responde <span className="text-foreground font-medium">direto</span>.
           </p>
         </motion.div>
 

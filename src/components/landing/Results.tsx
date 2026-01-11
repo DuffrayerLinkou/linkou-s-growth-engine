@@ -6,29 +6,29 @@ const results = [
   {
     icon: TrendingUp,
     metric: "+312%",
-    title: "Leads que viram reuniões",
-    description: "Construtora que achava que 'tráfego não funcionava'. Em 4 meses, o comercial não dava conta de atender.",
+    title: "Leads que o comercial consegue atender",
+    description: "Construtora que achava que o problema era volume. Era qualificação. Ajustamos o funil e os leads passaram a converter.",
     color: "text-primary",
   },
   {
     icon: DollarSign,
     metric: "R$ 1.2M",
-    title: "Cada venda com origem clara",
-    description: "Imobiliária que finalmente sabe qual campanha gerou cada cliente. Decisões baseadas em dados, não em achismo.",
+    title: "Origem de cada venda mapeada",
+    description: "Incorporadora que não sabia qual canal trazia resultado. Hoje, cada venda tem rastreabilidade completa.",
     color: "text-success",
   },
   {
     icon: Target,
     metric: "-42%",
-    title: "Menos dinheiro jogado fora",
-    description: "Experimentos semanais mostrando o que funciona. O orçamento começou a render de verdade.",
+    title: "Desperdício cortado do orçamento",
+    description: "Concessionária que gastava em campanhas que não geravam nada. Auditoria mostrou onde estava o buraco.",
     color: "text-chart-3",
   },
   {
     icon: Users,
     metric: "8x",
-    title: "ROI que justifica a reunião",
-    description: "B2B com ciclo longo. Tracking de 6 meses mostrando o caminho completo do lead até o contrato.",
+    title: "Retorno sobre o investimento em consultoria",
+    description: "Negócio B2B que precisava provar ROI. Montamos o tracking do zero e documentamos cada conversão.",
     color: "text-chart-4",
   },
 ];
@@ -49,10 +49,10 @@ export function Results() {
             Resultados
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Histórias de quem saiu do escuro
+            O que muda após uma auditoria bem feita
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Antes: incerteza, números desconectados, dependência. Depois: <span className="text-foreground font-medium">clareza, controle e vendas rastreadas</span>. Alguns exemplos do que muda.
+            Nossos clientes param de gastar no escuro e passam a tomar <span className="text-foreground font-medium">decisões com base em dados reais</span>. Alguns exemplos.
           </p>
         </motion.div>
 

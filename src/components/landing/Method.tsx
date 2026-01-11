@@ -5,33 +5,33 @@ const phases = [
   {
     icon: Search,
     phase: "01",
-    title: "Diagnóstico",
+    title: "Auditoria Inicial",
     description:
-      "Antes de mexer em qualquer campanha, a gente entende onde você está. Quais são os buracos? Onde está vazando dinheiro? O que dá pra resolver rápido?",
+      "Analisamos suas contas, funis e dados. Identificamos vazamentos, oportunidades rápidas e o que precisa de estrutura antes de escalar.",
     details: ["Análise de contas de anúncios", "Mapeamento de funil", "Identificação de quick wins"],
   },
   {
     icon: Layers,
     phase: "02",
-    title: "Estruturação",
+    title: "Organização do Ecossistema",
     description:
-      "Montamos a base que falta. Tracking funcionando, dados conectados, dashboards que fazem sentido. Sem isso, otimizar é chutar no escuro.",
+      "Corrigimos tracking, conectamos dados e criamos dashboards claros. Você passa a enxergar o que antes era invisível.",
     details: ["Setup técnico completo", "Integração de ferramentas", "Criação de dashboards"],
   },
   {
     icon: Compass,
     phase: "03",
-    title: "Operação Guiada",
+    title: "Consultoria Ativa",
     description:
-      "Campanhas rodando, mas com método. Cada mudança é um experimento com hipótese, teste e aprendizado. Nada de 'mexer porque sim'.",
+      "Acompanhamos a operação com metodologia de experimentos. Cada mudança é testada, medida e documentada.",
     details: ["Campanhas otimizadas", "Experimentos A/B", "Reuniões de acompanhamento"],
   },
   {
     icon: Rocket,
     phase: "04",
-    title: "Transferência",
+    title: "Autonomia do Time",
     description:
-      "Seu time aprende a operar o sistema. Você ganha autonomia de verdade — não fica preso a agência nenhuma, nem a nós.",
+      "Treinamos seu ponto focal para dominar o sistema. Você ganha independência — não precisa mais depender de agência nenhuma.",
     details: ["Treinamento hands-on", "Documentação completa", "Suporte na transição"],
   },
 ];
@@ -49,10 +49,10 @@ export function Method() {
           className="text-center mb-12"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
-            Método Linkou
+            Método Linkou de Auditoria e Consultoria
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Como funciona
+            Como funciona a <span className="text-primary">Auditoria e Consultoria de Tráfego</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Um processo estruturado em 4 fases que transforma seu marketing em um 
@@ -68,7 +68,7 @@ export function Method() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-center text-muted-foreground max-w-3xl mx-auto mb-16"
         >
-          A maioria dos negócios já investiu em tráfego. O problema não é falta de verba — <span className="text-foreground">é falta de estrutura</span>. Nosso método organiza o caos antes de otimizar.
+          Antes de otimizar, você precisa entender o que está acontecendo. Nossa auditoria revela onde o dinheiro está indo — e nossa consultoria <span className="text-foreground font-medium">organiza o caminho pra frente</span>.
         </motion.p>
 
         {/* Phases */}

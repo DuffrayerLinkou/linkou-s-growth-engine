@@ -13,7 +13,7 @@ const deliverables = [
     icon: ClipboardCheck,
     title: "Auditoria Completa",
     description:
-      "Você para de se perguntar 'será que tá funcionando?' e passa a ter um diagnóstico claro: o que tá vazando, o que dá pra melhorar rápido, e onde focar energia.",
+      "Análise detalhada das suas contas, funis e dados. Você recebe um diagnóstico claro do que está funcionando, o que não está e por onde começar.",
     features: [
       "Análise de contas de anúncios",
       "Revisão de funil de conversão",
@@ -23,33 +23,33 @@ const deliverables = [
   },
   {
     icon: BarChart3,
-    title: "Gestão de Tráfego",
+    title: "Consultoria de Tráfego",
     description:
-      "Campanhas que você entende. Relatórios que fazem sentido. Reuniões onde você participa das decisões em vez de só ouvir jargão técnico.",
+      "Acompanhamento estratégico das campanhas. Você participa das decisões, entende o que está acontecendo e aprende junto com a operação.",
     features: [
       "Meta Ads & Google Ads",
-      "Criativos testados",
+      "Experimentos semanais",
       "Otimização contínua",
       "Relatórios transparentes",
     ],
   },
   {
     icon: MessageSquare,
-    title: "Prospecção & Vendas",
+    title: "Organização do Ecossistema",
     description:
-      "Seu time comercial recebe leads mais quentes e tem processos claros pra abordar. Menos tempo correndo atrás, mais tempo fechando.",
+      "Tracking, pixels, dashboards — tudo conectado e funcionando. Você passa a ter visibilidade real sobre o caminho do lead até a venda.",
     features: [
-      "Fluxos de prospecção",
-      "Scripts de abordagem",
-      "Integração com CRM",
+      "Tracking completo",
+      "Dashboards claros",
+      "Dados conectados",
       "Métricas de conversão",
     ],
   },
   {
     icon: GraduationCap,
-    title: "Treinamento do Ponto Focal",
+    title: "Treinamento do Time",
     description:
-      "Uma pessoa do seu time sai dominando o sistema. Você nunca mais fica refém — nem de agência, nem de funcionário que vai embora e leva tudo na cabeça.",
+      "Seu ponto focal sai dominando o sistema. Você não fica dependente de agência — e não perde conhecimento se alguém sair.",
     features: [
       "Treinamento hands-on",
       "Documentação completa",
@@ -82,10 +82,10 @@ export function Deliverables() {
             O Que Entregamos
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            O que muda na sua rotina
+            O que você recebe com a <span className="text-primary">Auditoria e Consultoria de Tráfego</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Cada entrega resolve um problema concreto do seu dia a dia. <span className="text-foreground font-medium">Primeiro o que você ganha</span> — depois o detalhe técnico.
+            Cada entrega foi pensada para resolver problemas concretos de quem investe em mídia e <span className="text-foreground font-medium">precisa de clareza</span>.
           </p>
         </motion.div>
 

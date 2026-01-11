@@ -44,7 +44,7 @@ export function Hero() {
           >
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-sm font-medium text-muted-foreground">
-              Para quem cansou de depender de agência
+              Auditoria e Consultoria de Tráfego
             </span>
           </motion.div>
 
@@ -55,19 +55,18 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight mb-6"
           >
-            Não gerenciamos contas.{" "}
-            <span className="text-gradient">Criamos ecossistemas</span>{" "}
-            que aprendem e evoluem.
+            <span className="text-gradient">Auditoria e Consultoria de Tráfego</span>{" "}
+            para quem quer clareza antes de investir mais.
           </motion.h1>
 
-          {/* Secondary Line - NEW */}
+          {/* Secondary Line */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
             className="text-base md:text-lg text-foreground/80 mb-4 max-w-3xl mx-auto"
           >
-            Se você sente que investe em tráfego, mas não sabe de onde vem cada venda — e se preocupa em ficar na mão de terceiros — <span className="text-primary font-medium">a gente resolve isso.</span>
+            A <span className="text-primary font-medium">Agência Linkou</span> ajuda construtoras, incorporadoras e concessionárias a entender, organizar e otimizar seu tráfego dentro de um <span className="text-primary font-medium">ecossistema de vendas</span> que faz sentido.
           </motion.p>
 
           {/* Subheadline */}
@@ -77,7 +76,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
           >
-            Construímos sistemas de marketing que você entende, acompanha e, no final, <span className="font-medium text-foreground">controla</span>. Seu ponto focal sai treinado para tocar o dia a dia.
+            Antes de escalar, você precisa de estrutura. Mostramos onde está o problema, organizamos os dados e treinamos seu time para ter <span className="font-medium text-foreground">controle real</span>.
           </motion.p>
 
           {/* CTAs */}
@@ -97,7 +96,7 @@ export function Hero() {
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
               <span className="text-xs text-muted-foreground mt-2">
-                Sem compromisso. Você sai com clareza mesmo que não avancemos.
+                Primeiro passo é entender seu cenário. Sem compromisso financeiro.
               </span>
             </div>
             <Button
@@ -119,10 +118,10 @@ export function Hero() {
             className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 pt-16 border-t"
           >
             {[
-              { value: "150+", label: "negócios com tráfego organizado" },
-              { value: "R$ 2M+", label: "em vendas rastreadas de ponta a ponta" },
-              { value: "35%", label: "menos desperdício em mídia (média)" },
-              { value: "100%", label: "de acesso — tudo é seu desde o dia 1" },
+              { value: "150+", label: "auditorias realizadas" },
+              { value: "R$ 2M+", label: "em desperdício identificado e corrigido" },
+              { value: "35%", label: "de economia média após auditoria" },
+              { value: "100%", label: "de transparência — tudo é seu" },
             ].map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-2xl md:text-3xl font-bold text-primary mb-1">
