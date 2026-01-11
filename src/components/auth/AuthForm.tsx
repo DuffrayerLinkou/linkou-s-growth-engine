@@ -97,13 +97,13 @@ export function AuthForm() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="glass p-8 rounded-2xl border shadow-2xl"
+        className="glass p-6 rounded-xl border shadow-2xl"
       >
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <img 
             src={theme === "dark" ? logoBranca : logoRoxo}
             alt="Linkou"
-            className="w-[140px] h-auto mx-auto mb-4"
+            className="w-[200px] h-auto mx-auto mb-6"
           />
           <h1 className="text-2xl font-bold tracking-tight">
             Bem-vindo de volta
