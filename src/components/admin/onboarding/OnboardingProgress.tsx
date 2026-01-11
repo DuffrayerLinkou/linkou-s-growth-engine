@@ -53,32 +53,37 @@ export function OnboardingProgress({ stages, clientName }: OnboardingProgressPro
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">
+    <Card className="mb-4 sm:mb-6">
+      <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-lg">
             Progresso do Onboarding
-            {clientName && <span className="font-normal text-muted-foreground ml-2">— {clientName}</span>}
+            {clientName && (
+              <span className="block sm:inline font-normal text-xs sm:text-base text-muted-foreground sm:ml-2">
+                — {clientName}
+              </span>
+            )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-primary">{progressPercentage}%</span>
-            <span className="text-sm text-muted-foreground">concluído</span>
+            <span className="text-xl sm:text-2xl font-bold text-primary">{progressPercentage}%</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">concluído</span>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {stagesList.map((stage, index) => (
+      <CardContent className="p-3 sm:p-4 pt-0">
+        {/* Grid 2x2 em mobile, 4 colunas em desktop */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+          {stagesList.map((stage) => (
             <div
               key={stage.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                "flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded-lg border transition-colors",
                 getStatusColor(stage.status)
               )}
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <stage.icon className="h-4 w-4 shrink-0" />
-                <span className="text-sm font-medium truncate">{stage.label}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                <stage.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="text-[10px] sm:text-sm font-medium truncate">{stage.label}</span>
               </div>
               {getStatusIcon(stage.status)}
             </div>
@@ -86,7 +91,7 @@ export function OnboardingProgress({ stages, clientName }: OnboardingProgressPro
         </div>
         
         {/* Progress bar */}
-        <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
+        <div className="mt-3 sm:mt-4 h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-500"
             style={{ width: `${progressPercentage}%` }}

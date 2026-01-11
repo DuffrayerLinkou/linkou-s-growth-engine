@@ -26,34 +26,34 @@ function CalculatorCard({ title, description, icon: Icon, inputs, calculate, col
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg ${color}`}>
-            <Icon className="h-5 w-5" />
+      <CardHeader className="p-3 sm:pb-3">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <div className={`p-1.5 sm:p-2 rounded-lg ${color}`}>
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <CardTitle className="text-lg">{title}</CardTitle>
-            <CardDescription className="text-xs">{description}</CardDescription>
+          <div className="min-w-0">
+            <CardTitle className="text-sm sm:text-lg">{title}</CardTitle>
+            <CardDescription className="text-[10px] sm:text-xs">{description}</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="p-3 pt-0 space-y-2 sm:space-y-3">
         {inputs.map((input) => (
           <div key={input.key} className="space-y-1">
-            <Label className="text-xs">{input.label}</Label>
+            <Label className="text-[10px] sm:text-xs">{input.label}</Label>
             <Input
               type="number"
               placeholder={input.placeholder || "0"}
               value={values[input.key] || ""}
               onChange={(e) => setValues({ ...values, [input.key]: e.target.value })}
-              className="h-9"
+              className="h-8 sm:h-9 text-sm"
             />
           </div>
         ))}
         {result && (
-          <div className="pt-3 border-t">
-            <p className="text-xs text-muted-foreground">{result.label}</p>
-            <p className="text-2xl font-bold text-primary">{result.value}</p>
+          <div className="pt-2 sm:pt-3 border-t">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{result.label}</p>
+            <p className="text-xl sm:text-2xl font-bold text-primary">{result.value}</p>
           </div>
         )}
       </CardContent>
@@ -179,21 +179,20 @@ const calculators: CalculatorProps[] = [
 
 export function CalculatorsTab() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Calculator className="h-4 w-4 sm:h-5 sm:w-5" />
             Calculadoras de Métricas
           </CardTitle>
-          <CardDescription>
-            Otimize suas campanhas de marketing digital com nossas calculadoras. 
-            Descubra insights valiosos sobre ROI, CAC, LTV e muito mais.
+          <CardDescription className="text-xs sm:text-sm">
+            Otimize suas campanhas com nossas calculadoras de ROI, CAC, LTV e mais.
           </CardDescription>
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {calculators.map((calc) => (
           <CalculatorCard key={calc.title} {...calc} />
         ))}

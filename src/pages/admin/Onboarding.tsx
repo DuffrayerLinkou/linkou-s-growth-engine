@@ -100,21 +100,24 @@ export default function Onboarding() {
     : undefined;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header responsivo */}
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Onboarding de Clientes</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Onboarding de Clientes</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Processo profissional para iniciar contratos e gerir a documentação dos seus clientes
           </p>
         </div>
         
-        {/* Client Selector */}
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <Label className="text-sm font-medium">Cliente:</Label>
+        {/* Client Selector - full width em mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-xs sm:text-sm font-medium">Cliente:</Label>
+          </div>
           <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue placeholder="Selecione um cliente" />
             </SelectTrigger>
             <SelectContent>
@@ -138,48 +141,49 @@ export default function Onboarding() {
       )}
 
       <Tabs defaultValue="contract" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto gap-2 bg-transparent p-0">
+        {/* Menu de Tabs com scroll horizontal e labels sempre visíveis */}
+        <TabsList className="flex w-full overflow-x-auto gap-1 bg-muted/50 p-1 rounded-lg h-auto">
           <TabsTrigger 
             value="contract" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Contrato</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Contrato</span>
           </TabsTrigger>
           <TabsTrigger 
             value="briefing" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Briefing</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Briefing</span>
           </TabsTrigger>
           <TabsTrigger 
             value="planning" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <Target className="h-4 w-4" />
-            <span className="hidden sm:inline">Planejamento</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Plano</span>
           </TabsTrigger>
           <TabsTrigger 
             value="payments" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Pagamentos</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Pagam.</span>
           </TabsTrigger>
           <TabsTrigger 
             value="calculators" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <Calculator className="h-4 w-4" />
-            <span className="hidden sm:inline">Calculadoras</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Calc.</span>
           </TabsTrigger>
           <TabsTrigger 
             value="guide" 
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 min-w-[60px] sm:min-w-0 shrink-0 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
           >
             <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Guia</span>
+            <span className="text-[10px] sm:text-sm whitespace-nowrap">Guia</span>
           </TabsTrigger>
         </TabsList>
 

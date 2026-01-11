@@ -186,44 +186,44 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Summary Cards - responsivo */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-yellow-500/20">
-                <Clock className="h-6 w-6 text-yellow-600" />
+          <CardContent className="p-3 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-yellow-500/20">
+                <Clock className="h-4 w-4 sm:h-6 sm:w-6 text-yellow-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pendente</p>
-                <p className="text-2xl font-bold">R$ {totals.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Pendente</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">R$ {totals.pending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-green-500/20">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+          <CardContent className="p-3 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-green-500/20">
+                <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pago</p>
-                <p className="text-2xl font-bold">R$ {totals.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Pago</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">R$ {totals.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-red-500/20">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+          <CardContent className="p-3 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2 sm:p-3 rounded-lg bg-red-500/20">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6 text-red-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Atrasado</p>
-                <p className="text-2xl font-bold">R$ {totals.overdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Atrasado</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">R$ {totals.overdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
           </CardContent>
@@ -231,26 +231,26 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
               {clientId ? "Pagamentos do Cliente" : "Pagamentos"}
             </CardTitle>
-            <CardDescription>
-              {clientId ? "Pagamentos do cliente selecionado" : "Registre um novo pagamento ou contrato com cliente"}
+            <CardDescription className="text-xs sm:text-sm mt-1">
+              {clientId ? "Pagamentos do cliente selecionado" : "Registre pagamentos"}
             </CardDescription>
           </div>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Pagamento
+          <Button onClick={openNew} size="sm" className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Novo Pagamento</span>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 pt-0">
           {/* Filters */}
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-2 sm:gap-4 mb-3 sm:mb-4">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs sm:text-sm">
                 <SelectValue placeholder="Todos os status" />
               </SelectTrigger>
               <SelectContent>
@@ -264,68 +264,70 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">Carregando...</div>
           ) : paymentsError ? (
-            <div className="text-center py-8 text-destructive">
+            <div className="text-center py-6 sm:py-8 text-destructive text-sm">
               Não foi possível carregar os pagamentos.
             </div>
           ) : filteredPayments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">
               {clientId ? "Nenhum pagamento para este cliente" : "Nenhum pagamento encontrado"}
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {!clientId && <TableHead>Cliente</TableHead>}
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.map((payment: any) => {
-                    const status = statusConfig[payment.status as keyof typeof statusConfig] || statusConfig.pending;
-                    const type = typeConfig[payment.type as keyof typeof typeConfig] || typeConfig.monthly;
-                    const StatusIcon = status.icon;
-                    return (
-                      <TableRow key={payment.id}>
-                        {!clientId && <TableCell className="font-medium">{getClientName(payment.client_id)}</TableCell>}
-                        <TableCell>
-                          <Badge className={type.color}>{type.label}</Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">{payment.description || "-"}</TableCell>
-                        <TableCell className="font-medium">
-                          R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell>
-                          {payment.due_date ? format(new Date(payment.due_date), "dd/MM/yyyy") : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={status.color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(payment)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(payment.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-md border">
+              <div className="min-w-[600px] sm:min-w-0 px-3 sm:px-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {!clientId && <TableHead className="text-xs sm:text-sm">Cliente</TableHead>}
+                      <TableHead className="text-xs sm:text-sm w-[80px]">Tipo</TableHead>
+                      <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Descrição</TableHead>
+                      <TableHead className="text-xs sm:text-sm w-[100px]">Valor</TableHead>
+                      <TableHead className="text-xs sm:text-sm hidden sm:table-cell w-[90px]">Venc.</TableHead>
+                      <TableHead className="text-xs sm:text-sm w-[80px]">Status</TableHead>
+                      <TableHead className="text-xs sm:text-sm w-[70px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.map((payment: any) => {
+                      const status = statusConfig[payment.status as keyof typeof statusConfig] || statusConfig.pending;
+                      const type = typeConfig[payment.type as keyof typeof typeConfig] || typeConfig.monthly;
+                      const StatusIcon = status.icon;
+                      return (
+                        <TableRow key={payment.id}>
+                          {!clientId && <TableCell className="font-medium text-xs sm:text-sm">{getClientName(payment.client_id)}</TableCell>}
+                          <TableCell>
+                            <Badge className={`${type.color} text-[10px] sm:text-xs px-1.5`}>{type.label}</Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[150px] truncate text-xs sm:text-sm hidden sm:table-cell">{payment.description || "-"}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm">
+                            R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                            {payment.due_date ? format(new Date(payment.due_date), "dd/MM/yy") : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${status.color} text-[10px] sm:text-xs px-1.5`}>
+                              <StatusIcon className="h-3 w-3 mr-0.5 sm:mr-1" />
+                              <span className="hidden sm:inline">{status.label}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openEdit(payment)}>
+                                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => setDeleteId(payment.id)}>
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
@@ -333,16 +335,16 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
 
       {/* Form Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingPayment ? "Editar Pagamento" : "Novo Pagamento"}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingPayment ? "Editar Pagamento" : "Novo Pagamento"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label className="text-xs sm:text-sm">Cliente *</Label>
                 <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -353,9 +355,9 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tipo *</Label>
+                <Label className="text-xs sm:text-sm">Tipo *</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -368,33 +370,33 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Descrição</Label>
-              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Label className="text-xs sm:text-sm">Descrição</Label>
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="h-9 sm:h-10" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Valor (R$) *</Label>
-                <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Valor (R$) *</Label>
+                <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-9 sm:h-10" />
               </div>
               <div className="space-y-2">
-                <Label>Vencimento</Label>
-                <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Vencimento</Label>
+                <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Método de Pagamento</Label>
-                <Input value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} placeholder="PIX, Boleto, etc." />
+                <Label className="text-xs sm:text-sm">Método de Pagamento</Label>
+                <Input value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} placeholder="PIX, Boleto" className="h-9 sm:h-10" />
               </div>
               <div className="space-y-2">
-                <Label>Nº Nota/Fatura</Label>
-                <Input value={form.invoice_number} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Nº Nota/Fatura</Label>
+                <Input value={form.invoice_number} onChange={(e) => setForm({ ...form, invoice_number: e.target.value })} className="h-9 sm:h-10" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label className="text-xs sm:text-sm">Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -406,8 +408,8 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Observações</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <Label className="text-xs sm:text-sm">Observações</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="min-h-[80px]" />
             </div>
             <Button
               onClick={() => saveMutation.mutate()}
