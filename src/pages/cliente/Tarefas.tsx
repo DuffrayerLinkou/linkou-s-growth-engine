@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Clock, AlertCircle, CheckCircle2, Loader2, Ban, Route, Filter, Star, Circle, List, Columns3 } from "lucide-react";
+import { Clock, AlertCircle, CheckCircle2, Loader2, Ban, Route, Filter, Star, Circle, List, Columns3, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   TaskStatus,
@@ -39,6 +47,8 @@ import {
   isTaskOverdue,
 } from "@/lib/task-config";
 import { TasksKanbanClient } from "@/components/cliente/TasksKanbanClient";
+import { TaskFileAttachment } from "@/components/cliente/TaskFileAttachment";
+import { Label } from "@/components/ui/label";
 
 interface Task {
   id: string;
@@ -52,6 +62,7 @@ interface Task {
   journey_phase: string | null;
   visible_to_client: boolean | null;
   executor_type: string | null;
+  project_id: string | null;
 }
 
 export default function ClienteTarefas() {
@@ -63,6 +74,8 @@ export default function ClienteTarefas() {
   const [taskToComplete, setTaskToComplete] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const currentClientPhase = clientInfo?.phase as JourneyPhase || "diagnostico";
 
@@ -137,6 +150,17 @@ export default function ClienteTarefas() {
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     await statusChangeMutation.mutateAsync({ taskId, newStatus });
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailOpen(true);
+  };
+
+  const handleStatusChangeInDialog = async (newStatus: string) => {
+    if (!selectedTask) return;
+    await statusChangeMutation.mutateAsync({ taskId: selectedTask.id, newStatus });
+    setSelectedTask({ ...selectedTask, status: newStatus });
   };
 
   // Check if user can complete a task (is their responsibility)
@@ -402,6 +426,7 @@ export default function ClienteTarefas() {
           tasks={filteredTasks}
           onStatusChange={handleStatusChange}
           currentUserId={user?.id}
+          onTaskClick={handleTaskClick}
         />
       )}
 
@@ -475,8 +500,9 @@ export default function ClienteTarefas() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: index * 0.05 }}
+                              onClick={() => handleTaskClick(task)}
                               className={cn(
-                                "flex items-start gap-3 p-3 rounded-lg border transition-all",
+                                "flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:border-primary/50",
                                 isCompleted 
                                   ? "bg-green-500/5 border-green-500/20" 
                                   : isTaskMine 
@@ -580,8 +606,9 @@ export default function ClienteTarefas() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.05 }}
+                          onClick={() => handleTaskClick(task)}
                           className={cn(
-                            "flex items-start gap-3 p-3 rounded-lg border transition-all",
+                            "flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:border-primary/50",
                             isCompleted 
                               ? "bg-green-500/5 border-green-500/20" 
                               : isTaskMine 
@@ -688,6 +715,156 @@ export default function ClienteTarefas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Details Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={(open) => {
+        setIsDetailOpen(open);
+        if (!open) setSelectedTask(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedTask && (() => {
+            const taskStatus = (selectedTask.status || "backlog") as TaskStatus;
+            const overdue = isTaskOverdue(selectedTask.due_date, selectedTask.status);
+            const isTaskMine = isMyTask(selectedTask);
+
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
+                      <DialogDescription className="mt-2">
+                        Detalhes e gerenciamento da tarefa
+                      </DialogDescription>
+                    </div>
+                    {isTaskMine && (
+                      <Badge className="bg-amber-500 text-white hover:bg-amber-600 flex-shrink-0">
+                        <Star className="h-3 w-3 mr-1 fill-current" />
+                        Sua Responsabilidade
+                      </Badge>
+                    )}
+                  </div>
+                </DialogHeader>
+
+                <div className="space-y-6 pt-4">
+                  {/* Status, Phase and Priority Badges */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className={statusConfig[taskStatus].color}>
+                      {(() => {
+                        const StatusIcon = statusConfig[taskStatus].icon;
+                        return <StatusIcon className={`h-3 w-3 mr-1 ${taskStatus === "in_progress" ? "animate-spin" : ""}`} />;
+                      })()}
+                      {statusConfig[taskStatus].label}
+                    </Badge>
+                    {selectedTask.journey_phase && journeyPhaseConfig[selectedTask.journey_phase as JourneyPhase] && (
+                      <Badge 
+                        variant="secondary" 
+                        className={journeyPhaseConfig[selectedTask.journey_phase as JourneyPhase].color}
+                      >
+                        <Route className="h-3 w-3 mr-1" />
+                        {journeyPhaseConfig[selectedTask.journey_phase as JourneyPhase].label}
+                      </Badge>
+                    )}
+                    {selectedTask.priority && (
+                      <Badge variant="outline" className={priorityConfig[selectedTask.priority]?.color}>
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        {priorityConfig[selectedTask.priority]?.label || selectedTask.priority}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {selectedTask.description && (
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Descrição</Label>
+                      <p className="mt-1 text-sm">{selectedTask.description}</p>
+                    </div>
+                  )}
+
+                  {/* Due Date */}
+                  {selectedTask.due_date && (
+                    <div className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border",
+                      overdue ? "border-red-500/50 bg-red-500/10" : "border-border"
+                    )}>
+                      <Clock className={cn("h-5 w-5", overdue ? "text-red-600" : "text-muted-foreground")} />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Prazo de Entrega</p>
+                        <p className={cn("font-medium", overdue && "text-red-600")}>
+                          {format(new Date(selectedTask.due_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          {overdue && " (Atrasada)"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Change (only for my tasks) */}
+                  {isTaskMine && selectedTask.status !== "completed" && (
+                    <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                      <Label className="text-sm font-medium">Alterar Status</Label>
+                      <Select 
+                        value={selectedTask.status || "todo"} 
+                        onValueChange={handleStatusChangeInDialog}
+                        disabled={statusChangeMutation.isPending}
+                      >
+                        <SelectTrigger className="w-full mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todo">A Fazer</SelectItem>
+                          <SelectItem value="in_progress">Em Andamento</SelectItem>
+                          <SelectItem value="completed">Concluído</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Você pode mover esta tarefa entre os status permitidos.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* File Attachments */}
+                  {clientInfo?.id && (
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">Anexos</Label>
+                      </div>
+                      <TaskFileAttachment
+                        taskId={selectedTask.id}
+                        clientId={clientInfo.id}
+                        projectId={selectedTask.project_id}
+                        canUpload={isTaskMine}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <DialogFooter className="mt-6 gap-2">
+                  {canCompleteTask(selectedTask) && (
+                    <Button 
+                      onClick={() => {
+                        setIsDetailOpen(false);
+                        setTaskToComplete(selectedTask);
+                      }}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Marcar como Concluída
+                    </Button>
+                  )}
+                  {selectedTask.status === "completed" && (
+                    <Badge className="bg-green-500/20 text-green-600 py-2 px-4">
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Tarefa Concluída
+                    </Badge>
+                  )}
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
