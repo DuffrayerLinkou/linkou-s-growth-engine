@@ -87,48 +87,51 @@ export function JourneyStepper({ currentPhase, compact = false }: JourneyStepper
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        {phases.map((phase, index) => {
-          const isCompleted = index < currentIndex;
-          const isCurrent = index === currentIndex;
+      {/* Horizontal scroll container for mobile */}
+      <div className="overflow-x-auto -mx-3 px-3 pb-2 sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
+        <div className="flex items-center justify-between min-w-[400px] sm:min-w-0">
+          {phases.map((phase, index) => {
+            const isCompleted = index < currentIndex;
+            const isCurrent = index === currentIndex;
 
-          return (
-            <div key={phase.id} className="flex items-center flex-1">
-              <div className="flex flex-col items-center flex-shrink-0">
-                <motion.div
-                  initial={false}
-                  animate={{
-                    scale: isCurrent ? 1.1 : 1,
-                  }}
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors",
-                    isCompleted && "bg-primary text-primary-foreground",
-                    isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                    !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {isCompleted ? <Check className="h-5 w-5" /> : index + 1}
-                </motion.div>
-                <span
-                  className={cn(
-                    "text-xs mt-2 text-center font-medium max-w-[80px]",
-                    isCurrent ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {phase.label}
-                </span>
+            return (
+              <div key={phase.id} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      scale: isCurrent ? 1.1 : 1,
+                    }}
+                    className={cn(
+                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold transition-colors text-sm sm:text-base",
+                      isCompleted && "bg-primary text-primary-foreground",
+                      isCurrent && "bg-primary text-primary-foreground ring-2 sm:ring-4 ring-primary/20",
+                      !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : index + 1}
+                  </motion.div>
+                  <span
+                    className={cn(
+                      "text-[10px] sm:text-xs mt-1 sm:mt-2 text-center font-medium max-w-[60px] sm:max-w-[80px] leading-tight",
+                      isCurrent ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {phase.label}
+                  </span>
+                </div>
+                {index < phases.length - 1 && (
+                  <div
+                    className={cn(
+                      "flex-1 h-0.5 sm:h-1 mx-1 sm:mx-2 rounded-full transition-colors min-w-[20px]",
+                      index < currentIndex ? "bg-primary" : "bg-muted"
+                    )}
+                  />
+                )}
               </div>
-              {index < phases.length - 1 && (
-                <div
-                  className={cn(
-                    "flex-1 h-1 mx-2 rounded-full transition-colors",
-                    index < currentIndex ? "bg-primary" : "bg-muted"
-                  )}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Current phase description */}
