@@ -21,7 +21,9 @@ import {
   Play,
   Pause,
   CheckCircle,
+  MessageSquare,
 } from "lucide-react";
+import { CommentSection } from "@/components/cliente/CommentSection";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,7 +225,9 @@ export default function AdminCampaigns() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [detailCampaign, setDetailCampaign] = useState<Campaign | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("basic");
@@ -667,6 +671,13 @@ export default function AdminCampaigns() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setDetailCampaign(campaign);
+                            setIsDetailOpen(true);
+                          }}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Detalhes
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openForm(campaign)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar
@@ -1119,6 +1130,170 @@ export default function AdminCampaigns() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Campaign Details Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-xl">{detailCampaign?.name}</DialogTitle>
+              {detailCampaign?.approved_by_ponto_focal && (
+                <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Aprovada
+                </Badge>
+              )}
+            </div>
+            <DialogDescription className="flex items-center gap-2 pt-2">
+              <Badge variant="outline">
+                {platformLabels[detailCampaign?.platform || ""] || detailCampaign?.platform || "-"}
+              </Badge>
+              <Badge variant="secondary" className={statusColors[detailCampaign?.status || "draft"]}>
+                {statusLabels[detailCampaign?.status || "draft"]}
+              </Badge>
+              {detailCampaign?.clients?.name && (
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {detailCampaign.clients.name}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailCampaign && (
+            <div className="space-y-6 mt-4">
+              {/* Description */}
+              {detailCampaign.description && (
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Descrição</h4>
+                  <p className="text-sm">{detailCampaign.description}</p>
+                </div>
+              )}
+
+              {/* Objective & Strategy */}
+              <div className="grid grid-cols-2 gap-4">
+                {detailCampaign.objective && (
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Objetivo</h4>
+                    <p className="text-sm">{detailCampaign.objective}</p>
+                    {detailCampaign.objective_detail && (
+                      <p className="text-xs text-muted-foreground mt-1">{detailCampaign.objective_detail}</p>
+                    )}
+                  </div>
+                )}
+                {detailCampaign.strategy && (
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Estratégia</h4>
+                    <p className="text-sm">{detailCampaign.strategy}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Creative */}
+              {(detailCampaign.headline || detailCampaign.ad_copy) && (
+                <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Criativo
+                  </h4>
+                  {detailCampaign.headline && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Headline</p>
+                      <p className="font-medium">{detailCampaign.headline}</p>
+                    </div>
+                  )}
+                  {detailCampaign.ad_copy && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Texto do Anúncio</p>
+                      <p className="text-sm">{detailCampaign.ad_copy}</p>
+                    </div>
+                  )}
+                  {detailCampaign.call_to_action && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">CTA</p>
+                      <Badge variant="outline">{detailCampaign.call_to_action}</Badge>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Budget & Schedule */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    Orçamento
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    {detailCampaign.budget && (
+                      <p>Total: {formatCurrency(detailCampaign.budget)}</p>
+                    )}
+                    {detailCampaign.daily_budget && (
+                      <p>Diário: {formatCurrency(detailCampaign.daily_budget)}</p>
+                    )}
+                    {detailCampaign.bidding_strategy && (
+                      <p className="text-muted-foreground">
+                        {biddingStrategies.find(b => b.id === detailCampaign.bidding_strategy)?.label || detailCampaign.bidding_strategy}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Período
+                  </h4>
+                  <div className="text-sm">
+                    {detailCampaign.start_date ? (
+                      <p>
+                        {format(new Date(detailCampaign.start_date), "dd/MM/yyyy", { locale: ptBR })}
+                        {detailCampaign.end_date && (
+                          <> até {format(new Date(detailCampaign.end_date), "dd/MM/yyyy", { locale: ptBR })}</>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground">Não definido</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Placements */}
+              {detailCampaign.placements && detailCampaign.placements.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Posicionamentos
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {detailCampaign.placements.map((placement) => {
+                      const placementInfo = platformPlacements[detailCampaign.platform || ""]?.find(p => p.id === placement);
+                      return (
+                        <Badge key={placement} variant="secondary">
+                          {placementInfo?.label || placement}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Comments Section */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Comentários
+                </h4>
+                <CommentSection
+                  entityType="campaign"
+                  entityId={detailCampaign.id}
+                  clientId={detailCampaign.client_id}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
