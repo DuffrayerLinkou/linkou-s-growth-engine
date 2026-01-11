@@ -20,6 +20,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useTheme } from "@/hooks/useTheme";
+import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
+import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
 const navItems = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
@@ -35,6 +38,7 @@ const navItems = [
 export function ClientLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { profile, signOut } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,10 +53,11 @@ export function ClientLayout() {
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass border-b">
         <div className="flex items-center justify-between h-16 px-4">
           <Link to="/cliente" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">L</span>
-            </div>
-            <span className="font-bold text-lg">Linkou</span>
+            <img 
+              src={theme === "dark" ? logoBranca : logoRoxo}
+              alt="Linkou"
+              className="h-8 w-auto"
+            />
           </Link>
           <div className="flex items-center gap-2">
             <NotificationBell />
@@ -78,10 +83,11 @@ export function ClientLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="hidden lg:flex items-center gap-2 h-16 px-6 border-b">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">L</span>
-            </div>
-            <span className="font-bold text-lg">Linkou</span>
+            <img 
+              src={theme === "dark" ? logoBranca : logoRoxo}
+              alt="Linkou"
+              className="h-8 w-auto"
+            />
           </div>
 
           {/* User Info */}
