@@ -3,6 +3,8 @@
 export const clientSegments = [
   "Construtora / Incorporadora",
   "Imobiliária",
+  "Concessionária",
+  "Locadora de Veículos",
   "B2B / Serviços",
   "E-commerce",
   "SaaS",
@@ -15,6 +17,8 @@ export const clientSegments = [
 export const landingSegments = [
   "Construtora / Incorporadora",
   "Imobiliária",
+  "Concessionária",
+  "Locadora de Veículos",
   "B2B / Serviços",
   "E-commerce",
   "Outro",
