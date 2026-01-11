@@ -18,7 +18,7 @@ export function PixelsTab() {
       const { data, error } = await supabase
         .from("landing_settings")
         .select("*")
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
