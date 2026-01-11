@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
+import { useTheme } from "@/hooks/useTheme";
+import logoRoxo from "@/assets/logo-linkou-roxo.png";
+import logoClaro from "@/assets/logo-linkou-claro.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { theme } = useTheme();
 
   return (
     <footer className="border-t bg-card/50">
@@ -9,11 +13,12 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">L</span>
-              </div>
-              <span className="font-bold text-xl tracking-tight">Linkou</span>
+            <Link to="/" className="flex items-center mb-4">
+              <img 
+                src={theme === "dark" ? logoClaro : logoRoxo} 
+                alt="Linkou"
+                className="h-10 w-auto"
+              />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm mb-4">
               Ecossistemas de tráfego e vendas que aprendem. Performance, transparência 
