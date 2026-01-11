@@ -8,7 +8,7 @@ const testimonials = [
     role: "Diretor Comercial",
     company: "Construtora Exemplo",
     content:
-      "A Linkou transformou nossa operação de marketing. Em 4 meses, triplicamos os leads qualificados e finalmente entendemos de onde vêm nossas vendas.",
+      "Eu gastava 40 mil por mês e não sabia de onde vinham os clientes. Hoje eu sei exatamente qual campanha gerou cada venda — e meu time aprendeu a olhar os dados junto comigo.",
     avatar: "CS",
   },
   {
@@ -16,7 +16,7 @@ const testimonials = [
     role: "CEO",
     company: "Imobiliária Premium",
     content:
-      "O diferencial é a transparência. Acompanhamos tudo em tempo real e nosso time foi treinado para continuar o trabalho. Não ficamos reféns de agência.",
+      "O que me convenceu foi a transparência. Desde o primeiro dia, tudo é nosso — contas, dados, acessos. E quando quisemos internalizar, eles treinaram minha equipe sem drama.",
     avatar: "MS",
   },
   {
@@ -24,7 +24,7 @@ const testimonials = [
     role: "Sócio-Diretor",
     company: "Consultoria B2B",
     content:
-      "O método de experimentos mudou nossa forma de pensar marketing. Agora tomamos decisões baseadas em dados, não em achismo. ROI de 8x em 6 meses.",
+      "Nosso ciclo de venda é longo, então sempre foi difícil provar ROI. Agora eu tenho o caminho completo do lead até o contrato. 8x de retorno em 6 meses, documentado.",
     avatar: "RA",
   },
 ];
@@ -45,10 +45,10 @@ export function Testimonials() {
             Depoimentos
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            O que nossos clientes dizem
+            Quem já passou por isso
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Histórias reais de empresas que transformaram seus resultados com nosso método.
+            Conversas reais sobre o que muda quando o marketing <span className="text-foreground font-medium">para de ser uma caixa preta</span>.
           </p>
         </motion.div>
 
@@ -62,7 +62,7 @@ export function Testimonials() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="h-full hover:shadow-lg transition-shadow border-border/50 bg-card/50 backdrop-blur-sm">
+              <Card className="h-full hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
                 <CardContent className="p-6">
                   {/* Quote Icon */}
                   <Quote className="h-8 w-8 text-primary/20 mb-4" />

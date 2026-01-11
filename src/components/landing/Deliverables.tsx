@@ -13,7 +13,7 @@ const deliverables = [
     icon: ClipboardCheck,
     title: "Auditoria Completa",
     description:
-      "Análise profunda do seu ecossistema atual de marketing e vendas. Identificamos gargalos, oportunidades e quick wins.",
+      "Você para de se perguntar 'será que tá funcionando?' e passa a ter um diagnóstico claro: o que tá vazando, o que dá pra melhorar rápido, e onde focar energia.",
     features: [
       "Análise de contas de anúncios",
       "Revisão de funil de conversão",
@@ -25,7 +25,7 @@ const deliverables = [
     icon: BarChart3,
     title: "Gestão de Tráfego",
     description:
-      "Campanhas estruturadas com metodologia de experimentos. Otimização contínua baseada em dados, não em achismo.",
+      "Campanhas que você entende. Relatórios que fazem sentido. Reuniões onde você participa das decisões em vez de só ouvir jargão técnico.",
     features: [
       "Meta Ads & Google Ads",
       "Criativos testados",
@@ -37,7 +37,7 @@ const deliverables = [
     icon: MessageSquare,
     title: "Prospecção & Vendas",
     description:
-      "Estruturamos processos de prospecção ativa e nutrição de leads. Seu time vende mais com leads mais quentes.",
+      "Seu time comercial recebe leads mais quentes e tem processos claros pra abordar. Menos tempo correndo atrás, mais tempo fechando.",
     features: [
       "Fluxos de prospecção",
       "Scripts de abordagem",
@@ -49,7 +49,7 @@ const deliverables = [
     icon: GraduationCap,
     title: "Treinamento do Ponto Focal",
     description:
-      "Capacitamos uma pessoa do seu time para dominar o sistema. Você ganha autonomia sem perder performance.",
+      "Uma pessoa do seu time sai dominando o sistema. Você nunca mais fica refém — nem de agência, nem de funcionário que vai embora e leva tudo na cabeça.",
     features: [
       "Treinamento hands-on",
       "Documentação completa",
@@ -82,11 +82,10 @@ export function Deliverables() {
             O Que Entregamos
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Soluções completas para seu crescimento
+            O que muda na sua rotina
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Cada entrega é um bloco do seu ecossistema. Juntas, elas formam uma 
-            máquina de geração de demanda que aprende e evolui.
+            Cada entrega resolve um problema concreto do seu dia a dia. <span className="text-foreground font-medium">Primeiro o que você ganha</span> — depois o detalhe técnico.
           </p>
         </motion.div>
 
@@ -99,7 +98,7 @@ export function Deliverables() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-card border border-border/50 rounded-2xl p-6 lg:p-8 hover:shadow-lg transition-shadow"
+              className="bg-card border border-border/50 rounded-2xl p-6 lg:p-8 hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
             >
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

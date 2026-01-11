@@ -151,40 +151,46 @@ export function ContactForm() {
                 Contato
               </span>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-                Solicite sua auditoria gratuita
+                Vamos conversar?
               </h2>
               <p className="text-muted-foreground text-lg mb-8">
-                Preencha o formulário e nossa equipe entrará em contato para agendar 
-                uma análise completa do seu ecossistema de marketing e vendas.
+                Preencha o formulário e a gente agenda uma conversa. <span className="text-foreground font-medium">Sem compromisso</span> — mesmo que não avancemos, você sai com clareza sobre seu cenário.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Diagnóstico completo</div>
+                    <div className="font-semibold">Diagnóstico honesto</div>
                     <div className="text-sm text-muted-foreground">
-                      Análise profunda do seu cenário atual
+                      A gente mostra o que tá funcionando e o que não tá — sem rodeio
                     </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Sem compromisso</div>
+                    <div className="font-semibold">Zero pressão</div>
                     <div className="text-sm text-muted-foreground">
-                      Apresentamos oportunidades sem pressão
+                      Se não fizer sentido, a gente fala. Simples assim.
                     </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Resposta em 24h</div>
+                    <div className="font-semibold">Resposta rápida</div>
                     <div className="text-sm text-muted-foreground">
-                      Nosso time é ágil e focado
+                      A gente responde em até 24h úteis
                     </div>
                   </div>
                 </div>
+              </div>
+              
+              {/* Emotional security phrase */}
+              <div className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                <p className="text-sm text-muted-foreground">
+                  💡 <span className="text-foreground font-medium">A auditoria é de verdade.</span> Você recebe um diagnóstico útil independente de fechar ou não.
+                </p>
               </div>
             </motion.div>
 
@@ -319,6 +325,9 @@ export function ContactForm() {
                   )}
                 </Button>
 
+                <p className="text-xs text-muted-foreground text-center">
+                  Seus dados estão seguros. A gente só usa pra entrar em contato.
+                </p>
                 <p className="text-xs text-muted-foreground text-center">
                   Ao enviar, você concorda com nossa{" "}
                   <a href="/privacidade" className="underline hover:text-foreground">
