@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
@@ -178,14 +178,16 @@ export function AdminLayout() {
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="p-3 sm:p-4 md:p-6"
-        >
-          <Outlet />
-        </motion.div>
+        <LazyMotion features={domAnimation}>
+          <m.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="p-3 sm:p-4 md:p-6"
+          >
+            <Outlet />
+          </m.div>
+        </LazyMotion>
       </main>
     </div>
   );

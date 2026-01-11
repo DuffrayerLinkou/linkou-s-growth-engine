@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,36 +9,67 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Client pages
-import ClienteDashboard from "./pages/cliente/Dashboard";
-import MinhaConta from "./pages/cliente/MinhaConta";
-import MinhaJornada from "./pages/cliente/MinhaJornada";
-import ClienteTarefas from "./pages/cliente/Tarefas";
-import ClienteAgendamentos from "./pages/cliente/Agendamentos";
-import ClienteMetricasTrafego from "./pages/cliente/MetricasTrafego";
-import ClienteCampanhas from "./pages/cliente/Campanhas";
-import ClienteArquivos from "./pages/cliente/Arquivos";
-import ClienteBaseConhecimento from "./pages/cliente/BaseConhecimento";
+// ============= LAZY LOADED PAGES =============
+// Client pages - loaded on demand
+const ClienteDashboard = lazy(() => import("./pages/cliente/Dashboard"));
+const MinhaConta = lazy(() => import("./pages/cliente/MinhaConta"));
+const MinhaJornada = lazy(() => import("./pages/cliente/MinhaJornada"));
+const ClienteTarefas = lazy(() => import("./pages/cliente/Tarefas"));
+const ClienteAgendamentos = lazy(() => import("./pages/cliente/Agendamentos"));
+const ClienteMetricasTrafego = lazy(() => import("./pages/cliente/MetricasTrafego"));
+const ClienteCampanhas = lazy(() => import("./pages/cliente/Campanhas"));
+const ClienteArquivos = lazy(() => import("./pages/cliente/Arquivos"));
+const ClienteBaseConhecimento = lazy(() => import("./pages/cliente/BaseConhecimento"));
 
-// Admin pages
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminLeads from "./pages/admin/Leads";
-import AdminClients from "./pages/admin/Clients";
-import AdminClientDetail from "./pages/admin/ClientDetail";
-import AdminProjects from "./pages/admin/Projects";
-import AdminCampaigns from "./pages/admin/Campaigns";
-import AdminUsers from "./pages/admin/Users";
-import AdminTasks from "./pages/admin/Tasks";
-import AdminAppointments from "./pages/admin/Appointments";
-import AdminTemplates from "./pages/admin/Templates";
-import AdminOnboarding from "./pages/admin/Onboarding";
-import AdminLandingPage from "./pages/admin/LandingPage";
+// Admin pages - loaded on demand
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const AdminLeads = lazy(() => import("./pages/admin/Leads"));
+const AdminClients = lazy(() => import("./pages/admin/Clients"));
+const AdminClientDetail = lazy(() => import("./pages/admin/ClientDetail"));
+const AdminProjects = lazy(() => import("./pages/admin/Projects"));
+const AdminCampaigns = lazy(() => import("./pages/admin/Campaigns"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminTasks = lazy(() => import("./pages/admin/Tasks"));
+const AdminAppointments = lazy(() => import("./pages/admin/Appointments"));
+const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
+const AdminOnboarding = lazy(() => import("./pages/admin/Onboarding"));
+const AdminLandingPage = lazy(() => import("./pages/admin/LandingPage"));
 
-const queryClient = new QueryClient();
+// Page loading fallback component
+function PageLoader() {
+  return (
+    <div className="p-6 space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-4 w-48" />
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mt-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-lg" />
+        ))}
+      </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 mt-4">
+        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes (previously cacheTime)
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -61,15 +93,15 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<ClienteDashboard />} />
-                <Route path="minha-conta" element={<MinhaConta />} />
-                <Route path="minha-jornada" element={<MinhaJornada />} />
-                <Route path="tarefas" element={<ClienteTarefas />} />
-                <Route path="metricas-trafego" element={<ClienteMetricasTrafego />} />
-                <Route path="campanhas" element={<ClienteCampanhas />} />
-                <Route path="arquivos" element={<ClienteArquivos />} />
-                <Route path="base-conhecimento" element={<ClienteBaseConhecimento />} />
-                <Route path="agendamentos" element={<ClienteAgendamentos />} />
+                <Route index element={<Suspense fallback={<PageLoader />}><ClienteDashboard /></Suspense>} />
+                <Route path="minha-conta" element={<Suspense fallback={<PageLoader />}><MinhaConta /></Suspense>} />
+                <Route path="minha-jornada" element={<Suspense fallback={<PageLoader />}><MinhaJornada /></Suspense>} />
+                <Route path="tarefas" element={<Suspense fallback={<PageLoader />}><ClienteTarefas /></Suspense>} />
+                <Route path="metricas-trafego" element={<Suspense fallback={<PageLoader />}><ClienteMetricasTrafego /></Suspense>} />
+                <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><ClienteCampanhas /></Suspense>} />
+                <Route path="arquivos" element={<Suspense fallback={<PageLoader />}><ClienteArquivos /></Suspense>} />
+                <Route path="base-conhecimento" element={<Suspense fallback={<PageLoader />}><ClienteBaseConhecimento /></Suspense>} />
+                <Route path="agendamentos" element={<Suspense fallback={<PageLoader />}><ClienteAgendamentos /></Suspense>} />
               </Route>
 
               {/* Admin routes */}
@@ -81,18 +113,18 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
-              <Route index element={<AdminDashboard />} />
-                <Route path="leads" element={<AdminLeads />} />
-                <Route path="clientes" element={<AdminClients />} />
-                <Route path="clientes/:id" element={<AdminClientDetail />} />
-                <Route path="campanhas" element={<AdminCampaigns />} />
-                <Route path="onboarding" element={<AdminOnboarding />} />
-                <Route path="landing" element={<AdminLandingPage />} />
-                <Route path="tarefas" element={<AdminTasks />} />
-                <Route path="agendamentos" element={<AdminAppointments />} />
-                <Route path="templates" element={<AdminTemplates />} />
-                <Route path="projetos" element={<AdminProjects />} />
-                <Route path="usuarios" element={<AdminUsers />} />
+                <Route index element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
+                <Route path="leads" element={<Suspense fallback={<PageLoader />}><AdminLeads /></Suspense>} />
+                <Route path="clientes" element={<Suspense fallback={<PageLoader />}><AdminClients /></Suspense>} />
+                <Route path="clientes/:id" element={<Suspense fallback={<PageLoader />}><AdminClientDetail /></Suspense>} />
+                <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><AdminCampaigns /></Suspense>} />
+                <Route path="onboarding" element={<Suspense fallback={<PageLoader />}><AdminOnboarding /></Suspense>} />
+                <Route path="landing" element={<Suspense fallback={<PageLoader />}><AdminLandingPage /></Suspense>} />
+                <Route path="tarefas" element={<Suspense fallback={<PageLoader />}><AdminTasks /></Suspense>} />
+                <Route path="agendamentos" element={<Suspense fallback={<PageLoader />}><AdminAppointments /></Suspense>} />
+                <Route path="templates" element={<Suspense fallback={<PageLoader />}><AdminTemplates /></Suspense>} />
+                <Route path="projetos" element={<Suspense fallback={<PageLoader />}><AdminProjects /></Suspense>} />
+                <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
