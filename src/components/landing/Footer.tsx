@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
-import logoClaro from "@/assets/logo-linkou-horizontal-preto.png";
+import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -15,9 +15,9 @@ export function Footer() {
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center mb-4">
               <img 
-                src={theme === "dark" ? logoClaro : logoRoxo} 
+                src={theme === "dark" ? logoBranca : logoRoxo} 
                 alt="Linkou"
-                className="block w-[220px] md:w-[260px] h-auto max-w-none object-contain"
+                className="block w-[140px] md:w-[160px] h-auto max-w-none object-contain"
               />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm mb-4">
