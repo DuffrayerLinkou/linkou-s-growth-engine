@@ -62,7 +62,7 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0">
         {statusColumns.map((status) => {
           const config = statusConfig[status];
           const columnTasks = getTasksByStatus(status);
@@ -70,7 +70,7 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
           return (
             <div
               key={status}
-              className="flex-shrink-0 w-[260px] md:w-[280px]"
+              className="flex-shrink-0 w-[220px] sm:w-[240px] md:w-[260px] lg:w-[280px]"
             >
               {/* Column Header */}
               <div
@@ -93,12 +93,12 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
               {/* Droppable Area */}
               <Droppable droppableId={status}>
                 {(provided, snapshot) => (
-                  <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
+                  <ScrollArea className="h-[calc(100vh-300px)] sm:h-[calc(100vh-340px)] md:h-[calc(100vh-380px)] min-h-[300px] sm:min-h-[350px] md:min-h-[400px]">
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "min-h-[400px] rounded-b-lg border border-dashed p-2 transition-colors",
+                        "min-h-[300px] sm:min-h-[350px] md:min-h-[400px] rounded-b-lg border border-dashed p-1.5 sm:p-2 transition-colors",
                         snapshot.isDraggingOver
                           ? "border-primary bg-primary/5"
                           : "border-muted-foreground/20"
@@ -125,10 +125,10 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                 )}
                                 onClick={() => onTaskClick(task)}
                               >
-                                <CardContent className="p-3 space-y-2">
+                                <CardContent className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
                                   {/* Title + visibility */}
-                                  <div className="flex items-start justify-between gap-2">
-                                    <h4 className="font-medium text-sm line-clamp-2">
+                                  <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                                    <h4 className="font-medium text-xs sm:text-sm line-clamp-2">
                                       {task.title}
                                     </h4>
                                     {task.visible_to_client === false && (

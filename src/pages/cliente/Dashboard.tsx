@@ -332,13 +332,13 @@ export default function ClienteDashboard() {
   const pendingApprovalsCount = pendingCampaigns?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold tracking-tight"
+          className="text-2xl sm:text-3xl font-bold tracking-tight"
         >
           Olá, {profile?.full_name?.split(" ")[0] || "Cliente"}! 👋
         </motion.h1>
@@ -346,32 +346,32 @@ export default function ClienteDashboard() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-muted-foreground mt-1"
+          className="text-sm sm:text-base text-muted-foreground mt-1"
         >
           Acompanhe seu progresso, tarefas e resultados.
         </motion.p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Fase da Jornada */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fase da Jornada</CardTitle>
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Activity className="h-4 w-4 text-purple-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+              <CardTitle className="text-xs sm:text-sm font-medium">Fase da Jornada</CardTitle>
+              <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/10">
+                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingClient ? (
-                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-6 sm:h-8 w-24 sm:w-32" />
               ) : clientData?.phase ? (
-                <Badge className={`text-sm px-3 py-1 ${phaseColors[clientData.phase]}`}>
+                <Badge className={`text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1 ${phaseColors[clientData.phase]}`}>
                   {phaseLabels[clientData.phase]}
                 </Badge>
               ) : (
-                <span className="text-muted-foreground text-sm">Não definida</span>
+                <span className="text-muted-foreground text-xs sm:text-sm">Não definida</span>
               )}
             </CardContent>
           </Card>
@@ -380,19 +380,19 @@ export default function ClienteDashboard() {
         {/* Tarefas Pendentes */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tarefas Pendentes</CardTitle>
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <ListTodo className="h-4 w-4 text-orange-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+              <CardTitle className="text-xs sm:text-sm font-medium">Tarefas Pendentes</CardTitle>
+              <div className="p-1.5 sm:p-2 rounded-lg bg-orange-500/10">
+                <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingPendingTasks ? (
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
               ) : (
-                <div className="text-2xl font-bold">{pendingTasksCount}</div>
+                <div className="text-xl sm:text-2xl font-bold">{pendingTasksCount}</div>
               )}
-              <p className="text-xs text-muted-foreground">tarefas abertas</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">tarefas abertas</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -400,19 +400,19 @@ export default function ClienteDashboard() {
         {/* Campanhas Ativas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Campanhas Ativas</CardTitle>
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Megaphone className="h-4 w-4 text-green-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+              <CardTitle className="text-xs sm:text-sm font-medium">Campanhas Ativas</CardTitle>
+              <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingActiveCampaigns ? (
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
               ) : (
-                <div className="text-2xl font-bold">{activeCampaignsCount}</div>
+                <div className="text-xl sm:text-2xl font-bold">{activeCampaignsCount}</div>
               )}
-              <p className="text-xs text-muted-foreground">em execução</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">em execução</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -420,19 +420,19 @@ export default function ClienteDashboard() {
         {/* Tarefas Concluídas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tarefas Concluídas</CardTitle>
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+              <CardTitle className="text-xs sm:text-sm font-medium">Tarefas Concluídas</CardTitle>
+              <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingTasksSummary ? (
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-6 sm:h-8 w-12 sm:w-16" />
               ) : (
-                <div className="text-2xl font-bold">{tasksSummary?.completed || 0}</div>
+                <div className="text-xl sm:text-2xl font-bold">{tasksSummary?.completed || 0}</div>
               )}
-              <p className="text-xs text-muted-foreground">de {tasksSummary?.total || 0} tarefas</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">de {tasksSummary?.total || 0} tarefas</p>
             </CardContent>
           </Card>
         </motion.div>

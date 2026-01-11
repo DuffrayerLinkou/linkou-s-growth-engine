@@ -63,7 +63,7 @@ export function LeadsKanban({ leads, onStatusChange, onLeadClick }: LeadsKanbanP
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0">
         {statusOrder.map((status) => {
           const config = statusConfig[status];
           const columnLeads = getLeadsByStatus(status);
@@ -71,7 +71,7 @@ export function LeadsKanban({ leads, onStatusChange, onLeadClick }: LeadsKanbanP
           return (
             <div
               key={status}
-              className="flex-shrink-0 w-[280px] md:w-[300px]"
+              className="flex-shrink-0 w-[240px] sm:w-[260px] md:w-[280px] lg:w-[300px]"
             >
               {/* Column Header */}
               <div
@@ -93,12 +93,12 @@ export function LeadsKanban({ leads, onStatusChange, onLeadClick }: LeadsKanbanP
               {/* Droppable Area */}
               <Droppable droppableId={status}>
                 {(provided, snapshot) => (
-                  <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
+                  <ScrollArea className="h-[calc(100vh-300px)] sm:h-[calc(100vh-340px)] md:h-[calc(100vh-380px)] min-h-[300px] sm:min-h-[350px] md:min-h-[400px]">
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "min-h-[400px] rounded-b-lg border border-dashed p-2 transition-colors",
+                        "min-h-[300px] sm:min-h-[350px] md:min-h-[400px] rounded-b-lg border border-dashed p-1.5 sm:p-2 transition-colors",
                         snapshot.isDraggingOver
                           ? "border-primary bg-primary/5"
                           : "border-muted-foreground/20"
@@ -121,15 +121,15 @@ export function LeadsKanban({ leads, onStatusChange, onLeadClick }: LeadsKanbanP
                               )}
                               onClick={() => onLeadClick(lead)}
                             >
-                              <CardContent className="p-3 space-y-2">
+                              <CardContent className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
                                 {/* Nome */}
-                                <div className="font-medium text-sm truncate">
+                                <div className="font-medium text-xs sm:text-sm truncate">
                                   {lead.name}
                                 </div>
 
                                 {/* Email */}
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <Mail className="h-3 w-3 flex-shrink-0" />
+                                <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                                  <Mail className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
                                   <span className="truncate">{lead.email}</span>
                                 </div>
 
