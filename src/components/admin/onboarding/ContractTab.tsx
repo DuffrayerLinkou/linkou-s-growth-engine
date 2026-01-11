@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +63,11 @@ const statusConfig = {
   cancelled: { label: "Cancelado", color: "bg-red-500/20 text-red-600", icon: XCircle },
 };
 
-export function ContractTab() {
+interface ContractTabProps {
+  clientId?: string;
+}
+
+export function ContractTab({ clientId }: ContractTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [managerName, setManagerName] = useState("");
@@ -71,6 +75,13 @@ export function ContractTab() {
   const [viewingContract, setViewingContract] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Set selected client when clientId prop changes
+  useEffect(() => {
+    if (clientId) {
+      setSelectedClient(clientId);
+    }
+  }, [clientId]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -85,12 +96,18 @@ export function ContractTab() {
   });
 
   const { data: contracts = [], isLoading } = useQuery({
-    queryKey: ["contracts"],
+    queryKey: ["contracts", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("contracts")
         .select("*, clients(name)")
         .order("created_at", { ascending: false });
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -118,7 +135,7 @@ export function ContractTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       setIsDialogOpen(false);
-      setSelectedClient("");
+      if (!clientId) setSelectedClient("");
       setManagerName("");
       setContent(DEFAULT_CONTRACT_TEMPLATE);
       toast({ title: "Contrato criado!", description: "O contrato foi salvo como rascunho." });
@@ -155,7 +172,9 @@ export function ContractTab() {
               Modelo de Contrato
             </CardTitle>
             <CardDescription>
-              Preencha as informações e envie automaticamente para o email do cliente
+              {clientId 
+                ? "Contratos do cliente selecionado" 
+                : "Preencha as informações e envie automaticamente para o email do cliente"}
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -173,7 +192,7 @@ export function ContractTab() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Cliente</Label>
-                    <Select value={selectedClient} onValueChange={setSelectedClient}>
+                    <Select value={selectedClient} onValueChange={setSelectedClient} disabled={!!clientId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o cliente" />
                       </SelectTrigger>
@@ -222,7 +241,7 @@ export function ContractTab() {
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
           ) : contracts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Nenhum contrato criado ainda
+              {clientId ? "Nenhum contrato para este cliente" : "Nenhum contrato criado ainda"}
             </div>
           ) : (
             <div className="space-y-3">

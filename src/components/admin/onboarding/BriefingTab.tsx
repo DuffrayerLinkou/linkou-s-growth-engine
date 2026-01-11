@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -46,13 +46,24 @@ const initialForm: BriefingForm = {
   status: "pending",
 };
 
-export function BriefingTab() {
+interface BriefingTabProps {
+  clientId?: string;
+}
+
+export function BriefingTab({ clientId }: BriefingTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBriefing, setEditingBriefing] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<BriefingForm>(initialForm);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Set client_id in form when clientId prop changes
+  useEffect(() => {
+    if (clientId && !editingBriefing) {
+      setForm(prev => ({ ...prev, client_id: clientId }));
+    }
+  }, [clientId, editingBriefing]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -64,12 +75,18 @@ export function BriefingTab() {
   });
 
   const { data: briefings = [], isLoading } = useQuery({
-    queryKey: ["briefings"],
+    queryKey: ["briefings", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("briefings")
         .select("*, clients(name)")
         .order("created_at", { ascending: false });
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -102,7 +119,7 @@ export function BriefingTab() {
       queryClient.invalidateQueries({ queryKey: ["briefings"] });
       setIsDialogOpen(false);
       setEditingBriefing(null);
-      setForm(initialForm);
+      setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
       toast({ title: editingBriefing ? "Briefing atualizado!" : "Briefing criado!" });
     },
     onError: () => {
@@ -141,7 +158,7 @@ export function BriefingTab() {
 
   const openNew = () => {
     setEditingBriefing(null);
-    setForm(initialForm);
+    setForm(clientId ? { ...initialForm, client_id: clientId } : initialForm);
     setIsDialogOpen(true);
   };
 
@@ -154,7 +171,9 @@ export function BriefingTab() {
               <ClipboardList className="h-5 w-5" />
               Briefings de Clientes
             </CardTitle>
-            <CardDescription>Gerencie os briefings dos seus clientes</CardDescription>
+            <CardDescription>
+              {clientId ? "Briefings do cliente selecionado" : "Gerencie os briefings dos seus clientes"}
+            </CardDescription>
           </div>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" />
@@ -165,7 +184,9 @@ export function BriefingTab() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Carregando...</div>
           ) : briefings.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">Nenhum briefing criado ainda</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {clientId ? "Nenhum briefing para este cliente" : "Nenhum briefing criado ainda"}
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {briefings.map((briefing: any) => {
@@ -226,7 +247,7 @@ export function BriefingTab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
-                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })} disabled={!!clientId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
