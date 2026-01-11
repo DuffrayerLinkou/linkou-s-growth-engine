@@ -4,28 +4,28 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const testimonials = [
   {
-    name: "Carlos Silva",
+    name: "Carlos Mendes",
     role: "Diretor Comercial",
-    company: "Construtora Exemplo",
+    company: "Construtora",
     content:
-      "Eu gastava 40 mil por mês e não sabia de onde vinham os clientes. Hoje eu sei exatamente qual campanha gerou cada venda — e meu time aprendeu a olhar os dados junto comigo.",
-    avatar: "CS",
+      "A gente gastava e não sabia onde estava o resultado. Depois da auditoria, ficou claro quais campanhas geravam visita e quais só queimavam verba.",
+    avatar: "CM",
   },
   {
-    name: "Marina Santos",
-    role: "CEO",
-    company: "Imobiliária Premium",
+    name: "Patrícia Lima",
+    role: "Gerente de Marketing",
+    company: "Concessionária",
     content:
-      "O que me convenceu foi a transparência. Desde o primeiro dia, tudo é nosso — contas, dados, acessos. E quando quisemos internalizar, eles treinaram minha equipe sem drama.",
-    avatar: "MS",
+      "Tínhamos 4 unidades e nenhum controle sobre qual canal trazia o quê. Hoje, cada lead tem origem clara e o time sabe exatamente o que fazer.",
+    avatar: "PL",
   },
   {
-    name: "Roberto Almeida",
+    name: "Ricardo Souza",
     role: "Sócio-Diretor",
-    company: "Consultoria B2B",
+    company: "Incorporadora",
     content:
-      "Nosso ciclo de venda é longo, então sempre foi difícil provar ROI. Agora eu tenho o caminho completo do lead até o contrato. 8x de retorno em 6 meses, documentado.",
-    avatar: "RA",
+      "O que mais valeu foi a transferência. Meu analista hoje opera o sistema sozinho. Não dependemos mais de ninguém de fora.",
+    avatar: "RS",
   },
 ];
 
@@ -45,10 +45,10 @@ export function Testimonials() {
             Depoimentos
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Quem já passou por isso
+            O que muda após a consultoria
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Conversas reais sobre o que muda quando o marketing <span className="text-foreground font-medium">para de ser uma caixa preta</span>.
+            Clientes que saíram do escuro e passaram a <span className="text-foreground font-medium">tomar decisões com base em dados</span>.
           </p>
         </motion.div>
 

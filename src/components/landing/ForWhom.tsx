@@ -7,33 +7,33 @@ const audiences = [
     icon: Building2,
     title: "Construtoras e Incorporadoras",
     description:
-      "Se você está lançando e sente que gasta em tráfego sem saber o que realmente traz resultado — e depende de planilhas manuais pra acompanhar leads — a gente estrutura isso.",
+      "Você lança empreendimentos e investe em tráfego, mas não sabe exatamente de onde vem cada lead qualificado? A auditoria revela o caminho completo — do clique à visita.",
     benefits: [
-      "Leads que chegam prontos pro comercial",
-      "Saber exatamente qual campanha gerou cada venda",
-      "Parar de depender de 'feeling' pra decidir",
+      "Rastreabilidade por empreendimento",
+      "Leads qualificados por perfil",
+      "Decisões baseadas em dados, não feeling",
     ],
   },
   {
     icon: Home,
-    title: "Imobiliárias",
+    title: "Concessionárias de Veículos",
     description:
-      "Se os corretores reclamam que os leads são frios, ou se você não consegue provar o ROI do marketing pro dono — esse é o tipo de problema que resolvemos.",
+      "Vários canais, várias campanhas, e a sensação de que o dinheiro vai embora sem controle? Organizamos seu tráfego por modelo, unidade e canal — com clareza total.",
     benefits: [
-      "Leads segmentados pelo perfil certo de imóvel",
-      "Sistema que aquece o lead antes do contato",
-      "Dados claros pra mostrar resultado",
+      "Campanhas organizadas por objetivo",
+      "Leads distribuídos por unidade",
+      "ROI claro por canal",
     ],
   },
   {
     icon: Briefcase,
-    title: "Negócios com Venda Consultiva",
+    title: "Negócios que Dependem de Mídia Paga",
     description:
-      "Se sua venda exige educar o cliente antes de fechar, e o ciclo é longo — você sabe que o marketing tradicional não funciona. A gente estrutura prospecção ativa com rastreamento completo.",
+      "Se você gasta com tráfego todo mês e sente que deveria ter mais controle sobre os resultados — esse é exatamente o problema que resolvemos.",
     benefits: [
-      "Nutrição que prepara o lead pra conversa",
-      "Prospecção ativa com scripts testados",
-      "Saber qual conteúdo influenciou cada venda",
+      "Auditoria do que está funcionando",
+      "Estrutura de dados organizada",
+      "Time treinado para operar",
     ],
   },
 ];
@@ -54,10 +54,10 @@ export function ForWhom() {
             Para Quem
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Se você se identifica com isso, a gente pode ajudar
+            <span className="text-primary">Auditoria e Consultoria</span> para quem depende de tráfego para vender
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Nosso método funciona melhor para negócios com tickets médios a altos e ciclos de venda que exigem relacionamento. Se algum cenário abaixo parece familiar, <span className="text-foreground font-medium">vale a conversa</span>.
+            Trabalhamos com negócios que investem em mídia paga e precisam de <span className="text-foreground font-medium">clareza sobre o que funciona</span>. Se você se identifica, vale conversar.
           </p>
         </motion.div>
 
