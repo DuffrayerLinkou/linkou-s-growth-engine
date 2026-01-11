@@ -7,7 +7,7 @@ export function MobileWhatsAppCTA() {
       <Button
         size="lg"
         className="w-full font-semibold shadow-lg"
-        onClick={() => window.open("https://wa.me/5511999999999", "_blank")}
+        onClick={() => window.open("https://wa.me/5541983455701", "_blank")}
       >
         <MessageCircle className="mr-2 h-5 w-5" />
         Falar no WhatsApp
