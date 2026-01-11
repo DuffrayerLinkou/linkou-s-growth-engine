@@ -8,6 +8,9 @@ import { useTheme } from "@/hooks/useTheme";
 import logoRoxo from "@/assets/logo-linkou-roxo.png";
 import logoClaro from "@/assets/logo-linkou-claro.png";
 
+// Logo sizing - the current logo has vertical format (icon stacked on text)
+// so we need larger height to make it readable
+
 const navLinks = [
   { href: "#resultados", label: "Resultados" },
   { href: "#metodo", label: "Método" },
@@ -37,7 +40,7 @@ export function Header() {
             <img 
               src={theme === "dark" ? logoClaro : logoRoxo} 
               alt="Linkou - Auditoria e Consultoria de Tráfego"
-              className="h-10 md:h-12 w-auto"
+              className="h-16 md:h-20 w-auto"
             />
           </Link>
 
