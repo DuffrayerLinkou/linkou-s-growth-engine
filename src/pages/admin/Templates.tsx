@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +32,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Eye, EyeOff, GripVertical } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TaskTemplate {
   id: string;
@@ -212,6 +214,51 @@ const Templates = () => {
     }
   };
 
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source } = result;
+
+    // Se não tem destino ou não mudou de posição, ignora
+    if (!destination) return;
+    if (destination.index === source.index) return;
+
+    // Reordenar localmente primeiro (optimistic update)
+    const reordered = Array.from(filteredTemplates);
+    const [removed] = reordered.splice(source.index, 1);
+    reordered.splice(destination.index, 0, removed);
+
+    // Atualizar order_index de cada item
+    const updates = reordered.map((template, index) => ({
+      id: template.id,
+      order_index: index + 1,
+    }));
+
+    // Atualizar estado local imediatamente
+    setTemplates(prev => {
+      const otherPhaseTemplates = prev.filter(t => t.journey_phase !== activePhase);
+      const updatedTemplates = reordered.map((t, idx) => ({
+        ...t,
+        order_index: idx + 1
+      }));
+      return [...otherPhaseTemplates, ...updatedTemplates].sort((a, b) => a.order_index - b.order_index);
+    });
+
+    // Persistir no banco de dados
+    try {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("task_templates")
+          .update({ order_index: update.order_index })
+          .eq("id", update.id);
+        
+        if (error) throw error;
+      }
+      toast.success("Ordem atualizada com sucesso");
+    } catch (error) {
+      toast.error("Erro ao reordenar templates");
+      fetchTemplates(); // Reverter em caso de erro
+    }
+  };
+
   const getPriorityBadge = (priority: string) => {
     const p = priorities.find((pr) => pr.value === priority);
     return p ? (
@@ -275,82 +322,112 @@ const Templates = () => {
               </Button>
             </div>
           ) : (
-            <>
-              {/* Mobile: Cards empilhados */}
-              <div className="block sm:hidden space-y-3">
-                {filteredTemplates.map((template) => (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Mobile: Cards empilhados com Drag and Drop */}
+              <Droppable droppableId="templates-mobile">
+                {(provided, snapshot) => (
                   <div
-                    key={template.id}
-                    className={`p-3 rounded-lg border bg-card ${!template.is_active ? "opacity-50" : ""}`}
-                  >
-                    {/* Linha 1: Ordem + Título + Prioridade */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-xs font-medium text-muted-foreground shrink-0">
-                          #{template.order_index}
-                        </span>
-                        <p className="font-medium text-sm truncate">{template.title}</p>
-                      </div>
-                      {getPriorityBadge(template.priority)}
-                    </div>
-
-                    {/* Linha 2: Descrição */}
-                    {template.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                        {template.description}
-                      </p>
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={cn(
+                      "block sm:hidden space-y-3 transition-colors rounded-lg p-1",
+                      snapshot.isDraggingOver && "bg-primary/5"
                     )}
+                  >
+                    {filteredTemplates.map((template, index) => (
+                      <Draggable key={template.id} draggableId={template.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={cn(
+                              "p-3 rounded-lg border bg-card",
+                              !template.is_active && "opacity-50",
+                              snapshot.isDragging && "shadow-lg ring-2 ring-primary/20"
+                            )}
+                          >
+                            {/* Linha 1: Handle + Ordem + Título + Prioridade */}
+                            <div className="flex items-start gap-2 mb-2">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="mt-0.5 cursor-grab active:cursor-grabbing touch-none"
+                              >
+                                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-muted-foreground shrink-0">
+                                    #{template.order_index}
+                                  </span>
+                                  <p className="font-medium text-sm truncate">{template.title}</p>
+                                </div>
+                                {getPriorityBadge(template.priority)}
+                              </div>
+                            </div>
 
-                    {/* Linha 3: Status + Ações */}
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5">
-                          {template.visible_to_client ? (
-                            <Eye className="h-3.5 w-3.5 text-primary" />
-                          ) : (
-                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          <span className="text-[10px] text-muted-foreground">
-                            {template.visible_to_client ? "Visível" : "Oculto"}
-                          </span>
-                        </div>
-                        <Switch
-                          checked={template.is_active}
-                          onCheckedChange={() => handleToggleActive(template)}
-                          className="scale-90"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleOpenDialog(template)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setDeletingTemplate(template);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
+                            {/* Linha 2: Descrição */}
+                            {template.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2 ml-6">
+                                {template.description}
+                              </p>
+                            )}
+
+                            {/* Linha 3: Status + Ações */}
+                            <div className="flex items-center justify-between pt-2 border-t ml-6">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                  {template.visible_to_client ? (
+                                    <Eye className="h-3.5 w-3.5 text-primary" />
+                                  ) : (
+                                    <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {template.visible_to_client ? "Visível" : "Oculto"}
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={template.is_active}
+                                  onCheckedChange={() => handleToggleActive(template)}
+                                  className="scale-90"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleOpenDialog(template)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    setDeletingTemplate(template);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                ))}
-              </div>
+                )}
+              </Droppable>
 
-              {/* Desktop: Tabela */}
+              {/* Desktop: Tabela com Drag and Drop */}
               <div className="hidden sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"></TableHead>
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Título</TableHead>
                       <TableHead className="w-24">Prioridade</TableHead>
@@ -359,64 +436,83 @@ const Templates = () => {
                       <TableHead className="w-24 text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {filteredTemplates.map((template) => (
-                      <TableRow
-                        key={template.id}
-                        className={!template.is_active ? "opacity-50" : ""}
-                      >
-                        <TableCell className="font-medium">{template.order_index}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{template.title}</p>
-                            {template.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {template.description}
-                              </p>
+                  <Droppable droppableId="templates-desktop">
+                    {(provided) => (
+                      <TableBody ref={provided.innerRef} {...provided.droppableProps}>
+                        {filteredTemplates.map((template, index) => (
+                          <Draggable key={template.id} draggableId={template.id} index={index}>
+                            {(provided, snapshot) => (
+                              <TableRow
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={cn(
+                                  !template.is_active && "opacity-50",
+                                  snapshot.isDragging && "bg-muted shadow-lg"
+                                )}
+                              >
+                                <TableCell
+                                  {...provided.dragHandleProps}
+                                  className="cursor-grab active:cursor-grabbing"
+                                >
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                </TableCell>
+                                <TableCell className="font-medium">{template.order_index}</TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{template.title}</p>
+                                    {template.description && (
+                                      <p className="text-sm text-muted-foreground line-clamp-1">
+                                        {template.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{getPriorityBadge(template.priority)}</TableCell>
+                                <TableCell>
+                                  {template.visible_to_client ? (
+                                    <Eye className="h-4 w-4 text-primary" />
+                                  ) : (
+                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Switch
+                                    checked={template.is_active}
+                                    onCheckedChange={() => handleToggleActive(template)}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleOpenDialog(template)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        setDeletingTemplate(template);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{getPriorityBadge(template.priority)}</TableCell>
-                        <TableCell>
-                          {template.visible_to_client ? (
-                            <Eye className="h-4 w-4 text-primary" />
-                          ) : (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={template.is_active}
-                            onCheckedChange={() => handleToggleActive(template)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenDialog(template)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setDeletingTemplate(template);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </TableBody>
+                    )}
+                  </Droppable>
                 </Table>
               </div>
-            </>
+            </DragDropContext>
           )}
         </CardContent>
       </Card>
