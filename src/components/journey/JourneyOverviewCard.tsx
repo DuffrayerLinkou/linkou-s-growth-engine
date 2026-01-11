@@ -91,36 +91,36 @@ export function JourneyOverviewCard({ currentPhase, phaseDates, phaseStartDate }
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <CardContent className="p-3 sm:p-4 md:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpis.map((kpi, index) => (
             <motion.div
               key={kpi.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex items-start gap-3"
+              className="flex items-start gap-2 sm:gap-3 p-2 sm:p-0 rounded-lg bg-muted/30 sm:bg-transparent"
             >
-              <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+              <div className={`p-1.5 sm:p-2 rounded-lg ${kpi.bgColor} flex-shrink-0`}>
+                <kpi.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${kpi.color}`} />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                <p className="text-xs text-muted-foreground">{kpi.subtext}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{kpi.label}</p>
+                <p className={`text-base sm:text-xl font-bold ${kpi.color} truncate`}>{kpi.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{kpi.subtext}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-6 pt-4 border-t">
+        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Progresso da Jornada</span>
-            <span className="text-sm text-muted-foreground">{progressPercentage}%</span>
+            <span className="text-xs sm:text-sm font-medium">Progresso da Jornada</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">{progressPercentage}%</span>
           </div>
-          <Progress value={progressPercentage} className="h-2" />
-          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+          <Progress value={progressPercentage} className="h-1.5 sm:h-2" />
+          <div className="flex justify-between mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-muted-foreground">
             <span>Início</span>
             <span>Transferência</span>
           </div>
