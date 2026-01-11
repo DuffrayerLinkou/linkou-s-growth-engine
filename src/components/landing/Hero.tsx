@@ -2,8 +2,21 @@ import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroBackground } from "./HeroBackground";
+import { useRef, useState, useCallback } from "react";
 
 export function Hero() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = heroRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMousePosition({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    });
+  }, []);
+
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
     if (element) {
@@ -12,9 +25,13 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+    <section 
+      ref={heroRef}
+      onMouseMove={handleMouseMove}
+      className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden"
+    >
       {/* Animated Background */}
-      <HeroBackground />
+      <HeroBackground mousePosition={mousePosition} />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Node {
@@ -18,15 +18,31 @@ interface Connection {
   opacity: number;
 }
 
+interface HeroBackgroundProps {
+  mousePosition?: { x: number; y: number } | null;
+}
+
+// Grid-based distribution for better coverage
 const generateNodes = (count: number): Node[] => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: 4 + Math.random() * 8,
-    delay: Math.random() * 2,
-    duration: 8 + Math.random() * 7,
-  }));
+  const nodes: Node[] = [];
+  const cols = 7;
+  const rows = Math.ceil(count / cols);
+  const cellWidth = 100 / cols;
+  const cellHeight = 100 / rows;
+  
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    nodes.push({
+      id: i,
+      x: col * cellWidth + Math.random() * cellWidth * 0.8 + cellWidth * 0.1,
+      y: row * cellHeight + Math.random() * cellHeight * 0.8 + cellHeight * 0.1,
+      size: 4 + Math.random() * 8,
+      delay: Math.random() * 2,
+      duration: 8 + Math.random() * 7,
+    });
+  }
+  return nodes;
 };
 
 const calculateConnections = (nodes: Node[], maxDistance: number): Connection[] => {
@@ -51,17 +67,16 @@ const calculateConnections = (nodes: Node[], maxDistance: number): Connection[] 
   return connections;
 };
 
-export function HeroBackground() {
-  const [nodes] = useState(() => generateNodes(20));
+export function HeroBackground({ mousePosition }: HeroBackgroundProps) {
+  const [nodes] = useState(() => generateNodes(35));
   const [interactiveNodes, setInteractiveNodes] = useState<Node[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
   const nodeIdCounter = useRef(100);
   const lastNodeTime = useRef(0);
 
   // Only calculate connections for static nodes
   useEffect(() => {
-    setConnections(calculateConnections(nodes, 35));
+    setConnections(calculateConnections(nodes, 30));
   }, [nodes]);
 
   // Auto-remove old interactive nodes
@@ -75,21 +90,18 @@ export function HeroBackground() {
     return () => clearInterval(cleanup);
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const now = Date.now();
-    if (now - lastNodeTime.current < 120) return;
-    lastNodeTime.current = now;
-
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+  // Create nodes when mouse moves (triggered from parent)
+  useEffect(() => {
+    if (!mousePosition) return;
     
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const now = Date.now();
+    if (now - lastNodeTime.current < 100) return;
+    lastNodeTime.current = now;
     
     const newNode: Node = {
       id: nodeIdCounter.current++,
-      x,
-      y,
+      x: mousePosition.x,
+      y: mousePosition.y,
       size: 3 + Math.random() * 5,
       delay: 0,
       duration: 3 + Math.random() * 2,
@@ -98,14 +110,12 @@ export function HeroBackground() {
     };
     
     setInteractiveNodes(prev => [...prev, newNode].slice(-15));
-  }, []);
+  }, [mousePosition]);
 
   return (
     <div 
-      ref={containerRef}
       className="absolute inset-0 overflow-hidden"
       aria-hidden="true"
-      onMouseMove={handleMouseMove}
     >
       {/* Base gradient blobs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
