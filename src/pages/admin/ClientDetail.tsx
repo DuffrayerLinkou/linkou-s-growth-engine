@@ -1066,7 +1066,7 @@ export default function ClientDetail() {
                     Ainda não há histórico de mudanças de fase.
                   </p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-0">
                     {auditLogs.map((log, index) => {
                       const fromPhase = (log.old_data as any)?.phase as Phase;
                       const toPhase = (log.new_data as any)?.phase as Phase;
@@ -1077,20 +1077,28 @@ export default function ClientDetail() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.05 }}
-                          className="flex items-center gap-3 text-sm"
+                          className="flex flex-col gap-1.5 text-sm border-l-2 border-primary/30 pl-3 py-2"
                         >
-                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                          <span className="text-muted-foreground">
-                            {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                          </span>
-                          <span>Fase alterada de</span>
-                          <Badge variant="outline" className="text-xs">
-                            {getPhaseLabel(fromPhase)}
-                          </Badge>
-                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                          <Badge className="bg-primary/10 text-primary text-xs">
-                            {getPhaseLabel(toPhase)}
-                          </Badge>
+                          {/* Linha 1: Data/hora */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 -ml-[17px]" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">
+                              {format(new Date(log.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          </div>
+                          
+                          {/* Linha 2: Mudança de fase */}
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                            <span className="text-xs sm:text-sm text-muted-foreground">De</span>
+                            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
+                              {getPhaseLabel(fromPhase)}
+                            </Badge>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">para</span>
+                            <Badge className="bg-primary/10 text-primary text-[10px] sm:text-xs px-1.5 sm:px-2">
+                              {getPhaseLabel(toPhase)}
+                            </Badge>
+                          </div>
                         </motion.div>
                       );
                     })}
