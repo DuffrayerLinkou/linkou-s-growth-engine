@@ -24,7 +24,17 @@ import {
   MoreHorizontal,
   Briefcase,
   Wrench,
+  FolderOpen,
+  File,
+  FileImage,
+  FileSpreadsheet,
+  Video,
+  Upload,
+  Download,
+  Eye,
+  Search,
 } from "lucide-react";
+import { FileUploader } from "@/components/shared/FileUploader";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,6 +146,45 @@ interface Profile {
   email: string;
 }
 
+interface FileRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  file_path: string;
+  file_type: string | null;
+  mime_type: string | null;
+  file_size: number | null;
+  created_at: string | null;
+  category: string | null;
+  uploaded_by: string | null;
+  projects?: { name: string } | null;
+  tasks?: { title: string } | null;
+}
+
+const categoryLabels: Record<string, string> = {
+  general: "Geral",
+  campaign_asset: "Mídia para Campanha",
+  document_request: "Documento Solicitado",
+  deliverable: "Entregável",
+};
+
+const getFileIcon = (mimeType: string | null) => {
+  if (!mimeType) return File;
+  if (mimeType.startsWith("image/")) return FileImage;
+  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) return FileSpreadsheet;
+  if (mimeType.startsWith("video/")) return Video;
+  if (mimeType.includes("pdf") || mimeType.includes("document")) return FileText;
+  return File;
+};
+
+const formatFileSize = (bytes: number | null) => {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
 const userSchema = z.object({
   email: z.string().email("Email inválido"),
   full_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -177,6 +226,10 @@ export default function ClientDetail() {
     base_date: new Date().toISOString().split("T")[0],
     interval_days: 7,
   });
+  const [files, setFiles] = useState<FileRecord[]>([]);
+  const [fileSearch, setFileSearch] = useState("");
+  const [fileFilter, setFileFilter] = useState("all");
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const [userFormData, setUserFormData] = useState({
@@ -362,14 +415,91 @@ export default function ClientDetail() {
     }
   };
 
+  const fetchFiles = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("files")
+        .select(`*, projects:project_id (name), tasks:task_id (title)`)
+        .eq("client_id", id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFiles((data || []) as FileRecord[]);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs(), fetchAssignees()]);
+      await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs(), fetchAssignees(), fetchFiles()]);
       setIsLoading(false);
     };
     loadData();
   }, [id]);
+
+  const handleDownloadFile = async (file: FileRecord) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("client-files")
+        .download(file.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao baixar",
+        description: "Não foi possível baixar o arquivo.",
+      });
+    }
+  };
+
+  const handlePreviewFile = async (file: FileRecord) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("client-files")
+        .createSignedUrl(file.file_path, 3600);
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, "_blank");
+    } catch (error) {
+      console.error("Error creating preview URL:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao visualizar",
+        description: "Não foi possível abrir o arquivo.",
+      });
+    }
+  };
+
+  const filteredFiles = files.filter((file) => {
+    const matchesSearch = fileSearch === "" || 
+      file.name.toLowerCase().includes(fileSearch.toLowerCase()) ||
+      (file.description?.toLowerCase().includes(fileSearch.toLowerCase()));
+    
+    if (fileFilter === "all") return matchesSearch;
+    if (fileFilter === "images") return matchesSearch && file.mime_type?.startsWith("image/");
+    if (fileFilter === "documents") return matchesSearch && (file.mime_type?.includes("pdf") || file.mime_type?.includes("document"));
+    if (fileFilter === "spreadsheets") return matchesSearch && (file.mime_type?.includes("spreadsheet") || file.mime_type?.includes("excel"));
+    if (fileFilter === "videos") return matchesSearch && file.mime_type?.startsWith("video/");
+    return matchesSearch;
+  });
+
+  const totalFileSize = files.reduce((acc, file) => acc + (file.file_size || 0), 0);
 
   const handleCreateUser = async () => {
     setErrors({});
@@ -888,6 +1018,10 @@ export default function ClientDetail() {
             <Users className="h-4 w-4" />
             Usuários ({users.length})
           </TabsTrigger>
+          <TabsTrigger value="files" className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            Arquivos ({files.length})
+          </TabsTrigger>
         </TabsList>
 
         {/* Journey Tab */}
@@ -1091,6 +1225,164 @@ export default function ClientDetail() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Files Tab */}
+        <TabsContent value="files" className="space-y-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <FolderOpen className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{files.length}</p>
+                    <p className="text-sm text-muted-foreground">Total de arquivos</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-lg">
+                    <Download className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{formatFileSize(totalFileSize)}</p>
+                    <p className="text-sm text-muted-foreground">Tamanho total</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters and Upload */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle>Arquivos do Cliente</CardTitle>
+                <CardDescription>Gerencie os arquivos enviados e recebidos.</CardDescription>
+              </div>
+              <Button onClick={() => setIsUploadDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Enviar Arquivo
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou descrição..."
+                    value={fileSearch}
+                    onChange={(e) => setFileSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={fileFilter} onValueChange={setFileFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filtrar por tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    <SelectItem value="images">Imagens</SelectItem>
+                    <SelectItem value="documents">Documentos</SelectItem>
+                    <SelectItem value="spreadsheets">Planilhas</SelectItem>
+                    <SelectItem value="videos">Vídeos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Files Grid */}
+              {filteredFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <FolderOpen className="h-12 w-12 mb-4 opacity-50" />
+                  <p>{files.length === 0 ? "Nenhum arquivo enviado" : "Nenhum arquivo encontrado"}</p>
+                  {files.length === 0 && (
+                    <Button variant="link" onClick={() => setIsUploadDialogOpen(true)}>
+                      Enviar primeiro arquivo
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredFiles.map((file, index) => {
+                    const FileIcon = getFileIcon(file.mime_type);
+                    return (
+                      <motion.div
+                        key={file.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-muted rounded-lg">
+                            <FileIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate" title={file.name}>
+                              {file.name}
+                            </p>
+                            {file.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {file.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {file.category && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {categoryLabels[file.category] || file.category}
+                                </Badge>
+                              )}
+                              {file.projects?.name && (
+                                <Badge variant="outline" className="text-xs">
+                                  {file.projects.name}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                              <span>{formatFileSize(file.file_size)}</span>
+                              {file.created_at && (
+                                <>
+                                  <span>•</span>
+                                  <span>{format(new Date(file.created_at), "dd/MM/yy", { locale: ptBR })}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handlePreviewFile(file)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleDownloadFile(file)}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Baixar
+                          </Button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1784,6 +2076,40 @@ export default function ClientDetail() {
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Criar {selectedTemplates.length} Tarefas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload File Dialog */}
+      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Enviar Arquivo
+            </DialogTitle>
+            <DialogDescription>
+              Envie arquivos para o cliente {client.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <FileUploader
+            clientId={id!}
+            category="deliverable"
+            onUploadComplete={() => {
+              fetchFiles();
+              setIsUploadDialogOpen(false);
+              toast({
+                title: "Arquivo enviado",
+                description: "O arquivo foi enviado com sucesso.",
+              });
+            }}
+          />
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
