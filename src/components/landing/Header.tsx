@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
-import logoRoxo from "@/assets/logo-linkou-roxo.png";
-import logoClaro from "@/assets/logo-linkou-claro.png";
-
-// Logo sizing - the current logo has vertical format (icon stacked on text)
-// so we need larger height to make it readable
+import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
+import logoClaro from "@/assets/logo-linkou-horizontal-preto.png";
 
 const navLinks = [
   { href: "#resultados", label: "Resultados" },
@@ -40,7 +37,7 @@ export function Header() {
             <img 
               src={theme === "dark" ? logoClaro : logoRoxo} 
               alt="Linkou - Auditoria e Consultoria de Tráfego"
-              className="h-16 md:h-20 w-auto"
+              className="h-8 md:h-10 w-auto"
             />
           </Link>
 
