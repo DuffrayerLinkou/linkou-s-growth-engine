@@ -470,21 +470,21 @@ export default function ClienteDashboard() {
       )}
 
       {/* Progresso das Tarefas + Próximas Tarefas */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Progresso das Tarefas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Progresso das Tarefas
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-base sm:text-lg">
+                <span>Progresso das Tarefas</span>
                 <Link to="/cliente/tarefas">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2">
                     Ver todas <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-3 sm:p-4 pt-0 space-y-3 sm:space-y-4">
               {loadingTasksSummary ? (
                 <div className="space-y-3">
                   <Skeleton className="h-4 w-full" />
@@ -492,26 +492,26 @@ export default function ClienteDashboard() {
                 </div>
               ) : tasksSummary && tasksSummary.total > 0 ? (
                 <>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-muted-foreground">Concluídas</span>
                       <span className="font-medium">{tasksSummary.completed} de {tasksSummary.total}</span>
                     </div>
-                    <Progress value={taskProgress} className="h-3" />
+                    <Progress value={taskProgress} className="h-2 sm:h-3" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {Object.entries(taskStatusLabels).map(([status, label]) => (
                       <div 
                         key={status} 
-                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                        className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-lg bg-muted/50"
                       >
-                        <span className={taskStatusColors[status]}>
+                        <span className={`${taskStatusColors[status]} shrink-0`}>
                           {taskStatusIcons[status]}
                         </span>
-                        <div>
-                          <p className="text-xs text-muted-foreground">{label}</p>
-                          <p className="font-semibold">{tasksSummary[status as keyof typeof tasksSummary]}</p>
+                        <div className="min-w-0">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{label}</p>
+                          <p className="text-sm sm:text-base font-semibold">{tasksSummary[status as keyof typeof tasksSummary]}</p>
                         </div>
                       </div>
                     ))}
@@ -530,46 +530,46 @@ export default function ClienteDashboard() {
         {/* Próximas Tarefas */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Próximas Tarefas</CardTitle>
-              <CardDescription>Tarefas mais urgentes</CardDescription>
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg">Próximas Tarefas</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Tarefas mais urgentes</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingUpcomingTasks ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-10 sm:h-12 w-full" />
                   ))}
                 </div>
               ) : upcomingTasks && upcomingTasks.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 overflow-x-hidden">
                   {upcomingTasks.map((task) => {
                     const dueDateStatus = getDueDateStatus(task.due_date);
                     return (
                       <div 
                         key={task.id} 
-                        className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden"
                       >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className={taskStatusColors[task.status || "todo"]}>
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 overflow-hidden">
+                          <span className={`${taskStatusColors[task.status || "todo"]} shrink-0`}>
                             {taskStatusIcons[task.status || "todo"]}
                           </span>
-                          <p className="text-sm font-medium truncate">{task.title}</p>
+                          <p className="text-xs sm:text-sm font-medium truncate">{task.title}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                           {(task.priority === "urgent" || task.priority === "high") && (
-                            <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>
-                              {priorityLabels[task.priority]}
+                            <Badge variant="outline" className={`text-[10px] sm:text-xs px-1.5 ${priorityColors[task.priority]}`}>
+                              {task.priority === "urgent" ? "Urg" : "Alta"}
                             </Badge>
                           )}
                           {dueDateStatus && (
-                            <Badge variant="outline" className={`text-xs ${dueDateStatus.class}`}>
+                            <Badge variant="outline" className={`text-[10px] sm:text-xs px-1.5 ${dueDateStatus.class}`}>
                               {dueDateStatus.label}
                             </Badge>
                           )}
                           {task.due_date && !dueDateStatus && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                            <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                               {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
                             </span>
                           )}
@@ -590,41 +590,41 @@ export default function ClienteDashboard() {
       </div>
 
       {/* Campanhas Recentes + Arquivos Recentes */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Campanhas Recentes */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Campanhas Recentes
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-base sm:text-lg">
+                <span>Campanhas Recentes</span>
                 <Link to="/cliente/campanhas">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2">
                     Ver todas <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingRecentCampaigns ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-10 sm:h-12 w-full" />
                   ))}
                 </div>
               ) : recentCampaigns && recentCampaigns.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 overflow-x-hidden">
                   {recentCampaigns.map((camp) => (
-                    <div key={camp.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Megaphone className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <p className="text-sm font-medium truncate">{camp.name}</p>
+                    <div key={camp.id} className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 overflow-hidden">
+                        <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
+                        <p className="text-xs sm:text-sm font-medium truncate">{camp.name}</p>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge className={campaignStatusColors[camp.status || "draft"]}>
+                      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                        <Badge className={`text-[10px] sm:text-xs px-1.5 ${campaignStatusColors[camp.status || "draft"]}`}>
                           {campaignStatusLabels[camp.status || "draft"]}
                         </Badge>
                         {camp.approved_by_ponto_focal && (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
                         )}
                       </div>
                     </div>
@@ -643,32 +643,34 @@ export default function ClienteDashboard() {
         {/* Arquivos Recentes */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Arquivos Recentes
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-base sm:text-lg">
+                <span>Arquivos Recentes</span>
                 <Link to="/cliente/arquivos">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 px-2">
                     Ver todos <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingRecentFiles ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-10 sm:h-12 w-full" />
                   ))}
                 </div>
               ) : recentFiles && recentFiles.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 overflow-x-hidden">
                   {recentFiles.map((file) => (
-                    <div key={file.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {fileTypeIcons[file.file_type || "default"] || fileTypeIcons.default}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                    <div key={file.id} className="flex items-center justify-between gap-2 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 overflow-hidden">
+                        <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5">
+                          {fileTypeIcons[file.file_type || "default"] || fileTypeIcons.default}
+                        </span>
+                        <div className="min-w-0 overflow-hidden">
+                          <p className="text-xs sm:text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">
                             {format(new Date(file.created_at), "dd/MM/yyyy", { locale: ptBR })}
                           </p>
                         </div>
@@ -676,7 +678,7 @@ export default function ClienteDashboard() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 flex-shrink-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"
                         onClick={async () => {
                           const { data } = await supabase.storage
                             .from("client-files")
@@ -686,7 +688,7 @@ export default function ClienteDashboard() {
                           }
                         }}
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   ))}
@@ -703,48 +705,48 @@ export default function ClienteDashboard() {
       </div>
 
       {/* Meus Projetos + Atividade Recente */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Meus Projetos */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
           <Card>
-            <CardHeader>
-              <CardTitle>Meus Projetos</CardTitle>
-              <CardDescription>Projetos com progresso de tarefas</CardDescription>
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg">Meus Projetos</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Projetos com progresso de tarefas</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingMyProjects ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
+                    <Skeleton key={i} className="h-14 sm:h-16 w-full" />
                   ))}
                 </div>
               ) : myProjects && myProjects.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3 overflow-x-hidden">
                   {myProjects.map((project) => (
-                    <div key={project.id} className="p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <FolderKanban className="h-4 w-4 text-primary" />
-                          <p className="font-medium text-sm">{project.name}</p>
+                    <div key={project.id} className="p-2 sm:p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors overflow-hidden">
+                      <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
+                          <FolderKanban className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
+                          <p className="font-medium text-xs sm:text-sm truncate">{project.name}</p>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {project.status === "active" ? "Ativo" : project.status === "completed" ? "Concluído" : project.status}
+                        <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0 px-1.5">
+                          {project.status === "active" ? "Ativo" : project.status === "completed" ? "OK" : project.status}
                         </Badge>
                       </div>
                       {project.totalTasks > 0 && (
                         <div className="space-y-1">
-                          <div className="flex justify-between text-xs text-muted-foreground">
+                          <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
                             <span>Tarefas</span>
                             <span>{project.completedTasks}/{project.totalTasks}</span>
                           </div>
-                          <Progress value={project.progress} className="h-1.5" />
+                          <Progress value={project.progress} className="h-1 sm:h-1.5" />
                         </div>
                       )}
                       {project.start_date && (
-                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(project.start_date), "dd/MM/yyyy", { locale: ptBR })}
-                          {project.end_date && ` - ${format(new Date(project.end_date), "dd/MM/yyyy", { locale: ptBR })}`}
+                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1 truncate">
+                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                          {format(new Date(project.start_date), "dd/MM/yy", { locale: ptBR })}
+                          {project.end_date && ` - ${format(new Date(project.end_date), "dd/MM/yy", { locale: ptBR })}`}
                         </p>
                       )}
                     </div>
@@ -763,27 +765,27 @@ export default function ClienteDashboard() {
         {/* Atividade Recente */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
           <Card>
-            <CardHeader>
-              <CardTitle>Atividade Recente</CardTitle>
-              <CardDescription>Últimas atualizações</CardDescription>
+            <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+              <CardTitle className="text-base sm:text-lg">Atividade Recente</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Últimas atualizações</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-4 pt-0">
               {loadingRecentActivity ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-10 sm:h-12 w-full" />
                   ))}
                 </div>
               ) : recentActivity && recentActivity.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 overflow-x-hidden">
                   {recentActivity.map((log) => (
-                    <div key={log.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <div key={log.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                         {getActivityIcon(log.action)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{formatActivityAction(log)}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="font-medium text-xs sm:text-sm truncate">{formatActivityAction(log)}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           {format(new Date(log.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                         </p>
                       </div>
