@@ -59,11 +59,10 @@ export function HeroBackground() {
   const nodeIdCounter = useRef(100);
   const lastNodeTime = useRef(0);
 
-  // Recalculate connections including interactive nodes
+  // Only calculate connections for static nodes
   useEffect(() => {
-    const allNodes = [...nodes, ...interactiveNodes];
-    setConnections(calculateConnections(allNodes, 35));
-  }, [nodes, interactiveNodes]);
+    setConnections(calculateConnections(nodes, 35));
+  }, [nodes]);
 
   // Auto-remove old interactive nodes
   useEffect(() => {
