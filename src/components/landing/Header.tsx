@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
-import logoClaro from "@/assets/logo-linkou-horizontal-preto.png";
+import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
 const navLinks = [
   { href: "#resultados", label: "Resultados" },
@@ -35,9 +35,9 @@ export function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center shrink-0">
             <img 
-              src={theme === "dark" ? logoClaro : logoRoxo} 
+              src={theme === "dark" ? logoBranca : logoRoxo} 
               alt="Linkou - Auditoria e Consultoria de Tráfego"
-              className="block w-[180px] md:w-[220px] lg:w-[260px] h-auto shrink-0 max-w-none object-contain"
+              className="block w-[120px] md:w-[140px] lg:w-[160px] h-auto shrink-0 max-w-none object-contain"
             />
           </Link>
 
