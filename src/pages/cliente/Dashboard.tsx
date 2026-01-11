@@ -46,6 +46,7 @@ const taskStatusLabels: Record<string, string> = Object.fromEntries(
 
 const taskStatusColors: Record<string, string> = {
   todo: "text-muted-foreground",
+  backlog: "text-muted-foreground",
   in_progress: "text-blue-500",
   blocked: "text-red-500",
   completed: "text-green-500",
@@ -53,6 +54,7 @@ const taskStatusColors: Record<string, string> = {
 
 const taskStatusIcons: Record<string, React.ReactNode> = {
   todo: <Circle className="h-4 w-4" />,
+  backlog: <Circle className="h-4 w-4" />,
   in_progress: <Loader2 className="h-4 w-4 animate-spin" />,
   blocked: <Ban className="h-4 w-4" />,
   completed: <CheckCircle2 className="h-4 w-4" />,
@@ -135,7 +137,7 @@ export default function ClienteDashboard() {
   const { data: tasksSummary, isLoading: loadingTasksSummary } = useQuery({
     queryKey: ["client-tasks-summary", clientInfo?.id],
     queryFn: async () => {
-      if (!clientInfo?.id) return { todo: 0, in_progress: 0, blocked: 0, completed: 0, total: 0 };
+      if (!clientInfo?.id) return { todo: 0, backlog: 0, in_progress: 0, blocked: 0, completed: 0, total: 0 };
       const { data, error } = await supabase
         .from("tasks")
         .select("status")
@@ -143,7 +145,7 @@ export default function ClienteDashboard() {
         .eq("visible_to_client", true);
       if (error) throw error;
       
-      const summary = { todo: 0, in_progress: 0, blocked: 0, completed: 0, total: data?.length || 0 };
+      const summary = { todo: 0, backlog: 0, in_progress: 0, blocked: 0, completed: 0, total: data?.length || 0 };
       data?.forEach((task) => {
         const status = task.status as keyof typeof summary;
         if (status in summary) summary[status]++;
