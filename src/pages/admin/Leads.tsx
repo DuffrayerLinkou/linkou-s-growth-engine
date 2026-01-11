@@ -73,7 +73,7 @@ interface Lead {
   created_at: string;
 }
 
-import { clientSegments } from "@/lib/segments-config";
+import { clientSegments, getSegmentIcon } from "@/lib/segments-config";
 import {
   leadStatusLabels as statusLabels,
   leadStatusColors as statusColors,
@@ -460,7 +460,13 @@ export default function AdminLeads() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {lead.segment || "-"}
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const Icon = getSegmentIcon(lead.segment);
+                            return <Icon className="h-4 w-4 text-muted-foreground" />;
+                          })()}
+                          {lead.segment || "-"}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
