@@ -13,27 +13,27 @@
 @layer base {
   :root {
     /* Background & Foreground */
-    --background: 240 4% 95%;
-    --foreground: 240 5% 10%;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
 
     /* Cards & Surfaces */
-    --card: 0 0% 98%;
-    --card-foreground: 240 5% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
 
-    --popover: 240 5% 90%;
-    --popover-foreground: 240 5% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
 
-    /* Primary - Âmbar/Dourado Premium */
+    /* Primary - Roxo Premium */
     --primary: 258 89% 66%;
     --primary-foreground: 250 100% 97%;
 
     /* Secondary */
-    --secondary: 240 5% 33%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
 
     /* Muted */
-    --muted: 240 4% 83%;
-    --muted-foreground: 240 5% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
 
     /* Accent */
     --accent: 269 100% 98%;
@@ -44,8 +44,8 @@
     --destructive-foreground: 0 85% 97%;
 
     /* Borders & Inputs */
-    --border: 240 4% 83%;
-    --input: 240 4% 83%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
     --ring: 258 89% 66%;
 
     --radius: 0.5rem;
@@ -59,13 +59,13 @@
     --warning-foreground: 0 0% 100%;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5% 10%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 4%;
     --sidebar-primary: 258 89% 66%;
     --sidebar-primary-foreground: 250 100% 97%;
-    --sidebar-accent: 240 5% 33%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 83%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 240 6% 10%;
+    --sidebar-border: 240 6% 90%;
     --sidebar-ring: 258 89% 66%;
 
     /* Chart colors */
