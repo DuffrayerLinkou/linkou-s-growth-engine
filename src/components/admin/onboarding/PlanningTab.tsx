@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2, Eye, Download } from "lucide-react";
 import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { generateStructuredPDF } from "@/lib/pdf-generator";
 
 const statusConfig = {
   draft: { label: "Rascunho", color: "bg-muted text-muted-foreground", icon: FileText },
@@ -492,7 +493,54 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
             </div>
           )}
           <div className="flex gap-2 justify-end mt-4">
-            <Button variant="outline" onClick={() => setViewingPlan(null)}>Fechar</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!viewingPlan) return;
+                const clientName = getClientName(viewingPlan.client_id);
+                const sections: { title: string; content: string | string[] }[] = [
+                  { title: "Cliente", content: clientName },
+                  { title: "Status", content: statusConfig[viewingPlan.status as keyof typeof statusConfig]?.label || "-" },
+                ];
+                
+                if (viewingPlan.campaign_types?.length > 0) {
+                  sections.push({ 
+                    title: "Tipos de Campanha", 
+                    content: viewingPlan.campaign_types.map((t: string) => 
+                      campaignTypes.find(ct => ct.id === t)?.label || t
+                    )
+                  });
+                }
+                if (viewingPlan.objectives?.list?.length > 0) {
+                  sections.push({ title: "Objetivos", content: viewingPlan.objectives.list });
+                }
+                if (viewingPlan.kpis?.list?.length > 0) {
+                  sections.push({ title: "KPIs", content: viewingPlan.kpis.list });
+                }
+                if (viewingPlan.personas?.description) {
+                  sections.push({ title: "Personas", content: viewingPlan.personas.description });
+                }
+                if (viewingPlan.funnel_strategy) {
+                  sections.push({ title: "Estratégia de Funil", content: viewingPlan.funnel_strategy });
+                }
+                if (viewingPlan.timeline_start || viewingPlan.timeline_end) {
+                  sections.push({ 
+                    title: "Período", 
+                    content: `${safeFormatDate(viewingPlan.timeline_start, "dd/MM/yyyy", "-")} até ${safeFormatDate(viewingPlan.timeline_end, "dd/MM/yyyy", "-")}`
+                  });
+                }
+                
+                generateStructuredPDF(sections, {
+                  filename: `plano-${clientName.toLowerCase().replace(/\s/g, '-')}.pdf`,
+                  title: viewingPlan.title,
+                  subtitle: `Cliente: ${clientName} | Criado em: ${safeFormatDate(viewingPlan.created_at)}`
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
+            </Button>
+            <Button variant="ghost" onClick={() => setViewingPlan(null)}>Fechar</Button>
             <Button onClick={() => { const p = viewingPlan; setViewingPlan(null); openEdit(p); }}>
               <Edit className="h-4 w-4 mr-2" />
               Editar
