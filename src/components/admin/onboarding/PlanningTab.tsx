@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2 } from "lucide-react";
+import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2, Eye } from "lucide-react";
 import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -62,6 +62,7 @@ interface PlanningTabProps {
 export function PlanningTab({ clientId }: PlanningTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [viewingPlan, setViewingPlan] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<PlanForm>(initialForm);
   const { toast } = useToast();
@@ -258,6 +259,10 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setViewingPlan(plan)}>
+                          <Eye className="h-3 w-3 mr-1" />
+                          Ver
+                        </Button>
                         <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openEdit(plan)}>
                           <Edit className="h-3 w-3 mr-1" />
                           Editar
@@ -401,6 +406,100 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Plan Dialog */}
+      <Dialog open={!!viewingPlan} onOpenChange={() => setViewingPlan(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              {viewingPlan?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingPlan && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge className={statusConfig[viewingPlan.status as keyof typeof statusConfig]?.color}>
+                  {statusConfig[viewingPlan.status as keyof typeof statusConfig]?.label}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {getClientName(viewingPlan.client_id)}
+                </span>
+              </div>
+              
+              {viewingPlan.campaign_types?.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-2">Tipos de Campanha</p>
+                  <div className="flex flex-wrap gap-1">
+                    {viewingPlan.campaign_types.map((type: string) => (
+                      <Badge key={type} variant="secondary">
+                        {campaignTypes.find(t => t.id === type)?.label || type}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {viewingPlan.objectives?.list?.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Objetivos</p>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    {viewingPlan.objectives.list.map((obj: string, i: number) => (
+                      <li key={i}>{obj}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {viewingPlan.kpis?.list?.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">KPIs</p>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    {viewingPlan.kpis.list.map((kpi: string, i: number) => (
+                      <li key={i}>{kpi}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {viewingPlan.personas?.description && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Personas</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingPlan.personas.description}</p>
+                </div>
+              )}
+              
+              {viewingPlan.funnel_strategy && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Estratégia de Funil</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingPlan.funnel_strategy}</p>
+                </div>
+              )}
+              
+              {(viewingPlan.timeline_start || viewingPlan.timeline_end) && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Período</p>
+                  <p className="text-sm">
+                    {safeFormatDate(viewingPlan.timeline_start, "dd/MM/yyyy")} 
+                    {viewingPlan.timeline_end && ` - ${safeFormatDate(viewingPlan.timeline_end, "dd/MM/yyyy")}`}
+                  </p>
+                </div>
+              )}
+              
+              <div className="pt-3 border-t text-xs text-muted-foreground">
+                Criado em: {safeFormatDate(viewingPlan.created_at, "dd/MM/yyyy 'às' HH:mm")}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setViewingPlan(null)}>Fechar</Button>
+            <Button onClick={() => { const p = viewingPlan; setViewingPlan(null); openEdit(p); }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
