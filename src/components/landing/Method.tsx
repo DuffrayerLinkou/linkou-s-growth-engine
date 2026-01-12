@@ -38,7 +38,7 @@ const phases = [
 
 export function Method() {
   return (
-    <section id="metodo" className="py-20 md:py-32 bg-secondary/30 overflow-hidden">
+    <section id="metodo" className="py-20 md:py-32 bg-primary/5 overflow-hidden">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div

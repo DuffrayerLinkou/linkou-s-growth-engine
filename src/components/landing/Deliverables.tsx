@@ -68,7 +68,7 @@ export function Deliverables() {
   };
 
   return (
-    <section id="entregas" className="py-20 md:py-32 bg-secondary/30">
+    <section id="entregas" className="py-20 md:py-32 bg-muted/50">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div

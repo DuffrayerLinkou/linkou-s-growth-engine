@@ -51,7 +51,7 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="py-20 md:py-32 bg-secondary/30">
+    <section id="faq" className="py-20 md:py-32 bg-primary/5">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
