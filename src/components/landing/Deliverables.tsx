@@ -98,7 +98,7 @@ export function Deliverables() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-card border border-border rounded-2xl p-6 lg:p-8 shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all duration-300"
+              className="bg-card border border-border rounded-2xl p-6 lg:p-8 shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all duration-300 card-gradient-border card-glow"
             >
               <div className="flex items-start gap-4">
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

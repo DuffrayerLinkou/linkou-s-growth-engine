@@ -66,7 +66,7 @@ export function Results() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="h-full hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-border bg-card shadow-sm">
+              <Card className="h-full hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
                 <CardContent className="p-6">
                   <div className={`w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4`}>
                     <result.icon className={`h-6 w-6 ${result.color}`} />
