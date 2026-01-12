@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2 } from "lucide-react";
+import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2, Eye } from "lucide-react";
 import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -53,6 +53,7 @@ interface BriefingTabProps {
 export function BriefingTab({ clientId }: BriefingTabProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBriefing, setEditingBriefing] = useState<any>(null);
+  const [viewingBriefing, setViewingBriefing] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<BriefingForm>(initialForm);
   const { toast } = useToast();
@@ -229,6 +230,10 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setViewingBriefing(briefing)}>
+                          <Eye className="h-3 w-3 mr-1" />
+                          Ver
+                        </Button>
                         <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => openEdit(briefing)}>
                           <Edit className="h-3 w-3 mr-1" />
                           Editar
@@ -341,6 +346,90 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Briefing Dialog */}
+      <Dialog open={!!viewingBriefing} onOpenChange={() => setViewingBriefing(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              {viewingBriefing?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingBriefing && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge className={statusConfig[viewingBriefing.status as keyof typeof statusConfig]?.color}>
+                  {statusConfig[viewingBriefing.status as keyof typeof statusConfig]?.label}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {getClientName(viewingBriefing.client_id)}
+                </span>
+              </div>
+              
+              {viewingBriefing.nicho && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Nicho</p>
+                  <p className="text-sm">{viewingBriefing.nicho}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.publico_alvo && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Público-Alvo</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingBriefing.publico_alvo}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.budget_mensal && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Budget Mensal</p>
+                  <p className="text-sm font-medium">R$ {Number(viewingBriefing.budget_mensal).toLocaleString('pt-BR')}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.objetivos && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Objetivos</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingBriefing.objetivos}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.concorrentes && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Concorrentes</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingBriefing.concorrentes}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.diferenciais && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Diferenciais</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingBriefing.diferenciais}</p>
+                </div>
+              )}
+              
+              {viewingBriefing.observacoes && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingBriefing.observacoes}</p>
+                </div>
+              )}
+              
+              <div className="pt-3 border-t text-xs text-muted-foreground">
+                Criado em: {safeFormatDate(viewingBriefing.created_at, "dd/MM/yyyy 'às' HH:mm")}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setViewingBriefing(null)}>Fechar</Button>
+            <Button onClick={() => { const b = viewingBriefing; setViewingBriefing(null); openEdit(b); }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
