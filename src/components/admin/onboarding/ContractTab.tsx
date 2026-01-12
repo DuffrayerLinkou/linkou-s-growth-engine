@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Send, FileText, Clock, CheckCircle, XCircle, Eye } from "lucide-react";
+import { Plus, Send, FileText, Clock, CheckCircle, XCircle, Eye, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { generateStructuredPDF } from "@/lib/pdf-generator";
 
 const DEFAULT_CONTRACT_TEMPLATE = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GESTÃO DE TRÁFEGO PAGO
 
@@ -338,6 +339,27 @@ export function ContractTab({ clientId }: ContractTabProps) {
             <pre className="whitespace-pre-wrap font-mono text-sm">
               {viewingContract?.content}
             </pre>
+          </div>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!viewingContract) return;
+                const clientName = getClientName(viewingContract.client_id);
+                generateStructuredPDF(
+                  [{ title: "Contrato", content: viewingContract.content.split("\n") }],
+                  {
+                    filename: `contrato-${clientName.toLowerCase().replace(/\s/g, '-')}.pdf`,
+                    title: "Contrato de Prestação de Serviços",
+                    subtitle: `Cliente: ${clientName} | Gestor: ${viewingContract.manager_name || '-'}`
+                  }
+                );
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
+            </Button>
+            <Button variant="ghost" onClick={() => setViewingContract(null)}>Fechar</Button>
           </div>
         </DialogContent>
       </Dialog>

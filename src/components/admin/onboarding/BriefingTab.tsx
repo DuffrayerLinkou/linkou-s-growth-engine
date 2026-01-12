@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, ClipboardList, Clock, CheckCircle, AlertCircle, Edit, Trash2, Eye, Download } from "lucide-react";
 import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { generateStructuredPDF } from "@/lib/pdf-generator";
 
 const statusConfig = {
   pending: { label: "Pendente", color: "bg-yellow-500/20 text-yellow-600", icon: AlertCircle },
@@ -422,7 +423,34 @@ export function BriefingTab({ clientId }: BriefingTabProps) {
             </div>
           )}
           <div className="flex gap-2 justify-end mt-4">
-            <Button variant="outline" onClick={() => setViewingBriefing(null)}>Fechar</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!viewingBriefing) return;
+                const clientName = getClientName(viewingBriefing.client_id);
+                const sections: { title: string; content: string | string[] }[] = [
+                  { title: "Cliente", content: clientName },
+                  { title: "Status", content: statusConfig[viewingBriefing.status as keyof typeof statusConfig]?.label || "-" },
+                ];
+                if (viewingBriefing.nicho) sections.push({ title: "Nicho", content: viewingBriefing.nicho });
+                if (viewingBriefing.publico_alvo) sections.push({ title: "Público-Alvo", content: viewingBriefing.publico_alvo });
+                if (viewingBriefing.budget_mensal) sections.push({ title: "Budget Mensal", content: `R$ ${Number(viewingBriefing.budget_mensal).toLocaleString('pt-BR')}` });
+                if (viewingBriefing.objetivos) sections.push({ title: "Objetivos", content: viewingBriefing.objetivos });
+                if (viewingBriefing.concorrentes) sections.push({ title: "Concorrentes", content: viewingBriefing.concorrentes });
+                if (viewingBriefing.diferenciais) sections.push({ title: "Diferenciais", content: viewingBriefing.diferenciais });
+                if (viewingBriefing.observacoes) sections.push({ title: "Observações", content: viewingBriefing.observacoes });
+                
+                generateStructuredPDF(sections, {
+                  filename: `briefing-${clientName.toLowerCase().replace(/\s/g, '-')}.pdf`,
+                  title: viewingBriefing.title,
+                  subtitle: `Cliente: ${clientName} | Criado em: ${safeFormatDate(viewingBriefing.created_at)}`
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PDF
+            </Button>
+            <Button variant="ghost" onClick={() => setViewingBriefing(null)}>Fechar</Button>
             <Button onClick={() => { const b = viewingBriefing; setViewingBriefing(null); openEdit(b); }}>
               <Edit className="h-4 w-4 mr-2" />
               Editar
