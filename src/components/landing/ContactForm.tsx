@@ -202,7 +202,7 @@ export function ContactForm() {
             >
               <form
                 onSubmit={handleSubmit}
-                className="bg-card border border-border rounded-2xl p-6 lg:p-8 space-y-5 shadow-md"
+                className="bg-card border border-border rounded-2xl p-6 lg:p-8 space-y-5 shadow-md card-gradient-border card-glow"
               >
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome completo *</Label>

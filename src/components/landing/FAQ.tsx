@@ -85,7 +85,7 @@ export function FAQ() {
               <AccordionItem
                 key={index}
                 value={`item-${index}`}
-                className="bg-card border border-border rounded-xl px-6 shadow-sm data-[state=open]:shadow-lg transition-shadow"
+                className="bg-card border border-border rounded-xl px-6 shadow-sm data-[state=open]:shadow-lg transition-all card-gradient-border card-glow"
               >
                 <AccordionTrigger className="text-left font-semibold hover:no-underline py-4">
                   {faq.question}
