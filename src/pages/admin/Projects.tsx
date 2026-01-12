@@ -7,6 +7,7 @@ import {
   Search,
   Plus,
   MoreHorizontal,
+  Eye,
   Pencil,
   Trash2,
   Calendar,
@@ -105,6 +106,7 @@ export default function AdminProjects() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -465,6 +467,15 @@ export default function AdminProjects() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedProject(project);
+                              setIsViewOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Visualizar
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openForm(project)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar
@@ -660,6 +671,98 @@ export default function AdminProjects() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderKanban className="h-5 w-5" />
+              {selectedProject?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProject && (
+            <div className="space-y-4">
+              {/* Cliente */}
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{selectedProject.clients?.name || "-"}</p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <Badge className={statusColors[selectedProject.status || "planning"]}>
+                  {statusLabels[selectedProject.status || "planning"]}
+                </Badge>
+              </div>
+
+              {/* Descrição */}
+              {selectedProject.description && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Descrição</p>
+                  <p className="text-sm">{selectedProject.description}</p>
+                </div>
+              )}
+
+              {/* Período */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Data Início</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {selectedProject.start_date
+                      ? format(new Date(selectedProject.start_date), "dd/MM/yyyy", { locale: ptBR })
+                      : "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Data Fim</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {selectedProject.end_date
+                      ? format(new Date(selectedProject.end_date), "dd/MM/yyyy", { locale: ptBR })
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Budget */}
+              <div>
+                <p className="text-xs text-muted-foreground">Orçamento</p>
+                <p className="text-lg font-semibold flex items-center gap-1">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  {formatCurrency(selectedProject.budget)}
+                </p>
+              </div>
+
+              {/* Data de criação */}
+              <div className="pt-3 border-t text-xs text-muted-foreground">
+                Criado em: {format(new Date(selectedProject.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                setIsViewOpen(false);
+                openForm(selectedProject!);
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
