@@ -16,6 +16,10 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Legal pages - lazy loaded
+const Privacidade = lazy(() => import("./pages/Privacidade"));
+const Termos = lazy(() => import("./pages/Termos"));
+
 // ============= LAZY LOADED PAGES =============
 // Client pages - loaded on demand
 const ClienteDashboard = lazy(() => import("./pages/cliente/Dashboard"));
@@ -82,6 +86,9 @@ const App = () => (
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/privacidade" element={<Suspense fallback={<PageLoader />}><Privacidade /></Suspense>} />
+              <Route path="/termos" element={<Suspense fallback={<PageLoader />}><Termos /></Suspense>} />
               <Route path="/auth" element={<Auth />} />
 
               {/* Client routes */}
