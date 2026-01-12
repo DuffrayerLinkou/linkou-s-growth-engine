@@ -431,18 +431,17 @@ export default function BaseConhecimento() {
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <Tabs defaultValue="otimizacao" className="w-full">
-          <TabsList className="w-full flex-wrap h-auto gap-1 bg-muted/50 p-1">
+          <TabsList className="w-full h-auto gap-1 bg-muted/50 p-1 overflow-x-auto flex-nowrap scrollbar-hide">
             {Object.entries(knowledgeBase).map(([key, category]) => {
               const Icon = category.icon;
               return (
                 <TabsTrigger
                   key={key}
                   value={key}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background"
+                  className="flex items-center gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background flex-shrink-0 px-2 sm:px-3"
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{category.label}</span>
-                  <span className="sm:hidden">{category.label.slice(0, 4)}</span>
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="whitespace-nowrap">{category.label}</span>
                 </TabsTrigger>
               );
             })}
@@ -462,12 +461,12 @@ export default function BaseConhecimento() {
                   <Accordion type="single" collapsible className="w-full">
                     {category.guides.map((guide, index) => (
                       <AccordionItem key={index} value={`item-${index}`}>
-                        <AccordionTrigger className="hover:no-underline">
-                          <div className="flex items-center gap-3 text-left">
-                            <span className="font-medium">{guide.title}</span>
+                        <AccordionTrigger className="hover:no-underline py-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
+                            <span className="font-medium text-sm sm:text-base break-words">{guide.title}</span>
                             <Badge
                               variant="outline"
-                              className={`text-xs ${getLevelColor(guide.level)}`}
+                              className={`text-xs w-fit flex-shrink-0 ${getLevelColor(guide.level)}`}
                             >
                               {guide.level}
                             </Badge>
