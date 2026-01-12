@@ -254,7 +254,7 @@ function PhaseCard({ phase, index, isMobile }: PhaseCardProps) {
         y: -5,
         transition: { type: "spring", stiffness: 300 }
       }}
-      className="group relative bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-5 md:p-6 overflow-hidden h-full"
+      className="group relative bg-card border border-border rounded-2xl p-5 md:p-6 overflow-hidden h-full shadow-sm hover:shadow-xl transition-shadow"
     >
       {/* Gradient Hover Overlay */}
       <motion.div

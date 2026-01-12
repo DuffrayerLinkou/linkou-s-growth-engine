@@ -71,7 +71,7 @@ export function ForWhom() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="h-full hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+              <Card className="h-full hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-border bg-card shadow-sm">
                 <CardContent className="p-6">
                   <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                     <audience.icon className="h-7 w-7 text-primary" />
