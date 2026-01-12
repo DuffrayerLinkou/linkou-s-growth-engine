@@ -136,7 +136,7 @@ export function ContactForm() {
   }
 
   return (
-    <section id="contato" className="py-20 md:py-32">
+    <section id="contato" className="py-20 md:py-32 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">

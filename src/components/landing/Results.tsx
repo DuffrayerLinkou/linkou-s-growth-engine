@@ -35,7 +35,7 @@ const results = [
 
 export function Results() {
   return (
-    <section id="resultados" className="py-20 md:py-32">
+    <section id="resultados" className="py-20 md:py-32 bg-muted/50">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
