@@ -27,6 +27,9 @@ export function PixelsTab() {
   const [formData, setFormData] = useState({
     meta_pixel_id: "",
     meta_pixel_enabled: false,
+    meta_capi_enabled: false,
+    meta_capi_access_token: "",
+    meta_capi_test_event_code: "",
     tiktok_pixel_id: "",
     tiktok_pixel_enabled: false,
     google_ads_id: "",
@@ -41,6 +44,9 @@ export function PixelsTab() {
       setFormData({
         meta_pixel_id: settings.meta_pixel_id || "",
         meta_pixel_enabled: settings.meta_pixel_enabled || false,
+        meta_capi_enabled: settings.meta_capi_enabled || false,
+        meta_capi_access_token: settings.meta_capi_access_token || "",
+        meta_capi_test_event_code: settings.meta_capi_test_event_code || "",
         tiktok_pixel_id: settings.tiktok_pixel_id || "",
         tiktok_pixel_enabled: settings.tiktok_pixel_enabled || false,
         google_ads_id: settings.google_ads_id || "",
@@ -128,6 +134,66 @@ export function PixelsTab() {
             >
               Como encontrar seu Pixel ID <ExternalLink className="h-3 w-3" />
             </a>
+
+            {/* API de Conversões (CAPI) Section */}
+            <div className="mt-6 pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-medium">API de Conversões (Server-Side)</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Envie eventos diretamente do servidor para maior precisão
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.meta_capi_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, meta_capi_enabled: checked })
+                  }
+                  disabled={!formData.meta_pixel_id}
+                />
+              </div>
+
+              {formData.meta_capi_enabled && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="meta_capi_access_token">Access Token</Label>
+                    <Input
+                      id="meta_capi_access_token"
+                      type="password"
+                      placeholder="EAAxxxxxxxxxxxxx..."
+                      value={formData.meta_capi_access_token}
+                      onChange={(e) =>
+                        setFormData({ ...formData, meta_capi_access_token: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="meta_capi_test_event_code">
+                      Test Event Code <span className="text-muted-foreground">(opcional)</span>
+                    </Label>
+                    <Input
+                      id="meta_capi_test_event_code"
+                      placeholder="TEST12345"
+                      value={formData.meta_capi_test_event_code}
+                      onChange={(e) =>
+                        setFormData({ ...formData, meta_capi_test_event_code: e.target.value })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Use para testar eventos sem afetar suas campanhas
+                    </p>
+                  </div>
+                  <a
+                    href="https://developers.facebook.com/docs/marketing-api/conversions-api/get-started#access-token"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Como gerar Access Token <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
