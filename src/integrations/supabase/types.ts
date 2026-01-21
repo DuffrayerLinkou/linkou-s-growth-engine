@@ -645,8 +645,11 @@ export type Database = {
           search_console_verified: boolean | null
           site_description: string | null
           site_title: string | null
+          tiktok_access_token: string | null
+          tiktok_capi_enabled: boolean | null
           tiktok_pixel_enabled: boolean | null
           tiktok_pixel_id: string | null
+          tiktok_test_event_code: string | null
           updated_at: string | null
           updated_by: string | null
           whatsapp_message: string | null
@@ -682,8 +685,11 @@ export type Database = {
           search_console_verified?: boolean | null
           site_description?: string | null
           site_title?: string | null
+          tiktok_access_token?: string | null
+          tiktok_capi_enabled?: boolean | null
           tiktok_pixel_enabled?: boolean | null
           tiktok_pixel_id?: string | null
+          tiktok_test_event_code?: string | null
           updated_at?: string | null
           updated_by?: string | null
           whatsapp_message?: string | null
@@ -719,8 +725,11 @@ export type Database = {
           search_console_verified?: boolean | null
           site_description?: string | null
           site_title?: string | null
+          tiktok_access_token?: string | null
+          tiktok_capi_enabled?: boolean | null
           tiktok_pixel_enabled?: boolean | null
           tiktok_pixel_id?: string | null
+          tiktok_test_event_code?: string | null
           updated_at?: string | null
           updated_by?: string | null
           whatsapp_message?: string | null

@@ -32,6 +32,9 @@ export function PixelsTab() {
     meta_capi_test_event_code: "",
     tiktok_pixel_id: "",
     tiktok_pixel_enabled: false,
+    tiktok_capi_enabled: false,
+    tiktok_access_token: "",
+    tiktok_test_event_code: "",
     google_ads_id: "",
     google_ads_conversion_id: "",
     google_ads_enabled: false,
@@ -49,6 +52,9 @@ export function PixelsTab() {
         meta_capi_test_event_code: settings.meta_capi_test_event_code || "",
         tiktok_pixel_id: settings.tiktok_pixel_id || "",
         tiktok_pixel_enabled: settings.tiktok_pixel_enabled || false,
+        tiktok_capi_enabled: settings.tiktok_capi_enabled || false,
+        tiktok_access_token: settings.tiktok_access_token || "",
+        tiktok_test_event_code: settings.tiktok_test_event_code || "",
         google_ads_id: settings.google_ads_id || "",
         google_ads_conversion_id: settings.google_ads_conversion_id || "",
         google_ads_enabled: settings.google_ads_enabled || false,
@@ -238,6 +244,66 @@ export function PixelsTab() {
             >
               Acessar TikTok Events Manager <ExternalLink className="h-3 w-3" />
             </a>
+
+            {/* TikTok Events API (CAPI) Section */}
+            <div className="mt-6 pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-medium">Events API (Server-Side)</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Envie eventos diretamente do servidor para maior precisão
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.tiktok_capi_enabled}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, tiktok_capi_enabled: checked })
+                  }
+                  disabled={!formData.tiktok_pixel_id}
+                />
+              </div>
+
+              {formData.tiktok_capi_enabled && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok_access_token">Access Token</Label>
+                    <Input
+                      id="tiktok_access_token"
+                      type="password"
+                      placeholder="Token gerado no TikTok Business Center"
+                      value={formData.tiktok_access_token}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tiktok_access_token: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok_test_event_code">
+                      Test Event Code <span className="text-muted-foreground">(opcional)</span>
+                    </Label>
+                    <Input
+                      id="tiktok_test_event_code"
+                      placeholder="TEST12345"
+                      value={formData.tiktok_test_event_code}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tiktok_test_event_code: e.target.value })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Use para testar eventos sem afetar suas campanhas
+                    </p>
+                  </div>
+                  <a
+                    href="https://business-api.tiktok.com/portal/docs?id=1771100865818625"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Como gerar Access Token <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
