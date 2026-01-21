@@ -118,6 +118,27 @@ export function ContactForm() {
         console.warn('Meta CAPI event failed:', capiError);
       }
 
+      // Send event to TikTok Events API (server-side)
+      try {
+        await supabase.functions.invoke('tiktok-capi-event', {
+          body: {
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            name: formData.name.trim(),
+            segment: formData.segment,
+            investment: formData.investment || undefined,
+            source_url: window.location.href,
+            ttclid: getCookie('ttclid'),
+            ttp: getCookie('_ttp'),
+            event_name: 'SubmitForm',
+          }
+        });
+        console.log('TikTok Events API event sent successfully');
+      } catch (tiktokError) {
+        // Log silently - don't affect user experience
+        console.warn('TikTok Events API event failed:', tiktokError);
+      }
+
       setIsSubmitted(true);
       toast({
         title: "Formulário enviado!",
