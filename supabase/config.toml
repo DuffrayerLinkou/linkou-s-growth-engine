@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.tiktok-capi-event]
 verify_jwt = false
+
+[functions.meta-lead-webhook]
+verify_jwt = false
