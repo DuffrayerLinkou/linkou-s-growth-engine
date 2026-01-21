@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { ExternalLink, Facebook, Music2, Target, Linkedin, Save } from "lucide-react";
+import { ExternalLink, Facebook, Music2, Target, Linkedin, Save, Copy, FileText } from "lucide-react";
 
 export function PixelsTab() {
   const queryClient = useQueryClient();
@@ -40,7 +40,12 @@ export function PixelsTab() {
     google_ads_enabled: false,
     linkedin_partner_id: "",
     linkedin_enabled: false,
+    meta_webhook_verify_token: "",
+    meta_app_secret: "",
+    meta_page_access_token: "",
   });
+
+  const webhookUrl = "https://inkwweudpaszunmfnogq.supabase.co/functions/v1/meta-lead-webhook";
 
   useEffect(() => {
     if (settings) {
@@ -60,6 +65,9 @@ export function PixelsTab() {
         google_ads_enabled: settings.google_ads_enabled || false,
         linkedin_partner_id: settings.linkedin_partner_id || "",
         linkedin_enabled: settings.linkedin_enabled || false,
+        meta_webhook_verify_token: settings.meta_webhook_verify_token || "",
+        meta_app_secret: settings.meta_app_secret || "",
+        meta_page_access_token: settings.meta_page_access_token || "",
       });
     }
   }, [settings]);
@@ -402,6 +410,99 @@ export function PixelsTab() {
               className="text-sm text-primary hover:underline inline-flex items-center gap-1"
             >
               Acessar Campaign Manager <ExternalLink className="h-3 w-3" />
+            </a>
+          </CardContent>
+        </Card>
+
+        {/* Meta Lead Ads Webhook */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Meta Lead Ads</CardTitle>
+                <CardDescription>Formulários Instantâneos do Facebook/Instagram</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+              <Label className="text-xs text-muted-foreground">URL do Webhook</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 text-xs bg-background p-2 rounded border border-border overflow-x-auto">
+                  {webhookUrl}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(webhookUrl);
+                    toast.success("URL copiada!");
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="meta_webhook_verify_token">Verify Token</Label>
+                <Input
+                  id="meta_webhook_verify_token"
+                  placeholder="meu_token_secreto"
+                  value={formData.meta_webhook_verify_token}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_webhook_verify_token: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Defina um token único para verificar o webhook
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="meta_app_secret">App Secret</Label>
+                <Input
+                  id="meta_app_secret"
+                  type="password"
+                  placeholder="Seu App Secret do Meta"
+                  value={formData.meta_app_secret}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_app_secret: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Encontre em Meta for Developers {'>'} Seu App
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="meta_page_access_token">Page Access Token</Label>
+                <Input
+                  id="meta_page_access_token"
+                  type="password"
+                  placeholder="Token de acesso da página"
+                  value={formData.meta_page_access_token}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_page_access_token: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Token para buscar dados dos leads
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="https://developers.facebook.com/docs/marketing-api/guides/lead-ads/quickstart/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Guia de configuração Lead Ads <ExternalLink className="h-3 w-3" />
             </a>
           </CardContent>
         </Card>
