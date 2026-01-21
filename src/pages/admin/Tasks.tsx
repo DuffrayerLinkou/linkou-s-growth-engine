@@ -9,7 +9,9 @@ import {
   Star,
   Users,
   Trash2,
+  Paperclip,
 } from "lucide-react";
+import { TaskFileAttachment } from "@/components/cliente/TaskFileAttachment";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -561,6 +563,18 @@ export default function AdminTasks() {
                   Visível para o cliente
                 </Label>
               </div>
+
+              {/* File Attachments - só mostra quando editando tarefa existente */}
+              {editingTask && (
+                <div className="border rounded-lg p-4 mt-2">
+                  <TaskFileAttachment
+                    taskId={editingTask.id}
+                    clientId={editingTask.client_id}
+                    projectId={editingTask.project_id}
+                    canUpload={true}
+                  />
+                </div>
+              )}
 
               {/* Form Actions */}
               <div className={`flex pt-4 border-t ${editingTask ? 'justify-between' : 'justify-end'}`}>
