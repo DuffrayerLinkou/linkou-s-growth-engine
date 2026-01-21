@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.check-task-deadlines]
 verify_jwt = false
+
+[functions.meta-capi-event]
+verify_jwt = false

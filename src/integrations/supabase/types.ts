@@ -634,6 +634,9 @@ export type Database = {
           id: string
           linkedin_enabled: boolean | null
           linkedin_partner_id: string | null
+          meta_capi_access_token: string | null
+          meta_capi_enabled: boolean | null
+          meta_capi_test_event_code: string | null
           meta_pixel_enabled: boolean | null
           meta_pixel_id: string | null
           og_image_url: string | null
@@ -668,6 +671,9 @@ export type Database = {
           id?: string
           linkedin_enabled?: boolean | null
           linkedin_partner_id?: string | null
+          meta_capi_access_token?: string | null
+          meta_capi_enabled?: boolean | null
+          meta_capi_test_event_code?: string | null
           meta_pixel_enabled?: boolean | null
           meta_pixel_id?: string | null
           og_image_url?: string | null
@@ -702,6 +708,9 @@ export type Database = {
           id?: string
           linkedin_enabled?: boolean | null
           linkedin_partner_id?: string | null
+          meta_capi_access_token?: string | null
+          meta_capi_enabled?: boolean | null
+          meta_capi_test_event_code?: string | null
           meta_pixel_enabled?: boolean | null
           meta_pixel_id?: string | null
           og_image_url?: string | null

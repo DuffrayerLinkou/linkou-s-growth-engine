@@ -48,6 +48,14 @@ export function ContactForm() {
     objective: "",
   });
 
+  // Helper function to get Facebook cookies
+  const getCookie = (name: string): string | undefined => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return undefined;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -87,6 +95,27 @@ export function ContactForm() {
         });
         setIsSubmitting(false);
         return;
+      }
+
+      // Send event to Meta Conversions API (server-side)
+      try {
+        await supabase.functions.invoke('meta-capi-event', {
+          body: {
+            email: formData.email.trim(),
+            phone: formData.phone.trim(),
+            name: formData.name.trim(),
+            segment: formData.segment,
+            investment: formData.investment || undefined,
+            source_url: window.location.href,
+            fbc: getCookie('_fbc'),
+            fbp: getCookie('_fbp'),
+            event_name: 'Lead',
+          }
+        });
+        console.log('Meta CAPI event sent successfully');
+      } catch (capiError) {
+        // Log silently - don't affect user experience
+        console.warn('Meta CAPI event failed:', capiError);
       }
 
       setIsSubmitted(true);
