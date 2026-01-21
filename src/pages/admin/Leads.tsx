@@ -86,6 +86,7 @@ export default function AdminLeads() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "all");
+  const [sourceFilter, setSourceFilter] = useState<string>(searchParams.get("source") || "all");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "kanban">(
@@ -112,6 +113,10 @@ export default function AdminLeads() {
     if (urlStatus && urlStatus !== statusFilter) {
       setStatusFilter(urlStatus);
     }
+    const urlSource = searchParams.get("source");
+    if (urlSource && urlSource !== sourceFilter) {
+      setSourceFilter(urlSource);
+    }
     const urlView = searchParams.get("view") as "list" | "kanban";
     if (urlView && urlView !== viewMode) {
       setViewMode(urlView);
@@ -124,6 +129,16 @@ export default function AdminLeads() {
       searchParams.delete("status");
     } else {
       searchParams.set("status", value);
+    }
+    setSearchParams(searchParams);
+  };
+
+  const handleSourceFilterChange = (value: string) => {
+    setSourceFilter(value);
+    if (value === "all") {
+      searchParams.delete("source");
+    } else {
+      searchParams.set("source", value);
     }
     setSearchParams(searchParams);
   };
@@ -159,6 +174,11 @@ export default function AdminLeads() {
         query = query.eq("status", statusFilter);
       }
 
+      // Filtro por origem
+      if (sourceFilter !== "all") {
+        query = query.eq("source", sourceFilter);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -178,7 +198,7 @@ export default function AdminLeads() {
   useEffect(() => {
     fetchLeads();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, dateRange, viewMode]);
+  }, [statusFilter, sourceFilter, dateRange, viewMode]);
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {
     try {
@@ -400,6 +420,17 @@ export default function AdminLeads() {
             </SelectContent>
           </Select>
         )}
+        <Select value={sourceFilter} onValueChange={handleSourceFilterChange}>
+          <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm">
+            <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            <SelectValue placeholder="Origem" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as origens</SelectItem>
+            <SelectItem value="landing_page">Landing Page</SelectItem>
+            <SelectItem value="meta_instant_form">Meta Lead Ads</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Content */}
