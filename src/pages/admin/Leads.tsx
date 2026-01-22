@@ -19,6 +19,8 @@ import {
   LayoutGrid,
   MessageCircle,
   Building2,
+  Archive,
+  Trash2,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -94,6 +106,9 @@ export default function AdminLeads() {
   );
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [convertFormData, setConvertFormData] = useState({
     name: "",
     segment: "",
@@ -227,6 +242,42 @@ export default function AdminLeads() {
         description: "Tente novamente.",
       });
     }
+  };
+
+  const deleteLead = async (leadId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", leadId);
+
+      if (error) throw error;
+
+      setLeads((prev) => prev.filter((lead) => lead.id !== leadId));
+      setIsDeleteDialogOpen(false);
+      setIsDetailOpen(false);
+      setLeadToDelete(null);
+
+      toast({
+        title: "Lead excluído",
+        description: "O lead foi removido permanentemente.",
+      });
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir",
+        description: "Tente novamente.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (lead: Lead) => {
+    setLeadToDelete(lead);
+    setIsDeleteDialogOpen(true);
   };
 
   const filteredLeads = useMemo(() => {
@@ -536,6 +587,19 @@ export default function AdminLeads() {
                               <UserPlus className="h-4 w-4 mr-2" />
                               Qualificar lead
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => updateLeadStatus(lead.id, "archived")}
+                            >
+                              <Archive className="h-4 w-4 mr-2" />
+                              Arquivar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => openDeleteDialog(lead)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -671,21 +735,49 @@ export default function AdminLeads() {
               </div>
 
               {/* Convert to Client Button */}
-              {selectedLead.status !== "converted" && (
-                <Button
-                  className="w-full mt-4"
-                  onClick={() => openConvertDialog(selectedLead)}
-                >
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Converter em Cliente
-                </Button>
+              {selectedLead.status !== "converted" && selectedLead.status !== "archived" && (
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    className="flex-1"
+                    onClick={() => openConvertDialog(selectedLead)}
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Converter em Cliente
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      updateLeadStatus(selectedLead.id, "archived");
+                      setSelectedLead({ ...selectedLead, status: "archived" });
+                    }}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Arquivar
+                  </Button>
+                </div>
               )}
 
               {selectedLead.status === "converted" && (
-                <div className="mt-4 p-3 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-center text-sm font-medium">
+                <div className="mt-4 p-3 bg-primary/10 text-primary rounded-lg text-center text-sm font-medium">
                   Este lead já foi convertido em cliente
                 </div>
               )}
+
+              {selectedLead.status === "archived" && (
+                <div className="mt-4 p-3 bg-muted text-muted-foreground rounded-lg text-center text-sm font-medium">
+                  Este lead está arquivado
+                </div>
+              )}
+
+              {/* Delete Button */}
+              <Button
+                variant="ghost"
+                className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => openDeleteDialog(selectedLead)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Lead
+              </Button>
             </div>
           )}
         </DialogContent>
@@ -769,6 +861,35 @@ export default function AdminLeads() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Lead AlertDialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O lead "{leadToDelete?.name}" será removido permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => leadToDelete && deleteLead(leadToDelete.id)}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

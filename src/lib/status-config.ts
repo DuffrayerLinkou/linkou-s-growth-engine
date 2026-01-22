@@ -20,6 +20,7 @@ export const leadStatusLabels: Record<string, string> = {
   qualified: "Qualificado",
   converted: "Convertido",
   lost: "Perdido",
+  archived: "Arquivado",
 };
 
 export const leadStatusColors: Record<string, string> = {
@@ -28,6 +29,7 @@ export const leadStatusColors: Record<string, string> = {
   qualified: "bg-green-500/10 text-green-500",
   converted: "bg-purple-500/10 text-purple-500",
   lost: "bg-red-500/10 text-red-500",
+  archived: "bg-muted text-muted-foreground",
 };
 
 // ============= PROJECT STATUS =============

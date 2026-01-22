@@ -10,7 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Send, FileText, Clock, CheckCircle, XCircle, Eye, Download } from "lucide-react";
+import { Plus, Send, FileText, Clock, CheckCircle, XCircle, Eye, Download, Trash2, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { generateStructuredPDF } from "@/lib/pdf-generator";
@@ -74,6 +84,7 @@ export function ContractTab({ clientId }: ContractTabProps) {
   const [managerName, setManagerName] = useState("");
   const [content, setContent] = useState(DEFAULT_CONTRACT_TEMPLATE);
   const [viewingContract, setViewingContract] = useState<any>(null);
+  const [contractToDelete, setContractToDelete] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -165,6 +176,25 @@ export function ContractTab({ clientId }: ContractTabProps) {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       queryClient.invalidateQueries({ queryKey: ["contracts-progress"] });
       toast({ title: "Status atualizado!" });
+    },
+  });
+
+  const deleteContractMutation = useMutation({
+    mutationFn: async (contractId: string) => {
+      const { error } = await supabase
+        .from("contracts")
+        .delete()
+        .eq("id", contractId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts-progress"] });
+      setContractToDelete(null);
+      toast({ title: "Contrato excluído!", description: "O contrato foi removido permanentemente." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível excluir o contrato.", variant: "destructive" });
     },
   });
 
@@ -320,6 +350,15 @@ export function ContractTab({ clientId }: ContractTabProps) {
                           <span className="truncate">Assinado</span>
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setContractToDelete(contract)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Excluir
+                      </Button>
                     </div>
                   </div>
                 );
@@ -363,6 +402,34 @@ export function ContractTab({ clientId }: ContractTabProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Contract AlertDialog */}
+      <AlertDialog open={!!contractToDelete} onOpenChange={() => setContractToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Contrato?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O contrato será removido permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => contractToDelete && deleteContractMutation.mutate(contractToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteContractMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
