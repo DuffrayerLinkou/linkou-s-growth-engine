@@ -71,6 +71,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { ExportLeads } from "@/components/admin/ExportLeads";
+import { ImportLeads } from "@/components/admin/ImportLeads";
 
 interface Lead {
   id: string;
@@ -401,6 +402,7 @@ export default function AdminLeads() {
             selectedPreset={selectedPreset}
             onPresetChange={setSelectedPreset}
           />
+          <ImportLeads onImportComplete={fetchLeads} />
           <ExportLeads
             leads={filteredLeads}
             dateRange={dateRange}
