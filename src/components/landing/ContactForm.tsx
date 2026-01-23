@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
@@ -37,8 +38,8 @@ const investments = [
 
 export function ContactForm() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -139,11 +140,8 @@ export function ContactForm() {
         console.warn('TikTok Events API event failed:', tiktokError);
       }
 
-      setIsSubmitted(true);
-      toast({
-        title: "Formulário enviado!",
-        description: "Entraremos em contato em breve.",
-      });
+      // Redirect to thank you page
+      navigate("/obrigado");
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -161,29 +159,6 @@ export function ContactForm() {
   ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  if (isSubmitted) {
-    return (
-      <section id="contato" className="py-20 md:py-32">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto text-center"
-          >
-            <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="h-10 w-10 text-success" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4">Recebemos seu contato!</h2>
-            <p className="text-muted-foreground text-lg">
-              Nossa equipe vai analisar suas informações e entrar em contato em até 
-              24 horas úteis para agendar sua auditoria gratuita.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section id="contato" className="py-20 md:py-32 bg-muted/30">

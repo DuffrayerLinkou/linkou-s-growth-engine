@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 // Legal pages - lazy loaded
 const Privacidade = lazy(() => import("./pages/Privacidade"));
 const Termos = lazy(() => import("./pages/Termos"));
+const Obrigado = lazy(() => import("./pages/Obrigado"));
 
 // ============= LAZY LOADED PAGES =============
 // Client pages - loaded on demand
@@ -89,7 +90,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/privacidade" element={<Suspense fallback={<PageLoader />}><Privacidade /></Suspense>} />
               <Route path="/termos" element={<Suspense fallback={<PageLoader />}><Termos /></Suspense>} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/obrigado" element={<Suspense fallback={<PageLoader />}><Obrigado /></Suspense>} />
 
               {/* Client routes */}
               <Route
