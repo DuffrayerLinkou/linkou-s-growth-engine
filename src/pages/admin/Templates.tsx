@@ -34,9 +34,16 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, FileText, Eye, EyeOff, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { 
+  ServiceType, 
+  serviceTypes, 
+  servicePhases, 
+  getPhasesByService 
+} from "@/lib/service-phases-config";
 
 interface TaskTemplate {
   id: string;
+  service_type: string;
   journey_phase: string;
   title: string;
   description: string | null;
@@ -48,13 +55,6 @@ interface TaskTemplate {
   updated_at: string;
 }
 
-const phases = [
-  { value: "diagnostico", label: "Diagnóstico" },
-  { value: "estruturacao", label: "Estruturação" },
-  { value: "operacao_guiada", label: "Op. Guiada" },
-  { value: "transferencia", label: "Transferência" },
-];
-
 const priorities = [
   { value: "low", label: "Baixa", color: "bg-muted text-muted-foreground" },
   { value: "medium", label: "Média", color: "bg-primary/20 text-primary" },
@@ -65,6 +65,7 @@ const priorities = [
 const Templates = () => {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeService, setActiveService] = useState<ServiceType>("auditoria");
   const [activePhase, setActivePhase] = useState("diagnostico");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -78,6 +79,14 @@ const Templates = () => {
     visible_to_client: true,
     is_active: true,
   });
+
+  // Quando mudar de serviço, selecionar a primeira fase desse serviço
+  useEffect(() => {
+    const phases = getPhasesByService(activeService);
+    if (phases.length > 0) {
+      setActivePhase(phases[0].value);
+    }
+  }, [activeService]);
 
   useEffect(() => {
     fetchTemplates();
@@ -112,7 +121,9 @@ const Templates = () => {
       });
     } else {
       setEditingTemplate(null);
-      const phaseTemplates = templates.filter((t) => t.journey_phase === activePhase);
+      const phaseTemplates = templates.filter(
+        (t) => t.service_type === activeService && t.journey_phase === activePhase
+      );
       const maxOrder = phaseTemplates.reduce((max, t) => Math.max(max, t.order_index), 0);
       setFormData({
         title: "",
@@ -160,6 +171,7 @@ const Templates = () => {
       }
     } else {
       const { error } = await supabase.from("task_templates").insert({
+        service_type: activeService,
         journey_phase: activePhase,
         title: formData.title,
         description: formData.description || null,
@@ -234,12 +246,14 @@ const Templates = () => {
 
     // Atualizar estado local imediatamente
     setTemplates(prev => {
-      const otherPhaseTemplates = prev.filter(t => t.journey_phase !== activePhase);
+      const otherTemplates = prev.filter(
+        t => t.service_type !== activeService || t.journey_phase !== activePhase
+      );
       const updatedTemplates = reordered.map((t, idx) => ({
         ...t,
         order_index: idx + 1
       }));
-      return [...otherPhaseTemplates, ...updatedTemplates].sort((a, b) => a.order_index - b.order_index);
+      return [...otherTemplates, ...updatedTemplates].sort((a, b) => a.order_index - b.order_index);
     });
 
     // Persistir no banco de dados
@@ -268,7 +282,10 @@ const Templates = () => {
     );
   };
 
-  const filteredTemplates = templates.filter((t) => t.journey_phase === activePhase);
+  const currentPhases = getPhasesByService(activeService);
+  const filteredTemplates = templates.filter(
+    (t) => t.service_type === activeService && t.journey_phase === activePhase
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
@@ -281,7 +298,7 @@ const Templates = () => {
               Templates de Tarefas
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Gerencie os templates padrão para cada fase
+              Gerencie os templates padrão para cada serviço e fase
             </p>
           </div>
         </div>
@@ -291,11 +308,26 @@ const Templates = () => {
         </Button>
       </div>
 
+      {/* Seletor de Serviço */}
+      <div className="flex flex-wrap gap-2">
+        {serviceTypes.map((service) => (
+          <Button
+            key={service.value}
+            variant={activeService === service.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveService(service.value)}
+            className="text-xs sm:text-sm"
+          >
+            {service.label}
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardHeader className="p-3 sm:p-4 pb-3">
           <Tabs value={activePhase} onValueChange={setActivePhase}>
-            <TabsList className="flex w-full overflow-x-auto gap-1 p-1 sm:grid sm:grid-cols-4 sm:overflow-visible">
-              {phases.map((phase) => (
+            <TabsList className="flex w-full overflow-x-auto gap-1 p-1 sm:grid sm:overflow-visible" style={{ gridTemplateColumns: `repeat(${currentPhases.length}, 1fr)` }}>
+              {currentPhases.map((phase) => (
                 <TabsTrigger 
                   key={phase.value} 
                   value={phase.value}

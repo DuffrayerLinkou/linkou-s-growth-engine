@@ -1124,6 +1124,7 @@ export type Database = {
           journey_phase: string
           order_index: number | null
           priority: string | null
+          service_type: string
           title: string
           updated_at: string | null
           visible_to_client: boolean | null
@@ -1136,6 +1137,7 @@ export type Database = {
           journey_phase: string
           order_index?: number | null
           priority?: string | null
+          service_type?: string
           title: string
           updated_at?: string | null
           visible_to_client?: boolean | null
@@ -1148,6 +1150,7 @@ export type Database = {
           journey_phase?: string
           order_index?: number | null
           priority?: string | null
+          service_type?: string
           title?: string
           updated_at?: string | null
           visible_to_client?: boolean | null
