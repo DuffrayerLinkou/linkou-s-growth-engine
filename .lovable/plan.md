@@ -1,101 +1,101 @@
 
 
-# Plano: Expansão da Landing Page para Múltiplos Serviços
+# Plano: Templates de Tarefas por Tipo de Serviço
 
 ## Contexto Atual
 
-A landing page está atualmente focada em um único serviço: **"Auditoria e Consultoria de Tráfego"**. Todas as seções (Hero, Method, Deliverables, ForWhom, FAQ, Testimonials) fazem referência exclusiva a este serviço.
+Os templates de tarefas estão organizados exclusivamente pelas 4 fases da jornada de **Auditoria e Consultoria**:
+- Diagnóstico
+- Estruturação  
+- Operação Guiada
+- Transferência
 
-## Novos Serviços a Adicionar
-
-1. **Produção de Mídia** - Para anúncios e conteúdo orgânico
-2. **Gestão de Tráfego Pago** - Recorrente e estratégico
-3. **Design** - Identidade visual, Apps web, Sites e Landing Pages
-
----
+Isso funciona bem para o serviço principal, mas não contempla os novos serviços adicionados:
+- **Produção de Mídia** (Anúncios e Orgânico)
+- **Gestão de Tráfego** (Recorrente e Estratégico)
+- **Design** (Identidade Visual, Apps, Sites, Landing Pages)
 
 ## Solução Proposta
 
-Criar uma seção de **"Serviços"** modular e visual que apresente todos os serviços da agência, mantendo a possibilidade de destacar cada um com suas características únicas.
+Expandir o sistema de templates para incluir um campo `service_type` que permite categorizar templates por tipo de serviço, mantendo compatibilidade com o sistema atual.
 
-### Estrutura da Nova Seção
+---
+
+## Arquitetura da Solução
 
 ```
-Serviços Linkou
-|
-+-- Auditoria e Consultoria (existente, reorganizado)
-|   +-- Diagnóstico de contas
-|   +-- Tracking e pixels
-|   +-- Treinamento do time
-|
-+-- Produção de Mídia (novo)
-|   +-- Criativos para anúncios
-|   +-- Conteúdo orgânico
-|   +-- Vídeos e imagens
-|
-+-- Gestão de Tráfego (novo)
-|   +-- Meta Ads e Google Ads
-|   +-- Estratégia recorrente
-|   +-- Relatórios mensais
-|
-+-- Design (novo)
-    +-- Identidade Visual
-    +-- Apps Web
-    +-- Sites e Landing Pages
+task_templates
+├── service_type (NOVO) ── "auditoria" | "producao" | "gestao" | "design"
+├── journey_phase         ── Fases específicas por serviço
+├── title
+├── description
+├── priority
+├── order_index
+├── visible_to_client
+└── is_active
 ```
+
+### Fases por Serviço
+
+| Serviço | Fases |
+|---------|-------|
+| Auditoria | diagnostico, estruturacao, operacao_guiada, transferencia |
+| Produção de Mídia | briefing, producao, revisao, entrega |
+| Gestão de Tráfego | onboarding, setup, otimizacao, escala |
+| Design | descoberta, conceito, desenvolvimento, entrega |
 
 ---
 
 ## Etapas de Implementação
 
-### Etapa 1: Criar Componente de Serviços
+### Etapa 1: Banco de Dados
 
-Criar um novo componente `Services.tsx` com:
-- Grid de cards para cada serviço
-- Ícones distintos para cada categoria
-- Descrição e features de cada serviço
-- Animações com framer-motion (padrão do projeto)
-- CTA para contato específico por serviço
+Adicionar coluna `service_type` na tabela `task_templates`:
+- Tipo: `text`
+- Valor padrão: `'auditoria'` (para manter compatibilidade)
+- Atualizar templates existentes para ter `service_type = 'auditoria'`
 
-### Etapa 2: Atualizar Componentes Existentes
+### Etapa 2: Configuração de Serviços e Fases
 
-**Hero.tsx**
-- Atualizar headline para posicionamento mais amplo da agência
-- Manter CTA principal para contato
+Criar arquivo de configuração `src/lib/service-phases-config.ts` com:
+- Mapeamento de fases por serviço
+- Labels e cores para cada fase
+- Helpers para obter fases de um serviço
 
-**Header.tsx**
-- Adicionar link "Serviços" na navegação
-- Atualizar texto do CTA principal
+### Etapa 3: Atualizar Página de Templates
 
-**Footer.tsx**
-- Adicionar links para cada serviço
-- Atualizar descrição da agência
+Modificar `src/pages/admin/Templates.tsx`:
+- Adicionar seletor de serviço no header
+- Tabs de fases mudam dinamicamente conforme o serviço selecionado
+- Formulário de novo template inclui o `service_type`
 
-**ContactForm.tsx**
-- Adicionar campo de seleção do serviço de interesse
-- Mapear serviço selecionado para o lead
+### Etapa 4: Inserir Templates Iniciais
 
-### Etapa 3: Reorganizar Seções Específicas
+Criar templates iniciais para cada serviço:
 
-As seções Method, Deliverables e FAQ serão mantidas, mas com ajustes:
-- Method: Pode ser renomeado para "Como Trabalhamos"
-- Deliverables: Agora focará no serviço principal ou será substituído pela nova seção de Serviços
-- FAQ: Adicionar perguntas sobre os novos serviços
+**Produção de Mídia:**
+- Briefing criativo
+- Definição de linha visual
+- Produção de peças/vídeos
+- Revisão com cliente
+- Ajustes finais
+- Entrega dos assets
 
-### Etapa 4: Atualizar Estrutura da Página
+**Gestão de Tráfego:**
+- Onboarding e acessos
+- Auditoria de contas existentes
+- Setup de campanhas
+- Configuração de tracking
+- Otimização semanal
+- Relatório mensal
 
-**Index.tsx** atualizado:
-```
-Header
-Hero (atualizado - posicionamento amplo)
-Services (NOVO - grid de serviços)
-Results (mantido)
-ForWhom (mantido)
-Testimonials (mantido)
-FAQ (atualizado com novos serviços)
-ContactForm (com seleção de serviço)
-Footer (atualizado)
-```
+**Design:**
+- Briefing e pesquisa
+- Moodboard e referências
+- Conceito inicial
+- Desenvolvimento
+- Revisões
+- Entrega final
 
 ---
 
@@ -105,95 +105,99 @@ Footer (atualizado)
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `src/components/landing/Services.tsx` | Nova seção de serviços com grid de cards |
-| `src/lib/services-config.ts` | Configuração centralizada dos serviços |
+| `src/lib/service-phases-config.ts` | Configuração de fases por tipo de serviço |
 
 ### Arquivos a Modificar
 
 | Arquivo | Alterações |
 |---------|------------|
-| `src/pages/Index.tsx` | Adicionar componente Services, remover/reorganizar Deliverables |
-| `src/components/landing/Hero.tsx` | Atualizar headline e posicionamento |
-| `src/components/landing/Header.tsx` | Adicionar link "Serviços" |
-| `src/components/landing/ContactForm.tsx` | Adicionar campo de seleção de serviço |
-| `src/components/landing/FAQ.tsx` | Adicionar perguntas sobre novos serviços |
-| `src/components/landing/Footer.tsx` | Atualizar seção de navegação |
+| `src/pages/admin/Templates.tsx` | Adicionar seletor de serviço e lógica dinâmica de fases |
+| `src/integrations/supabase/types.ts` | Atualizado automaticamente após migration |
 
-### Estrutura do Componente Services
+### Migration SQL
 
-```tsx
-// src/lib/services-config.ts
-export const services = [
-  {
-    id: "auditoria",
-    icon: "Search",
-    title: "Auditoria e Consultoria",
-    subtitle: "Tráfego Pago",
-    description: "Diagnóstico completo das suas contas, funis e dados...",
-    features: ["Análise de contas", "Setup de tracking", "Treinamento"],
-    highlight: true, // Destaque visual
-  },
-  {
-    id: "producao",
-    icon: "Video",
-    title: "Produção de Mídia",
-    subtitle: "Anúncios e Orgânico",
-    description: "Criativos que convertem para suas campanhas...",
-    features: ["Criativos para ads", "Conteúdo orgânico", "Vídeos"],
-  },
-  {
-    id: "gestao",
-    icon: "BarChart",
-    title: "Gestão de Tráfego",
-    subtitle: "Recorrente e Estratégico",
-    description: "Operação contínua das suas campanhas...",
-    features: ["Meta Ads", "Google Ads", "Relatórios mensais"],
-  },
-  {
-    id: "design",
-    icon: "Palette",
-    title: "Design",
-    subtitle: "Digital Completo",
-    description: "Identidade visual e presença digital...",
-    features: ["Identidade Visual", "Apps Web", "Sites e LPs"],
-  },
-];
+```sql
+-- Adicionar coluna service_type na tabela task_templates
+ALTER TABLE public.task_templates 
+ADD COLUMN service_type text NOT NULL DEFAULT 'auditoria';
+
+-- Atualizar templates existentes
+UPDATE public.task_templates 
+SET service_type = 'auditoria' 
+WHERE service_type IS NULL OR service_type = '';
+
+-- Comentário na coluna
+COMMENT ON COLUMN public.task_templates.service_type IS 
+  'Tipo de serviço: auditoria, producao, gestao, design';
 ```
 
-### Atualização do ContactForm
+### Estrutura do service-phases-config.ts
 
-Adicionar campo de seleção:
+```typescript
+export type ServiceType = "auditoria" | "producao" | "gestao" | "design";
 
-```tsx
-// Novo campo no formulário
-<Select
-  value={formData.service}
-  onValueChange={(value) => setFormData({ ...formData, service: value })}
->
-  <SelectTrigger>
-    <SelectValue placeholder="Qual serviço te interessa?" />
-  </SelectTrigger>
-  <SelectContent>
-    {services.map((service) => (
-      <SelectItem key={service.id} value={service.id}>
-        {service.title}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+export interface ServicePhase {
+  value: string;
+  label: string;
+  color: string;
+  order: number;
+}
+
+export const servicePhases: Record<ServiceType, ServicePhase[]> = {
+  auditoria: [
+    { value: "diagnostico", label: "Diagnóstico", color: "bg-purple-500/20 text-purple-600", order: 1 },
+    { value: "estruturacao", label: "Estruturação", color: "bg-blue-500/20 text-blue-600", order: 2 },
+    { value: "operacao_guiada", label: "Op. Guiada", color: "bg-orange-500/20 text-orange-600", order: 3 },
+    { value: "transferencia", label: "Transferência", color: "bg-green-500/20 text-green-600", order: 4 },
+  ],
+  producao: [
+    { value: "briefing", label: "Briefing", color: "bg-pink-500/20 text-pink-600", order: 1 },
+    { value: "producao", label: "Produção", color: "bg-amber-500/20 text-amber-600", order: 2 },
+    { value: "revisao", label: "Revisão", color: "bg-cyan-500/20 text-cyan-600", order: 3 },
+    { value: "entrega", label: "Entrega", color: "bg-green-500/20 text-green-600", order: 4 },
+  ],
+  gestao: [
+    { value: "onboarding", label: "Onboarding", color: "bg-indigo-500/20 text-indigo-600", order: 1 },
+    { value: "setup", label: "Setup", color: "bg-blue-500/20 text-blue-600", order: 2 },
+    { value: "otimizacao", label: "Otimização", color: "bg-orange-500/20 text-orange-600", order: 3 },
+    { value: "escala", label: "Escala", color: "bg-green-500/20 text-green-600", order: 4 },
+  ],
+  design: [
+    { value: "descoberta", label: "Descoberta", color: "bg-violet-500/20 text-violet-600", order: 1 },
+    { value: "conceito", label: "Conceito", color: "bg-fuchsia-500/20 text-fuchsia-600", order: 2 },
+    { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-sky-500/20 text-sky-600", order: 3 },
+    { value: "entrega", label: "Entrega", color: "bg-green-500/20 text-green-600", order: 4 },
+  ],
+};
 ```
 
-### Atualização do Banco de Dados
+### Templates Iniciais (Exemplos)
 
-Será necessário adicionar uma coluna `service_interest` na tabela `leads` para armazenar o serviço de interesse selecionado pelo lead.
+**Produção de Mídia - Fase Briefing:**
+1. Reunião de briefing criativo
+2. Definir público-alvo e tom de voz
+3. Coletar referências visuais
+4. Definir formatos e especificações
+
+**Gestão de Tráfego - Fase Onboarding:**
+1. Solicitar acessos às contas
+2. Conhecer produto/serviço do cliente
+3. Definir metas e KPIs
+4. Mapear concorrentes
+
+**Design - Fase Descoberta:**
+1. Briefing de marca
+2. Pesquisa de mercado
+3. Análise de concorrentes
+4. Definir entregáveis
 
 ---
 
 ## Resultado Esperado
 
-1. Landing page apresentando todos os serviços da Linkou de forma profissional
-2. Navegação clara entre os serviços
-3. Formulário de contato inteligente que captura o interesse específico
-4. Posicionamento da agência como full-service de marketing digital
-5. Manutenção do design e animações existentes
+1. Interface de Templates com seletor de serviço no topo
+2. Tabs de fases mudam conforme o serviço selecionado
+3. Templates organizados por serviço e fase
+4. Templates prontos para cada tipo de serviço
+5. Compatibilidade total com o sistema existente
 
