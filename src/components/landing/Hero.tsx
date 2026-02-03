@@ -50,7 +50,7 @@ function HeroComponent() {
             >
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span className="text-sm font-medium text-muted-foreground">
-                Auditoria e Consultoria de Tráfego
+                Auditoria · Tráfego · Produção · Design
               </span>
             </m.div>
 
@@ -61,8 +61,8 @@ function HeroComponent() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight mb-6"
             >
-              <span className="text-gradient">Auditoria e Consultoria de Tráfego</span>{" "}
-              para quem quer clareza antes de investir mais.
+              <span className="text-gradient">Marketing digital</span>{" "}
+              com clareza, performance e autonomia.
             </m.h1>
 
             {/* Secondary Line */}
@@ -72,7 +72,7 @@ function HeroComponent() {
               transition={{ duration: 0.5, delay: 0.15 }}
               className="text-base md:text-lg text-foreground/80 mb-4 max-w-3xl mx-auto"
             >
-              A <span className="text-primary font-medium">Agência Linkou</span> ajuda construtoras, incorporadoras e concessionárias a entender, organizar e otimizar seu tráfego dentro de um <span className="text-primary font-medium">ecossistema de vendas</span> que faz sentido.
+              A <span className="text-primary font-medium">Agência Linkou</span> oferece auditoria, consultoria, produção de mídia, gestão de tráfego e design para quem quer resultados de verdade.
             </m.p>
 
             {/* CTA */}

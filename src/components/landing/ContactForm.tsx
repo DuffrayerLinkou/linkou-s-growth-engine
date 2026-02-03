@@ -16,12 +16,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { services } from "@/lib/services-config";
 
 const leadSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
   email: z.string().trim().email("Email inválido").max(255),
   phone: z.string().trim().min(10, "Telefone inválido").max(20),
   segment: z.string().min(1, "Selecione um segmento"),
+  service: z.string().optional(),
   investment: z.string().optional(),
   objective: z.string().max(1000).optional(),
 });
@@ -45,6 +47,7 @@ export function ContactForm() {
     email: "",
     phone: "",
     segment: "",
+    service: "",
     investment: "",
     objective: "",
   });
@@ -81,6 +84,7 @@ export function ContactForm() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         segment: formData.segment,
+        service_interest: formData.service || null,
         investment: formData.investment || null,
         objective: formData.objective.trim() || null,
         status: "new",
@@ -176,18 +180,18 @@ export function ContactForm() {
                 Contato
               </span>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-                Solicite sua <span className="text-primary">Auditoria de Tráfego</span>
+                Fale com a <span className="text-primary">Agência Linkou</span>
               </h2>
               <p className="text-muted-foreground text-lg mb-8">
-                Preencha o formulário para agendar uma conversa com a <span className="text-foreground font-medium">Agência Linkou</span>. O primeiro passo é entender seu cenário — sem compromisso.
+                Preencha o formulário e conte o que você precisa. O primeiro passo é entender seu cenário — <span className="text-foreground font-medium">sem compromisso</span>.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-semibold">Auditoria inicial gratuita</div>
+                    <div className="font-semibold">Diagnóstico inicial gratuito</div>
                     <div className="text-sm text-muted-foreground">
-                      Você recebe um diagnóstico claro do seu cenário atual
+                      Você recebe um panorama claro do seu cenário atual
                     </div>
                   </div>
                 </div>
@@ -213,7 +217,7 @@ export function ContactForm() {
               {/* Emotional security phrase */}
               <div className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-xl">
                 <p className="text-sm text-muted-foreground">
-                  💡 <span className="text-foreground font-medium">A auditoria é de verdade.</span> Você sai com clareza sobre seu tráfego — mesmo que não avancemos.
+                  💡 <span className="text-foreground font-medium">Cada serviço é personalizado.</span> Vamos entender sua necessidade antes de propor qualquer solução.
                 </p>
               </div>
             </motion.div>
@@ -297,25 +301,49 @@ export function ContactForm() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Investimento em mídia</Label>
+                    <Label>Serviço de interesse</Label>
                     <Select
-                      value={formData.investment}
+                      value={formData.service}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, investment: value })
+                        setFormData({ ...formData, service: value })
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        {investments.map((inv) => (
-                          <SelectItem key={inv} value={inv}>
-                            {inv}
+                        {services.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            <span className="flex items-center gap-2">
+                              <service.icon className="h-4 w-4 text-muted-foreground" />
+                              {service.title}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Investimento em mídia</Label>
+                  <Select
+                    value={formData.investment}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, investment: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {investments.map((inv) => (
+                        <SelectItem key={inv} value={inv}>
+                          {inv}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -350,7 +378,7 @@ export function ContactForm() {
                       >
                         <Send className="h-4 w-4" />
                       </motion.span>
-                      Solicitar auditoria gratuita
+                      Enviar mensagem
                     </>
                   )}
                 </AnimatedCTA>

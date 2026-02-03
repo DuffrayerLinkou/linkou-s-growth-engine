@@ -43,38 +43,38 @@ export function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="font-semibold mb-4">Navegação</h4>
+            <h4 className="font-semibold mb-4">Serviços</h4>
             <ul className="space-y-2">
               <li>
                 <a
-                  href="#resultados"
+                  href="#servicos"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Resultados
+                  Auditoria e Consultoria
                 </a>
               </li>
               <li>
                 <a
-                  href="#metodo"
+                  href="#servicos"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Método
+                  Produção de Mídia
                 </a>
               </li>
               <li>
                 <a
-                  href="#entregas"
+                  href="#servicos"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Entregas
+                  Gestão de Tráfego
                 </a>
               </li>
               <li>
                 <a
-                  href="#faq"
+                  href="#servicos"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  FAQ
+                  Design Digital
                 </a>
               </li>
             </ul>

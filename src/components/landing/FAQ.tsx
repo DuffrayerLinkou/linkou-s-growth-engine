@@ -8,7 +8,27 @@ import {
 
 const faqs = [
   {
-    question: "O que é o 'Ponto Focal'?",
+    question: "Quais serviços a Linkou oferece?",
+    answer:
+      "Trabalhamos com quatro frentes principais: Auditoria e Consultoria de Tráfego (diagnóstico e setup de contas), Produção de Mídia (criativos para anúncios e conteúdo orgânico), Gestão de Tráfego Pago (operação contínua de Meta e Google Ads) e Design Digital (identidade visual, sites e landing pages).",
+  },
+  {
+    question: "Posso contratar apenas um serviço ou preciso de todos?",
+    answer:
+      "Você contrata o que fizer sentido pro seu momento. Pode começar com uma auditoria para entender seu cenário, ou ir direto pra gestão de tráfego. A gente monta o escopo junto, sem pacotes engessados.",
+  },
+  {
+    question: "Quanto custa o serviço de gestão de tráfego?",
+    answer:
+      "Depende do volume de investimento e complexidade da operação. A gente precisa entender seu cenário antes de passar um valor. Preencha o formulário que a gente conversa sem compromisso.",
+  },
+  {
+    question: "Vocês trabalham com qualquer segmento?",
+    answer:
+      "Temos expertise maior em construtoras, incorporadoras e concessionárias, mas também atendemos e-commerces, infoprodutores e outros negócios que investem em tráfego pago. O importante é ter estrutura para receber leads.",
+  },
+  {
+    question: "O que é o 'Ponto Focal' na consultoria?",
     answer:
       "É alguém do seu time que a gente treina pra dominar o sistema. Pode ser um analista, um coordenador, quem você escolher. A ideia é simples: quando a gente sair, você continua rodando sem precisar de agência nenhuma.",
   },
@@ -18,34 +38,14 @@ const faqs = [
       "Sim, 100%. Todas as contas são criadas no seu nome. Você é dono de tudo desde o dia 1. Se a gente desaparecer amanhã, você não perde nada. Transparência total, sem letra miúda.",
   },
   {
-    question: "Qual o prazo mínimo de contrato?",
-    answer:
-      "6 meses. Esse é o tempo pra implementar as 4 fases e transferir o conhecimento pro seu time. Depois disso, você decide: continua em mentoria, ou segue sozinho. Sem amarras.",
-  },
-  {
     question: "Quanto tempo até ver resultados?",
     answer:
       "Resultados rápidos (quick wins) costumam aparecer nas primeiras semanas. Resultados sólidos e escaláveis, entre o segundo e terceiro mês. A gente não promete milagre — promete método.",
   },
   {
-    question: "A auditoria funciona para qualquer volume de investimento?",
+    question: "Como funciona a produção de criativos?",
     answer:
-      "Sim. A auditoria funciona para qualquer volume de investimento. O importante é que você já invista em mídia e queira entender melhor o que está acontecendo. Não exigimos valor mínimo para começar a conversa.",
-  },
-  {
-    question: "A consultoria é só para empresas grandes?",
-    answer:
-      "Não. Trabalhamos com negócios de diferentes tamanhos. O que importa é a necessidade de clareza e organização no tráfego. Se você investe em mídia e sente que deveria ter mais controle, a gente pode ajudar.",
-  },
-  {
-    question: "O que acontece se eu quiser parar antes do prazo?",
-    answer:
-      "Você pode cancelar quando quiser. Tudo que foi construído — contas, dados, acessos — continua seu. Só pedimos 30 dias de aviso pra fazer uma transição organizada. Sem drama, sem briga.",
-  },
-  {
-    question: "Como funciona a metodologia de experimentos?",
-    answer:
-      "Cada otimização é tratada como um experimento: hipótese, teste, análise. Ao final, decidimos juntos se mantemos, iteramos ou descartamos. Isso gera um histórico de aprendizados que fica com você.",
+      "Você passa o briefing, a gente desenvolve os roteiros e peças (vídeos e imagens). Tudo é validado antes de ir pro ar. Produzimos tanto para campanhas pagas quanto para conteúdo orgânico das redes sociais.",
   },
 ];
 
@@ -65,7 +65,7 @@ export function FAQ() {
             FAQ
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
-            Perguntas comuns sobre a <span className="text-primary">Auditoria e Consultoria</span>
+            Perguntas frequentes sobre nossos <span className="text-primary">serviços</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Se você está considerando, provavelmente tem algumas dessas dúvidas. Aqui a gente responde <span className="text-foreground font-medium">direto</span>.

@@ -756,6 +756,7 @@ export type Database = {
           objective: string | null
           phone: string | null
           segment: string | null
+          service_interest: string | null
           source: string | null
           status: string | null
           updated_at: string | null
@@ -769,6 +770,7 @@ export type Database = {
           objective?: string | null
           phone?: string | null
           segment?: string | null
+          service_interest?: string | null
           source?: string | null
           status?: string | null
           updated_at?: string | null
@@ -782,6 +784,7 @@ export type Database = {
           objective?: string | null
           phone?: string | null
           segment?: string | null
+          service_interest?: string | null
           source?: string | null
           status?: string | null
           updated_at?: string | null
