@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-const DEFAULT_WHATSAPP_NUMBER = "554198345701";
+const DEFAULT_WHATSAPP_NUMBER = "5541988988054";
 
 function useWhatsAppSettings() {
   const { data: settings } = useQuery({
