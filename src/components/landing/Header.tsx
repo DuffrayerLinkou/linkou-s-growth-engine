@@ -9,10 +9,10 @@ import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
 const navLinks = [
+  { href: "#servicos", label: "Serviços" },
   { href: "#resultados", label: "Resultados" },
   { href: "#metodo", label: "Método" },
   { href: "#para-quem", label: "Para Quem" },
-  { href: "#entregas", label: "Entregas" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -67,7 +67,7 @@ export function Header() {
               onClick={() => scrollToSection("#contato")}
               className="font-semibold"
             >
-              Quero uma auditoria
+              Fale conosco
             </Button>
           </div>
 
@@ -115,7 +115,7 @@ export function Header() {
                   onClick={() => scrollToSection("#contato")}
                   className="w-full font-semibold"
                 >
-                  Quero uma auditoria
+                  Fale conosco
                 </Button>
               </div>
             </nav>
