@@ -16,6 +16,36 @@ export function TrackingScripts() {
     staleTime: 1000 * 60 * 5, // 5 minutes cache
   });
 
+  // Dynamic SEO meta tags from database
+  useEffect(() => {
+    if (!settings) return;
+
+    if (settings.site_title) {
+      document.title = settings.site_title;
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute("content", settings.site_title);
+    }
+
+    if (settings.site_description) {
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) desc.setAttribute("content", settings.site_description);
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute("content", settings.site_description);
+    }
+
+    if (settings.og_image_url) {
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg) ogImg.setAttribute("content", settings.og_image_url);
+      const twImg = document.querySelector('meta[name="twitter:image"]');
+      if (twImg) twImg.setAttribute("content", settings.og_image_url);
+    }
+
+    if (settings.favicon_url) {
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) favicon.href = settings.favicon_url;
+    }
+  }, [settings]);
+
   useEffect(() => {
     if (!settings) return;
 
