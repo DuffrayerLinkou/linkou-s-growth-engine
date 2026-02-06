@@ -1,220 +1,198 @@
 
 
-# Plano: Transformar Leads em CRM com Discagem e WhatsApp
+# Plano: CRM Offline Conversions via Meta CAPI
 
-## Resumo
+## O que isso faz
 
-Transformar a secao de Leads em um mini-CRM com:
-- **Click-to-call** (tel:) para discagem rapida
-- **WhatsApp via wa.me** com registro de cada interacao
-- **Historico de atividades** por lead (ligacoes, mensagens, notas)
-- **Agendamento de follow-ups** com lembretes
-- **Estrutura pronta** para integrar API oficial de WhatsApp no futuro (templates de mensagem, fila de disparo)
+Quando um lead muda de status no CRM (ex: "novo" para "qualificado", ou "qualificado" para "convertido"), o sistema envia automaticamente um evento de conversao para o Meta via Conversions API (CAPI). Isso permite que o Meta:
 
----
-
-## Novas Tabelas no Banco de Dados
-
-### 1. `lead_activities` - Historico de Interacoes
-
-Registra cada contato feito com o lead (ligacao, WhatsApp, email, nota).
-
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | UUID | PK |
-| lead_id | UUID | FK para leads |
-| type | TEXT | "call", "whatsapp", "email", "note", "status_change" |
-| description | TEXT | Descricao/nota da interacao |
-| created_by | UUID | FK para auth.users |
-| created_at | TIMESTAMPTZ | Data/hora |
-| metadata | JSONB | Dados extras (duracao da ligacao, template usado, etc) |
-
-### 2. `lead_follow_ups` - Agendamento de Follow-ups
-
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | UUID | PK |
-| lead_id | UUID | FK para leads |
-| scheduled_at | TIMESTAMPTZ | Data/hora agendada |
-| type | TEXT | "call", "whatsapp", "email" |
-| message | TEXT | Mensagem planejada (para WhatsApp) |
-| status | TEXT | "pending", "completed", "cancelled" |
-| completed_at | TIMESTAMPTZ | Quando foi executado |
-| created_by | UUID | FK para auth.users |
-| created_at | TIMESTAMPTZ | Data criacao |
-
-### 3. `whatsapp_templates` - Templates de Mensagem (preparacao para API oficial)
-
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | UUID | PK |
-| name | TEXT | Nome do template |
-| category | TEXT | "follow_up", "welcome", "qualification", "proposal" |
-| content | TEXT | Texto da mensagem com variaveis {{nome}}, {{empresa}} |
-| is_active | BOOLEAN | Template ativo |
-| created_at | TIMESTAMPTZ | Data criacao |
+- **Otimize campanhas** para encontrar pessoas semelhantes as que realmente convertem (nao apenas quem preenche formulario)
+- **Calcule ROAS real** baseado em leads que viraram clientes
+- **Melhore o publico** com dados do funil completo
 
 ---
 
-## Alteracoes na Interface
-
-### 1. Dialog de Detalhe do Lead (reformulado)
-
-O dialog atual sera expandido com abas:
+## Como funciona
 
 ```text
-+--------------------------------------------------+
-|  Lead: Joao Silva                                |
-|  Status: [Qualificado v]                         |
-|                                                  |
-|  [Dados]  [Atividades]  [Follow-ups]             |
-|  ------------------------------------------------|
-|                                                  |
-|  Acoes Rapidas:                                  |
-|  [Ligar]  [WhatsApp]  [Email]  [+ Nota]         |
-|                                                  |
-|  Historico:                                      |
-|  14:30 - Ligacao realizada (2min)                |
-|  11:00 - WhatsApp enviado: "Oi Joao..."         |
-|  Ontem - Status alterado para Qualificado        |
-|  02/02 - Lead capturado via Landing Page         |
-|                                                  |
-|  Proximo follow-up: 08/02 as 10:00 (WhatsApp)   |
-+--------------------------------------------------+
+Lead muda de status no CRM
+         |
+         v
+Frontend detecta a mudanca
+         |
+         v
+Chama Edge Function "meta-capi-event"
+com event_name baseado no novo status
+         |
+         v
+Edge Function envia para Meta CAPI:
+  - Lead -> ja existe (formulario)
+  - Contact -> lead contatado  
+  - Lead Qualified -> lead qualificado
+  - Purchase/CompleteRegistration -> convertido
+         |
+         v
+Meta recebe e otimiza campanhas
 ```
 
-### 2. Botao "Ligar" (Click-to-call)
+---
 
-- Abre `tel:+55XXXXXXXXX` no dispositivo
-- Registra automaticamente uma atividade "call" no historico
-- Abre mini-dialog para anotar resultado da ligacao apos fechar
+## Mapeamento de Status para Eventos Meta
 
-### 3. Botao "WhatsApp" (aprimorado)
+| Status CRM | Evento Meta | Descricao |
+|------------|-------------|-----------|
+| new | Lead | Ja enviado no formulario |
+| contacted | Contact | Primeiro contato realizado |
+| qualified | Lead (qualified) | Lead qualificado, com custom_data |
+| proposal | InitiateCheckout | Proposta enviada |
+| converted | Purchase | Convertido em cliente |
+| lost | - | Nao envia (sem valor para otimizacao) |
+| archived | - | Nao envia |
 
-- Mostra opcoes: mensagem livre ou escolher template
-- Ao selecionar template, substitui variaveis (nome, segmento)
-- Abre wa.me com a mensagem pre-preenchida
-- Registra a interacao no historico automaticamente
+O Meta usa eventos padrao (Lead, Contact, InitiateCheckout, Purchase) que ele reconhece nativamente para otimizacao de campanhas.
 
-### 4. Agendar Follow-up
+---
 
-- Botao para agendar proximo contato
-- Selecionar tipo (ligacao, WhatsApp, email)
-- Definir data/hora
-- Se WhatsApp: escolher template ou escrever mensagem
-- Aparece como lembrete no dashboard e na lista de leads
+## Alteracoes Necessarias
 
-### 5. Indicadores visuais no Kanban
+### 1. Modificar `src/pages/admin/Leads.tsx`
 
-- Badge com quantidade de atividades
-- Indicador de follow-up pendente (icone de relogio)
-- Ultimo contato (ex: "ha 3 dias")
+Na funcao `updateLeadStatus`, apos atualizar o status no banco, disparar a chamada CAPI para os status relevantes.
+
+```typescript
+const updateLeadStatus = async (leadId: string, newStatus: string) => {
+  // ... update no banco (ja existe) ...
+  
+  // Enviar evento offline para Meta CAPI
+  const lead = leads.find(l => l.id === leadId);
+  if (lead) {
+    sendCRMEventToMeta(lead, newStatus).catch(console.error);
+  }
+};
+```
+
+### 2. Criar `src/lib/crm-capi-utils.ts`
+
+Novo arquivo utilitario que:
+- Mapeia status do CRM para event_name do Meta
+- Monta o payload com dados do lead (email, phone, name)
+- Chama a Edge Function `meta-capi-event` ja existente
+- Inclui `action_source: "system_generated"` (padrao Meta para offline conversions)
+
+```typescript
+const CRM_EVENT_MAP: Record<string, string | null> = {
+  contacted: "Contact",
+  qualified: "Lead",        // com custom_data.lead_event_source = "CRM"
+  proposal: "InitiateCheckout",
+  converted: "Purchase",
+  lost: null,               // nao envia
+  archived: null,           // nao envia
+};
+
+export async function sendCRMEventToMeta(lead: Lead, newStatus: string) {
+  const eventName = CRM_EVENT_MAP[newStatus];
+  if (!eventName) return; // status sem evento associado
+  
+  await supabase.functions.invoke("meta-capi-event", {
+    body: {
+      email: lead.email,
+      phone: lead.phone,
+      name: lead.name,
+      segment: lead.segment,
+      source_url: window.location.origin,
+      event_name: eventName,
+      // Dados extras para diferenciar do evento original
+      crm_stage: newStatus,
+    },
+  });
+}
+```
+
+### 3. Modificar Edge Function `supabase/functions/meta-capi-event/index.ts`
+
+Ajustar para suportar eventos offline do CRM:
+
+- Aceitar campo `crm_stage` no body
+- Quando `crm_stage` estiver presente, usar `action_source: "system_generated"` em vez de `"website"` (padrao Meta para offline conversions)
+- Incluir `crm_stage` no `custom_data` para rastreabilidade
+- Manter compatibilidade com o fluxo atual (formulario de contato continua funcionando igual)
+
+```typescript
+// No payload do evento:
+{
+  event_name: body.event_name || 'Lead',
+  action_source: body.crm_stage ? 'system_generated' : 'website',
+  custom_data: {
+    lead_type: body.crm_stage ? 'crm_offline' : 'audit_request',
+    crm_stage: body.crm_stage || undefined,
+    segment: body.segment,
+  }
+}
+```
+
+### 4. Toggle de ativacao no Admin (Pixels Tab)
+
+Adicionar um toggle "Enviar eventos do CRM para Meta" na aba de Pixels, para que o admin possa ativar/desativar o envio de conversoes offline sem mexer em codigo.
+
+**Banco de dados:** Adicionar coluna `meta_capi_crm_events_enabled` (BOOLEAN) na tabela `landing_settings`.
+
+**UI em `PixelsTab.tsx`:** Novo switch abaixo das configuracoes existentes do CAPI.
+
+---
+
+## Alteracoes no Banco de Dados
+
+### Migration SQL
+
+```sql
+ALTER TABLE public.landing_settings 
+ADD COLUMN IF NOT EXISTS meta_capi_crm_events_enabled BOOLEAN DEFAULT false;
+```
 
 ---
 
 ## Arquivos a Criar/Modificar
 
-### Novos Arquivos
-
-1. **`src/components/admin/leads/LeadDetailDialog.tsx`** - Dialog reformulado com abas
-2. **`src/components/admin/leads/LeadActivityTimeline.tsx`** - Timeline de atividades
-3. **`src/components/admin/leads/LeadFollowUpForm.tsx`** - Form de agendamento
-4. **`src/components/admin/leads/LeadQuickActions.tsx`** - Botoes de acao (ligar, WhatsApp, email, nota)
-5. **`src/components/admin/leads/WhatsAppTemplateSelector.tsx`** - Seletor de templates de mensagem
-
-### Arquivos Modificados
-
-1. **`src/pages/admin/Leads.tsx`** - Usar novo LeadDetailDialog, adicionar indicadores
-2. **`src/components/admin/LeadsKanban.tsx`** - Adicionar badges de atividade e follow-up nos cards
-3. **`src/integrations/supabase/types.ts`** - Tipos das novas tabelas
-
-### Migration SQL
-
-- Criar tabelas `lead_activities`, `lead_follow_ups`, `whatsapp_templates`
-- RLS policies para todas as tabelas
-- Inserir templates padrao de WhatsApp (boas-vindas, follow-up, qualificacao, proposta)
-
----
-
-## Templates Padrao de WhatsApp
-
-Serao inseridos 4 templates iniciais:
-
-1. **Boas-vindas**: "Ola {{nome}}! Sou da Linkou, recebi seu contato sobre {{objetivo}}. Podemos conversar?"
-2. **Follow-up**: "Oi {{nome}}, tudo bem? Estou retomando nosso contato sobre {{objetivo}}. Tem um horario disponivel essa semana?"
-3. **Qualificacao**: "{{nome}}, analisei seu caso e acredito que podemos ajudar com {{segmento}}. Posso enviar uma proposta?"
-4. **Proposta**: "{{nome}}, preparei uma proposta personalizada para voce. Podemos agendar uma reuniao para apresentar?"
+| Arquivo | Acao |
+|---------|------|
+| `src/lib/crm-capi-utils.ts` | Criar - logica de mapeamento e envio |
+| `src/pages/admin/Leads.tsx` | Modificar - chamar envio CAPI no updateLeadStatus |
+| `supabase/functions/meta-capi-event/index.ts` | Modificar - suportar action_source "system_generated" e crm_stage |
+| `src/components/admin/landing/PixelsTab.tsx` | Modificar - adicionar toggle de eventos CRM |
+| `src/integrations/supabase/types.ts` | Modificar - adicionar tipo da nova coluna |
+| Migration SQL | Criar - nova coluna na landing_settings |
 
 ---
 
 ## Detalhes Tecnicos
 
-### Registro automatico de atividade
+### action_source correto
 
-```typescript
-async function logLeadActivity(
-  leadId: string, 
-  type: "call" | "whatsapp" | "email" | "note" | "status_change",
-  description: string,
-  metadata?: Record<string, any>
-) {
-  await supabase.from("lead_activities").insert({
-    lead_id: leadId,
-    type,
-    description,
-    metadata,
-  });
-}
-```
+O Meta exige `action_source` para saber a origem do evento:
+- `"website"` = evento aconteceu no site (formulario)
+- `"system_generated"` = evento gerado por sistema interno (CRM, ERP)
 
-### Click-to-call com registro
+Usar `system_generated` para eventos do CRM e essencial para que o Meta processe corretamente e nao duplique com eventos de pixel do browser.
 
-```typescript
-const handleCall = (lead: Lead) => {
-  // Abrir discador
-  window.open(`tel:+55${lead.phone.replace(/\D/g, "")}`, "_self");
-  // Registrar atividade
-  logLeadActivity(lead.id, "call", "Ligacao realizada");
-  // Abrir dialog de anotacao apos 3s
-  setTimeout(() => setCallNoteDialogOpen(true), 3000);
-};
-```
+### Deduplicacao
 
-### WhatsApp com template
+Cada evento CRM tera um `event_id` unico (UUID gerado na Edge Function), entao nao ha risco de duplicacao. O evento de "Lead" original (do formulario) e o evento de "Lead qualified" (do CRM) sao eventos diferentes com nomes ou custom_data diferentes.
 
-```typescript
-const handleWhatsApp = (lead: Lead, template?: WhatsAppTemplate) => {
-  let message = template?.content || "";
-  // Substituir variaveis
-  message = message.replace("{{nome}}", lead.name);
-  message = message.replace("{{segmento}}", lead.segment || "");
-  message = message.replace("{{objetivo}}", lead.objective || "");
-  
-  const url = `https://wa.me/55${lead.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
-  window.open(url, "_blank");
-  
-  // Registrar atividade
-  logLeadActivity(lead.id, "whatsapp", `Mensagem enviada: ${message.substring(0, 100)}...`);
-};
-```
+### Verificacao no Meta Events Manager
 
-### Preparacao para API Oficial
-
-A estrutura de `whatsapp_templates` e `lead_follow_ups` ja esta no formato compativel com a API oficial do WhatsApp (Evolution API, Z-API, etc). Quando conectar a API:
-
-1. Os templates ja estarao cadastrados
-2. Os follow-ups agendados poderao ser disparados automaticamente via Edge Function + cron
-3. O historico de atividades ja estara populado
-4. Bastara criar uma Edge Function que consome a API oficial em vez de abrir wa.me
+Apos implementar, os eventos offline aparecerao no Events Manager do Meta com:
+- Origem: "Server" (nao "Browser")
+- action_source: "system_generated"
+- custom_data mostrando o crm_stage
 
 ---
 
 ## Resultado Esperado
 
-1. Cada lead tem um historico completo de interacoes
-2. Click-to-call abre o discador e registra a ligacao
-3. WhatsApp abre com mensagem pre-formatada a partir de templates
-4. Follow-ups agendados aparecem como lembretes
-5. Cards do Kanban mostram ultimo contato e pendencias
-6. Banco de dados pronto para integrar API oficial de WhatsApp no futuro
+1. Quando um lead e qualificado no CRM, o Meta recebe um evento "Lead" com contexto de qualificacao
+2. Quando uma proposta e enviada, o Meta recebe "InitiateCheckout"
+3. Quando o lead vira cliente, o Meta recebe "Purchase"
+4. O Meta usa esses dados para otimizar campanhas e encontrar mais pessoas como as que realmente convertem
+5. Toggle no admin permite ativar/desativar sem deploy
+6. Tudo usa a infraestrutura CAPI ja existente (pixel ID, access token, test event code)
 
