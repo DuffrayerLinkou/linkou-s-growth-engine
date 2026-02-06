@@ -89,6 +89,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { JourneyStepper, Phase, getPhaseLabel, getAllPhases } from "@/components/journey/JourneyStepper";
+import {
+  ServiceType,
+  serviceTypes,
+  getPhasesByService,
+} from "@/lib/service-phases-config";
 
 interface Client {
   id: string;
@@ -132,6 +137,7 @@ interface AuditLog {
 
 interface TaskTemplate {
   id: string;
+  service_type: string;
   journey_phase: string;
   title: string;
   description: string | null;
@@ -219,6 +225,8 @@ export default function ClientDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPhase, setSelectedPhase] = useState<Phase>("diagnostico");
+  const [selectedServiceType, setSelectedServiceType] = useState<ServiceType>("auditoria");
+  const [selectedTemplatePhase, setSelectedTemplatePhase] = useState<string>("");
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [assignees, setAssignees] = useState<Profile[]>([]);
@@ -384,10 +392,16 @@ export default function ClientDetail() {
     }
   };
 
-  const fetchTemplates = async (phase: Phase) => {
+  const fetchTemplates = async (serviceType: ServiceType, phase: string) => {
+    if (!phase) {
+      setTemplates([]);
+      setSelectedTemplates([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("task_templates")
       .select("*")
+      .eq("service_type", serviceType)
       .eq("journey_phase", phase)
       .eq("is_active", true)
       .order("order_index", { ascending: true });
@@ -866,8 +880,26 @@ export default function ClientDetail() {
 
   const handleOpenTemplateDialog = async () => {
     if (!client) return;
-    await fetchTemplates(client.phase);
+    const defaultService: ServiceType = "auditoria";
+    const defaultPhases = getPhasesByService(defaultService);
+    const defaultPhase = defaultPhases[0]?.value || "";
+    setSelectedServiceType(defaultService);
+    setSelectedTemplatePhase(defaultPhase);
+    await fetchTemplates(defaultService, defaultPhase);
     setIsTemplateDialogOpen(true);
+  };
+
+  const handleServiceTypeChange = async (serviceType: ServiceType) => {
+    setSelectedServiceType(serviceType);
+    const phases = getPhasesByService(serviceType);
+    const firstPhase = phases[0]?.value || "";
+    setSelectedTemplatePhase(firstPhase);
+    await fetchTemplates(serviceType, firstPhase);
+  };
+
+  const handleTemplatePhaseChange = async (phase: string) => {
+    setSelectedTemplatePhase(phase);
+    await fetchTemplates(selectedServiceType, phase);
   };
 
   const handleCreateTasksFromTemplates = async () => {
@@ -1941,18 +1973,52 @@ export default function ClientDetail() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5 text-primary" />
-              Criar Tarefas do Template
+              Aplicar Templates de Tarefas
             </DialogTitle>
             <DialogDescription>
-              Crie tarefas em lote para a fase "{getPhaseLabel(client.phase)}".
+              Selecione o serviço e a fase para carregar os templates.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* Service Type Selector */}
+            <div className="space-y-2">
+              <Label>Tipo de Serviço</Label>
+              <div className="flex flex-wrap gap-2">
+                {serviceTypes.map((st) => (
+                  <Button
+                    key={st.value}
+                    variant={selectedServiceType === st.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleServiceTypeChange(st.value)}
+                  >
+                    {st.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Phase Selector */}
+            <div className="space-y-2">
+              <Label>Fase</Label>
+              <div className="flex flex-wrap gap-2">
+                {getPhasesByService(selectedServiceType).map((phase) => (
+                  <Button
+                    key={phase.value}
+                    variant={selectedTemplatePhase === phase.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleTemplatePhaseChange(phase.value)}
+                  >
+                    {phase.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             {templates.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p>Nenhum template ativo para esta fase.</p>
+                <p>Nenhum template ativo para esta combinação.</p>
                 <p className="text-sm">Crie templates em Admin → Templates.</p>
               </div>
             ) : (
