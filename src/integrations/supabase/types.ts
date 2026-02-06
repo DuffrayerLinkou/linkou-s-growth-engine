@@ -646,6 +646,7 @@ export type Database = {
           linkedin_partner_id: string | null
           meta_app_secret: string | null
           meta_capi_access_token: string | null
+          meta_capi_crm_events_enabled: boolean | null
           meta_capi_enabled: boolean | null
           meta_capi_test_event_code: string | null
           meta_page_access_token: string | null
@@ -689,6 +690,7 @@ export type Database = {
           linkedin_partner_id?: string | null
           meta_app_secret?: string | null
           meta_capi_access_token?: string | null
+          meta_capi_crm_events_enabled?: boolean | null
           meta_capi_enabled?: boolean | null
           meta_capi_test_event_code?: string | null
           meta_page_access_token?: string | null
@@ -732,6 +734,7 @@ export type Database = {
           linkedin_partner_id?: string | null
           meta_app_secret?: string | null
           meta_capi_access_token?: string | null
+          meta_capi_crm_events_enabled?: boolean | null
           meta_capi_enabled?: boolean | null
           meta_capi_test_event_code?: string | null
           meta_page_access_token?: string | null

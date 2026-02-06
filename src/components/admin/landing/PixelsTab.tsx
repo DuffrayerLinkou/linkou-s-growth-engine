@@ -30,6 +30,7 @@ export function PixelsTab() {
     meta_capi_enabled: false,
     meta_capi_access_token: "",
     meta_capi_test_event_code: "",
+    meta_capi_crm_events_enabled: false,
     tiktok_pixel_id: "",
     tiktok_pixel_enabled: false,
     tiktok_capi_enabled: false,
@@ -55,6 +56,7 @@ export function PixelsTab() {
         meta_capi_enabled: settings.meta_capi_enabled || false,
         meta_capi_access_token: settings.meta_capi_access_token || "",
         meta_capi_test_event_code: settings.meta_capi_test_event_code || "",
+        meta_capi_crm_events_enabled: (settings as any).meta_capi_crm_events_enabled || false,
         tiktok_pixel_id: settings.tiktok_pixel_id || "",
         tiktok_pixel_enabled: settings.tiktok_pixel_enabled || false,
         tiktok_capi_enabled: settings.tiktok_capi_enabled || false,
@@ -205,6 +207,37 @@ export function PixelsTab() {
                   >
                     Como gerar Access Token <ExternalLink className="h-3 w-3" />
                   </a>
+                </div>
+              )}
+
+              {/* CRM Offline Conversions Toggle */}
+              {formData.meta_capi_enabled && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium">Conversões Offline (CRM)</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Envia eventos automaticamente quando leads mudam de status no CRM
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.meta_capi_crm_events_enabled}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, meta_capi_crm_events_enabled: checked })
+                      }
+                    />
+                  </div>
+                  {formData.meta_capi_crm_events_enabled && (
+                    <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border">
+                      <p className="text-xs text-muted-foreground mb-2">Eventos enviados ao Meta:</p>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <span className="text-muted-foreground">Contatado →</span><span>Contact</span>
+                        <span className="text-muted-foreground">Qualificado →</span><span>Lead</span>
+                        <span className="text-muted-foreground">Proposta →</span><span>InitiateCheckout</span>
+                        <span className="text-muted-foreground">Convertido →</span><span>Purchase</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
