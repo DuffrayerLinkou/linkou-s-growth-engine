@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format, subDays } from "date-fns";
@@ -68,10 +68,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logLeadActivity } from "@/lib/lead-activity-utils";
 import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { ExportLeads } from "@/components/admin/ExportLeads";
 import { ImportLeads } from "@/components/admin/ImportLeads";
+import { LeadDetailDialog } from "@/components/admin/leads/LeadDetailDialog";
 
 interface Lead {
   id: string;
@@ -224,6 +226,12 @@ export default function AdminLeads() {
         .eq("id", leadId);
 
       if (error) throw error;
+
+      // Log status change
+      const oldLead = leads.find((l) => l.id === leadId);
+      if (oldLead) {
+        logLeadActivity(leadId, "status_change", `Status: ${statusLabels[oldLead.status || "new"]} → ${statusLabels[newStatus]}`).catch(() => {});
+      }
 
       setLeads((prev) =>
         prev.map((lead) =>
@@ -615,175 +623,15 @@ export default function AdminLeads() {
       )}
 
       {/* Lead Detail Dialog */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Detalhes do Lead</DialogTitle>
-            <DialogDescription>
-              Informações completas do lead capturado.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedLead && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground">Nome</label>
-                  <p className="font-medium">{selectedLead.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">Status</label>
-                  <div className="mt-1">
-                    <Select
-                      value={selectedLead.status || "new"}
-                      onValueChange={(value) => {
-                        updateLeadStatus(selectedLead.id, value);
-                        setSelectedLead({ ...selectedLead, status: value });
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(statusLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a
-                    href={`mailto:${selectedLead.email}`}
-                    className="text-primary hover:underline"
-                  >
-                    {selectedLead.email}
-                  </a>
-                </div>
-                {selectedLead.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <a
-                      href={`https://wa.me/55${selectedLead.phone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {selectedLead.phone}
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Action Buttons */}
-              <div className="flex gap-3 pt-3 border-t">
-                {selectedLead.phone && (
-                  <Button
-                    className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white"
-                    onClick={() =>
-                      window.open(
-                        `https://wa.me/55${selectedLead.phone!.replace(/\D/g, "")}`,
-                        "_blank"
-                      )
-                    }
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    WhatsApp
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => window.open(`mailto:${selectedLead.email}`, "_blank")}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Enviar Email
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground">Segmento</label>
-                  <p>{selectedLead.segment || "-"}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">
-                    Investimento
-                  </label>
-                  <p>{selectedLead.investment || "-"}</p>
-                </div>
-              </div>
-
-              {selectedLead.objective && (
-                <div>
-                  <label className="text-sm text-muted-foreground">Objetivo</label>
-                  <p className="text-sm mt-1 p-3 bg-muted rounded-lg">
-                    {selectedLead.objective}
-                  </p>
-                </div>
-              )}
-
-              <div className="pt-2 border-t text-sm text-muted-foreground">
-                Capturado em{" "}
-                {format(new Date(selectedLead.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", {
-                  locale: ptBR,
-                })}
-                {selectedLead.source && ` via ${selectedLead.source}`}
-              </div>
-
-              {/* Convert to Client Button */}
-              {selectedLead.status !== "converted" && selectedLead.status !== "archived" && (
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    className="flex-1"
-                    onClick={() => openConvertDialog(selectedLead)}
-                  >
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Converter em Cliente
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      updateLeadStatus(selectedLead.id, "archived");
-                      setSelectedLead({ ...selectedLead, status: "archived" });
-                    }}
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Arquivar
-                  </Button>
-                </div>
-              )}
-
-              {selectedLead.status === "converted" && (
-                <div className="mt-4 p-3 bg-primary/10 text-primary rounded-lg text-center text-sm font-medium">
-                  Este lead já foi convertido em cliente
-                </div>
-              )}
-
-              {selectedLead.status === "archived" && (
-                <div className="mt-4 p-3 bg-muted text-muted-foreground rounded-lg text-center text-sm font-medium">
-                  Este lead está arquivado
-                </div>
-              )}
-
-              {/* Delete Button */}
-              <Button
-                variant="ghost"
-                className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => openDeleteDialog(selectedLead)}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir Lead
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <LeadDetailDialog
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        lead={selectedLead}
+        onStatusChange={updateLeadStatus}
+        onConvert={openConvertDialog}
+        onDelete={openDeleteDialog}
+        onLeadUpdated={(updatedLead) => setSelectedLead(updatedLead)}
+      />
 
       {/* Convert to Client Dialog */}
       <Dialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
