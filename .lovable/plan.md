@@ -1,141 +1,174 @@
 
 
-# Plano: Modelos de Jornada por Tipo de Serviço
+# Plano: Adicionar Servicos de Site/Landing Page e Aplicacao Web
 
 ## O que muda
 
-Hoje, quando o admin aplica templates a um cliente, o sistema busca templates apenas pela fase da jornada (diagnostico, estruturacao, etc.), sem considerar o tipo de servico. O objetivo e permitir que o admin escolha qual **modelo de jornada** (Auditoria, Producao de Midia, Gestao de Trafego, Design) aplicar ao cliente, carregando automaticamente os templates corretos daquela jornada.
+Adicionar dois novos tipos de servico ao sistema:
+- **Site e Landing Page** - Criacao de sites institucionais e landing pages de alta conversao
+- **Aplicacao Web** - Desenvolvimento de aplicacoes web com auxilio e suporte de IA
+
+Esses novos servicos aparecerao em:
+1. Configuracao de fases e jornadas (admin)
+2. Pagina de Templates (admin)
+3. Dialog de aplicar templates no detalhe do cliente
+4. Landing page publica (secao de servicos)
 
 ---
 
-## Como vai funcionar
+## Novos Servicos e Fases
 
-1. Na pagina de detalhe do cliente (ClientDetail), o botao "Aplicar Templates" abre um dialog
-2. O admin primeiro seleciona o **tipo de servico/jornada** (Auditoria, Producao, Gestao, Design)
-3. As fases mudam dinamicamente conforme o servico selecionado
-4. O admin seleciona a **fase** desejada dentro daquele servico
-5. Os templates daquela combinacao servico + fase sao carregados
-6. O admin seleciona quais templates quer aplicar, define responsavel, data base e intervalo
-7. As tarefas sao criadas com o `journey_phase` correto
+### Site e Landing Page
+| Fase | Label |
+|------|-------|
+| briefing | Briefing |
+| wireframe | Wireframe |
+| desenvolvimento | Desenvolvimento |
+| revisao | Revisao |
+| publicacao | Publicacao |
 
----
-
-## Alteracoes Necessarias
-
-### Arquivo: `src/pages/admin/ClientDetail.tsx`
-
-**1. Novo estado para selecao de servico:**
-- Adicionar `selectedServiceType` (estado) com valor padrao `"auditoria"`
-- Importar `serviceTypes`, `getPhasesByService` de `service-phases-config`
-
-**2. Atualizar `fetchTemplates`:**
-- Adicionar filtro por `service_type` alem de `journey_phase`
-- Assinatura muda para `fetchTemplates(serviceType, phase)`
-
-**3. Atualizar `handleOpenTemplateDialog`:**
-- Ao abrir o dialog, carregar templates do servico e fase selecionados
-- Nao depender mais apenas da fase atual do cliente
-
-**4. Atualizar o Dialog de Templates:**
-- Adicionar seletor de **Tipo de Servico** (botoes ou select) no topo do dialog
-- Adicionar seletor de **Fase** que muda dinamicamente conforme o servico
-- Quando o admin trocar servico ou fase, recarregar os templates
-- Manter o restante do formulario igual (responsavel, data base, intervalo, checkboxes)
+### Aplicacao Web (IA)
+| Fase | Label |
+|------|-------|
+| descoberta | Descoberta |
+| prototipo | Prototipo |
+| desenvolvimento | Desenvolvimento |
+| testes | Testes |
+| deploy | Deploy |
 
 ---
 
-## Fluxo Visual do Dialog Atualizado
+## Arquivos a Modificar
 
-```text
-+------------------------------------------+
-|  Aplicar Templates de Tarefas            |
-|                                          |
-|  Tipo de Servico:                        |
-|  [Auditoria] [Producao] [Gestao] [Design]|
-|                                          |
-|  Fase:                                   |
-|  [Briefing] [Producao] [Revisao] [Entrega]|
-|                                          |
-|  Templates disponiveis:                  |
-|  [x] 1. Reuniao de briefing criativo     |
-|  [x] 2. Definir publico-alvo            |
-|  [x] 3. Coletar referencias visuais     |
-|  [ ] 4. Definir formatos                 |
-|                                          |
-|  Responsavel: [Selecione]                |
-|  Data base: [2026-02-06]  Intervalo: [7] |
-|                                          |
-|  [Cancelar]  [Criar 3 Tarefas]           |
-+------------------------------------------+
-```
+### 1. `src/lib/service-phases-config.ts`
+- Expandir o type `ServiceType` para incluir `"site"` e `"webapp"`
+- Adicionar as entradas em `serviceTypes[]`
+- Adicionar as fases em `servicePhases{}`
+
+### 2. `src/lib/services-config.ts`
+- Adicionar os dois novos servicos no array `services[]` com icones (Globe para Site, Code para WebApp), titulo, subtitulo, descricao e features
+
+### 3. `src/components/landing/Services.tsx`
+- Nenhuma alteracao necessaria (ja renderiza dinamicamente a partir de `services-config.ts`)
+
+### 4. Migration SQL (banco de dados)
+- Inserir templates iniciais para os dois novos servicos em `task_templates`
+
+---
+
+## Templates Iniciais
+
+### Site e Landing Page
+
+**Briefing:**
+1. Reuniao de briefing do projeto
+2. Definir objetivos e publico-alvo
+3. Levantar conteudos e referencias
+
+**Wireframe:**
+4. Criar wireframe das paginas
+5. Aprovar estrutura com cliente
+
+**Desenvolvimento:**
+6. Desenvolvimento do layout
+7. Implementacao responsiva
+8. Integracao de formularios e tracking
+
+**Revisao:**
+9. Revisao com cliente
+10. Ajustes finais
+
+**Publicacao:**
+11. Configurar dominio e hospedagem
+12. Publicar e testar
+
+### Aplicacao Web (IA)
+
+**Descoberta:**
+1. Definir escopo e funcionalidades
+2. Mapear fluxos do usuario
+3. Definir stack e integracao com IA
+
+**Prototipo:**
+4. Criar prototipo navegavel
+5. Validar com cliente
+
+**Desenvolvimento:**
+6. Desenvolvimento com Lovable/IA
+7. Integracoes (Supabase, APIs)
+8. Ajustes de UI/UX
+
+**Testes:**
+9. Testes funcionais
+10. Revisao com cliente
+
+**Deploy:**
+11. Deploy em producao
+12. Treinamento do usuario
 
 ---
 
 ## Detalhes Tecnicos
 
-### Importacoes a adicionar em ClientDetail.tsx
+### Alteracao no ServiceType
 
 ```typescript
-import {
-  ServiceType,
-  serviceTypes,
-  getPhasesByService,
-} from "@/lib/service-phases-config";
+export type ServiceType = "auditoria" | "producao" | "gestao" | "design" | "site" | "webapp";
 ```
 
-### Novos estados
+### Novos itens em serviceTypes
 
 ```typescript
-const [selectedServiceType, setSelectedServiceType] = useState<ServiceType>("auditoria");
-const [selectedTemplatePhase, setSelectedTemplatePhase] = useState<string>("");
+{ value: "site", label: "Site e Landing Page", description: "Criacao de sites institucionais e landing pages" },
+{ value: "webapp", label: "Aplicacao Web", description: "Desenvolvimento de apps web com suporte de IA" },
 ```
 
-### fetchTemplates atualizado
+### Novas fases
 
 ```typescript
-const fetchTemplates = async (serviceType: ServiceType, phase: string) => {
-  const { data, error } = await supabase
-    .from("task_templates")
-    .select("*")
-    .eq("service_type", serviceType)
-    .eq("journey_phase", phase)
-    .eq("is_active", true)
-    .order("order_index", { ascending: true });
-
-  if (!error && data) {
-    setTemplates(data as TaskTemplate[]);
-    setSelectedTemplates(data.map((t) => t.id));
-  }
-};
+site: [
+  { value: "briefing", label: "Briefing", color: "bg-rose-500/20 text-rose-600 border-rose-500/30", order: 1 },
+  { value: "wireframe", label: "Wireframe", color: "bg-amber-500/20 text-amber-600 border-amber-500/30", order: 2 },
+  { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", order: 3 },
+  { value: "revisao", label: "Revisao", color: "bg-cyan-500/20 text-cyan-600 border-cyan-500/30", order: 4 },
+  { value: "publicacao", label: "Publicacao", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
+],
+webapp: [
+  { value: "descoberta", label: "Descoberta", color: "bg-violet-500/20 text-violet-600 border-violet-500/30", order: 1 },
+  { value: "prototipo", label: "Prototipo", color: "bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/30", order: 2 },
+  { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-sky-500/20 text-sky-600 border-sky-500/30", order: 3 },
+  { value: "testes", label: "Testes", color: "bg-orange-500/20 text-orange-600 border-orange-500/30", order: 4 },
+  { value: "deploy", label: "Deploy", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
+],
 ```
 
-### Logica de troca de servico/fase
-
-- Quando `selectedServiceType` muda: atualizar `selectedTemplatePhase` para a primeira fase do servico e recarregar templates
-- Quando `selectedTemplatePhase` muda: recarregar templates
-
-### Interface TaskTemplate
-
-Adicionar campo `service_type` na interface local:
+### Novos servicos na landing page (services-config.ts)
 
 ```typescript
-interface TaskTemplate {
-  id: string;
-  service_type: string;  // NOVO
-  journey_phase: string;
-  // ... restante
-}
+{
+  id: "site",
+  icon: Globe,
+  title: "Sites e Landing Pages",
+  subtitle: "Presenca Digital",
+  description: "Sites institucionais e landing pages de alta conversao...",
+  features: ["Sites institucionais", "Landing pages", "Design responsivo", "SEO otimizado"],
+},
+{
+  id: "webapp",
+  icon: Code,
+  title: "Aplicacao Web",
+  subtitle: "Desenvolvido com IA",
+  description: "Aplicacoes web sob medida, criadas com auxilio de inteligencia artificial...",
+  features: ["Apps sob medida", "Integracao com IA", "Banco de dados", "Deploy automatizado"],
+},
 ```
 
 ---
 
 ## Resultado Esperado
 
-1. Admin abre o dialog de templates no detalhe do cliente
-2. Seleciona o servico desejado (ex: "Design")
-3. As fases mudam para "Descoberta, Conceito, Desenvolvimento, Entrega"
-4. Seleciona a fase (ex: "Descoberta")
-5. Ve os templates daquela combinacao e escolhe quais aplicar
-6. Tarefas sao criadas com a fase e templates corretos
-7. Pode repetir o processo para aplicar templates de outros servicos ao mesmo cliente
+1. Admin ve 6 servicos no seletor de Templates e no dialog de aplicar templates
+2. Cada servico tem suas fases proprias com templates pre-configurados
+3. Landing page exibe os 6 servicos para visitantes
+4. Sistema de jornada funciona normalmente com os novos tipos
 
