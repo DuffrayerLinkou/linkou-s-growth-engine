@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
 import { TrackingScripts } from "@/components/TrackingScripts";
@@ -11,7 +12,40 @@ import { ContactForm } from "@/components/landing/ContactForm";
 import { Footer } from "@/components/landing/Footer";
 import { MobileWhatsAppCTA } from "@/components/landing/MobileWhatsAppCTA";
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "Agência Linkou",
+  "description": "Não gerenciamos contas. Criamos ecossistemas de tráfego e vendas que aprendem e evoluem. Treinamos seu ponto focal para assumir.",
+  "url": "https://linkou-ecosystem-builder.lovable.app",
+  "serviceType": [
+    "Auditoria de Tráfego Pago",
+    "Gestão de Tráfego Pago",
+    "Consultoria de Performance",
+    "Ecossistema de Vendas Digital"
+  ],
+  "areaServed": {
+    "@type": "Country",
+    "name": "BR"
+  },
+  "priceRange": "$$"
+};
+
 const Index = () => {
+  useEffect(() => {
+    const scriptId = "json-ld-schema";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.type = "application/ld+json";
+      script.textContent = JSON.stringify(JSON_LD);
+      document.head.appendChild(script);
+    }
+    return () => {
+      document.getElementById(scriptId)?.remove();
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       <TrackingScripts />
