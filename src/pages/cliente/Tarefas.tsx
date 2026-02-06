@@ -37,6 +37,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 import {
   TaskStatus,
   JourneyPhase,
@@ -780,6 +781,19 @@ export default function ClienteTarefas() {
                     <div>
                       <Label className="text-sm text-muted-foreground">Descrição</Label>
                       <p className="mt-1 text-sm">{selectedTask.description}</p>
+                    </div>
+                  )}
+
+                  {/* Execution Guide */}
+                  {(selectedTask as any).execution_guide && (
+                    <div className="border rounded-lg p-4 bg-muted/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-base">📋</span>
+                        <Label className="text-sm font-medium">Como executar esta tarefa</Label>
+                      </div>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{(selectedTask as any).execution_guide}</ReactMarkdown>
+                      </div>
                     </div>
                   )}
 

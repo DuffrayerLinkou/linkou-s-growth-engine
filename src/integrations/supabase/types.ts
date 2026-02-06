@@ -558,6 +558,7 @@ export type Database = {
           name: string
           project_id: string | null
           task_id: string | null
+          template_id: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -573,6 +574,7 @@ export type Database = {
           name: string
           project_id?: string | null
           task_id?: string | null
+          template_id?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -588,6 +590,7 @@ export type Database = {
           name?: string
           project_id?: string | null
           task_id?: string | null
+          template_id?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -610,6 +613,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1119,6 +1129,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          execution_guide: string | null
           id: string
           is_active: boolean | null
           journey_phase: string
@@ -1132,6 +1143,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
+          execution_guide?: string | null
           id?: string
           is_active?: boolean | null
           journey_phase: string
@@ -1145,6 +1157,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
+          execution_guide?: string | null
           id?: string
           is_active?: boolean | null
           journey_phase?: string
@@ -1165,6 +1178,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_date: string | null
+          execution_guide: string | null
           executor_type: string | null
           id: string
           journey_phase: string | null
@@ -1182,6 +1196,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          execution_guide?: string | null
           executor_type?: string | null
           id?: string
           journey_phase?: string | null
@@ -1199,6 +1214,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_date?: string | null
+          execution_guide?: string | null
           executor_type?: string | null
           id?: string
           journey_phase?: string | null

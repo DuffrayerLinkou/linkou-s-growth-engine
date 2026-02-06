@@ -918,6 +918,7 @@ export default function ClientDetail() {
           client_id: id,
           title: template.title,
           description: template.description,
+          execution_guide: (template as any).execution_guide || null,
           priority: template.priority,
           journey_phase: template.journey_phase,
           visible_to_client: template.visible_to_client,

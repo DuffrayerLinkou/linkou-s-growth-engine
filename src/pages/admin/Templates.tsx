@@ -32,7 +32,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText, Eye, EyeOff, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Eye, EyeOff, GripVertical, Sparkles, Loader2 } from "lucide-react";
+import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { 
   ServiceType, 
@@ -74,11 +75,13 @@ const Templates = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    execution_guide: "",
     priority: "medium",
     order_index: 0,
     visible_to_client: true,
     is_active: true,
   });
+  const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
 
   // Quando mudar de serviço, selecionar a primeira fase desse serviço
   useEffect(() => {
@@ -114,6 +117,7 @@ const Templates = () => {
       setFormData({
         title: template.title,
         description: template.description || "",
+        execution_guide: (template as any).execution_guide || "",
         priority: template.priority,
         order_index: template.order_index,
         visible_to_client: template.visible_to_client,
@@ -128,6 +132,7 @@ const Templates = () => {
       setFormData({
         title: "",
         description: "",
+        execution_guide: "",
         priority: "medium",
         order_index: maxOrder + 1,
         visible_to_client: true,
@@ -154,11 +159,12 @@ const Templates = () => {
         .update({
           title: formData.title,
           description: formData.description || null,
+          execution_guide: formData.execution_guide || null,
           priority: formData.priority,
           order_index: formData.order_index,
           visible_to_client: formData.visible_to_client,
           is_active: formData.is_active,
-        })
+        } as any)
         .eq("id", editingTemplate.id);
 
       if (error) {
@@ -175,11 +181,12 @@ const Templates = () => {
         journey_phase: activePhase,
         title: formData.title,
         description: formData.description || null,
+        execution_guide: formData.execution_guide || null,
         priority: formData.priority,
         order_index: formData.order_index,
         visible_to_client: formData.visible_to_client,
         is_active: formData.is_active,
-      });
+      } as any);
 
       if (error) {
         toast.error("Erro ao criar template");
@@ -578,6 +585,59 @@ const Templates = () => {
                 rows={3}
                 className="text-sm"
               />
+            </div>
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="execution_guide" className="text-xs sm:text-sm">Instruções de Execução</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingGuide || !formData.title}
+                  onClick={async () => {
+                    setIsGeneratingGuide(true);
+                    try {
+                      const { data, error } = await supabaseClient.functions.invoke("generate-task-guide", {
+                        body: {
+                          title: formData.title,
+                          description: formData.description,
+                          service_type: activeService,
+                          journey_phase: activePhase,
+                        },
+                      });
+                      if (error) throw error;
+                      if (data?.guide) {
+                        setFormData((prev) => ({ ...prev, execution_guide: data.guide }));
+                        toast.success("Guia gerado com sucesso!");
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      toast.error("Erro ao gerar guia");
+                    } finally {
+                      setIsGeneratingGuide(false);
+                    }
+                  }}
+                  className="text-xs h-7"
+                >
+                  {isGeneratingGuide ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3 mr-1" />
+                  )}
+                  Gerar com IA
+                </Button>
+              </div>
+              <Textarea
+                id="execution_guide"
+                value={formData.execution_guide}
+                onChange={(e) => setFormData({ ...formData, execution_guide: e.target.value })}
+                placeholder="## Passo a Passo&#10;1. Primeiro passo...&#10;2. Segundo passo...&#10;&#10;## Pontos Importantes&#10;- Detalhe importante..."
+                rows={8}
+                className="text-sm font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Suporta Markdown. Use ## para títulos, 1. para listas numeradas, - para bullet points.
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1.5 sm:space-y-2">
