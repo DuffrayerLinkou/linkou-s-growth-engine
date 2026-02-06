@@ -1436,6 +1436,89 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_synced_at: string | null
+          updated_at: string
+          verify_token: string
+          webhook_configured: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_synced_at?: string | null
+          updated_at?: string
+          verify_token?: string
+          webhook_configured?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_synced_at?: string | null
+          updated_at?: string
+          verify_token?: string
+          webhook_configured?: boolean
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          lead_id: string | null
+          metadata: Json | null
+          phone: string
+          status: string
+          template_name: string | null
+          type: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          phone: string
+          status?: string
+          template_name?: string | null
+          type?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          phone?: string
+          status?: string
+          template_name?: string | null
+          type?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_templates: {
         Row: {
           category: string

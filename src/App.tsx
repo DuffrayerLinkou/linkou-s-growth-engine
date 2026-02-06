@@ -46,6 +46,7 @@ const AdminAppointments = lazy(() => import("./pages/admin/Appointments"));
 const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
 const AdminOnboarding = lazy(() => import("./pages/admin/Onboarding"));
 const AdminLandingPage = lazy(() => import("./pages/admin/LandingPage"));
+const AdminWhatsApp = lazy(() => import("./pages/admin/WhatsApp"));
 
 // Page loading fallback component
 function PageLoader() {
@@ -133,6 +134,7 @@ const App = () => (
                 <Route path="templates" element={<Suspense fallback={<PageLoader />}><AdminTemplates /></Suspense>} />
                 <Route path="projetos" element={<Suspense fallback={<PageLoader />}><AdminProjects /></Suspense>} />
                 <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
+                <Route path="whatsapp" element={<Suspense fallback={<PageLoader />}><AdminWhatsApp /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

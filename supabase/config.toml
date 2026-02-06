@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-task-guide]
 verify_jwt = false
+
+[functions.whatsapp-api]
+verify_jwt = false
