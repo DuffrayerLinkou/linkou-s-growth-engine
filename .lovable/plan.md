@@ -1,136 +1,141 @@
 
 
-# Plano: Corrigir Loop de Redirecionamento no Login de Cliente
+# Plano: Modelos de Jornada por Tipo de Serviço
 
-## Diagnóstico
+## O que muda
 
-O usuário `degustai2022@gmail.com` está preso em um **loop de redirecionamento** ao fazer login porque:
-
-| Atributo | Valor |
-|----------|-------|
-| Role | `client` |
-| client_id | `null` (não vinculado) |
-
-### Fluxo Atual (Bugado)
-
-```text
-Login → Auth.tsx redireciona para /cliente
-         ↓
-ProtectedRoute detecta que não tem client_id
-         ↓
-Redireciona para /auth com mensagem de erro
-         ↓
-Auth.tsx detecta usuário logado → redireciona para /cliente (loop!)
-```
-
-### Problemas Identificados
-
-1. **Auth.tsx não verifica `hasClientAccess`** antes de redirecionar usuários com role `client`
-2. **Auth.tsx não exibe a mensagem de erro** passada via `location.state`
-3. O usuário fica preso eternamente no loop
+Hoje, quando o admin aplica templates a um cliente, o sistema busca templates apenas pela fase da jornada (diagnostico, estruturacao, etc.), sem considerar o tipo de servico. O objetivo e permitir que o admin escolha qual **modelo de jornada** (Auditoria, Producao de Midia, Gestao de Trafego, Design) aplicar ao cliente, carregando automaticamente os templates corretos daquela jornada.
 
 ---
 
-## Solução Proposta
+## Como vai funcionar
 
-### 1. Corrigir a lógica de redirecionamento em Auth.tsx
+1. Na pagina de detalhe do cliente (ClientDetail), o botao "Aplicar Templates" abre um dialog
+2. O admin primeiro seleciona o **tipo de servico/jornada** (Auditoria, Producao, Gestao, Design)
+3. As fases mudam dinamicamente conforme o servico selecionado
+4. O admin seleciona a **fase** desejada dentro daquele servico
+5. Os templates daquela combinacao servico + fase sao carregados
+6. O admin seleciona quais templates quer aplicar, define responsavel, data base e intervalo
+7. As tarefas sao criadas com o `journey_phase` correto
 
-Modificar o `useEffect` para verificar se o cliente tem `client_id` antes de redirecionar:
+---
+
+## Alteracoes Necessarias
+
+### Arquivo: `src/pages/admin/ClientDetail.tsx`
+
+**1. Novo estado para selecao de servico:**
+- Adicionar `selectedServiceType` (estado) com valor padrao `"auditoria"`
+- Importar `serviceTypes`, `getPhasesByService` de `service-phases-config`
+
+**2. Atualizar `fetchTemplates`:**
+- Adicionar filtro por `service_type` alem de `journey_phase`
+- Assinatura muda para `fetchTemplates(serviceType, phase)`
+
+**3. Atualizar `handleOpenTemplateDialog`:**
+- Ao abrir o dialog, carregar templates do servico e fase selecionados
+- Nao depender mais apenas da fase atual do cliente
+
+**4. Atualizar o Dialog de Templates:**
+- Adicionar seletor de **Tipo de Servico** (botoes ou select) no topo do dialog
+- Adicionar seletor de **Fase** que muda dinamicamente conforme o servico
+- Quando o admin trocar servico ou fase, recarregar os templates
+- Manter o restante do formulario igual (responsavel, data base, intervalo, checkboxes)
+
+---
+
+## Fluxo Visual do Dialog Atualizado
+
+```text
++------------------------------------------+
+|  Aplicar Templates de Tarefas            |
+|                                          |
+|  Tipo de Servico:                        |
+|  [Auditoria] [Producao] [Gestao] [Design]|
+|                                          |
+|  Fase:                                   |
+|  [Briefing] [Producao] [Revisao] [Entrega]|
+|                                          |
+|  Templates disponiveis:                  |
+|  [x] 1. Reuniao de briefing criativo     |
+|  [x] 2. Definir publico-alvo            |
+|  [x] 3. Coletar referencias visuais     |
+|  [ ] 4. Definir formatos                 |
+|                                          |
+|  Responsavel: [Selecione]                |
+|  Data base: [2026-02-06]  Intervalo: [7] |
+|                                          |
+|  [Cancelar]  [Criar 3 Tarefas]           |
++------------------------------------------+
+```
+
+---
+
+## Detalhes Tecnicos
+
+### Importacoes a adicionar em ClientDetail.tsx
 
 ```typescript
-const { user, roles, profile, isLoading, rolesLoaded } = useAuth();
+import {
+  ServiceType,
+  serviceTypes,
+  getPhasesByService,
+} from "@/lib/service-phases-config";
+```
 
-useEffect(() => {
-  if (!isLoading && user && rolesLoaded) {
-    if (roles.includes("admin") || roles.includes("account_manager")) {
-      navigate("/admin", { replace: true });
-    } else if (profile?.client_id) {
-      // Só redireciona para /cliente se tiver client_id
-      navigate("/cliente", { replace: true });
-    }
-    // Se for client sem client_id, permanece na página de auth
+### Novos estados
+
+```typescript
+const [selectedServiceType, setSelectedServiceType] = useState<ServiceType>("auditoria");
+const [selectedTemplatePhase, setSelectedTemplatePhase] = useState<string>("");
+```
+
+### fetchTemplates atualizado
+
+```typescript
+const fetchTemplates = async (serviceType: ServiceType, phase: string) => {
+  const { data, error } = await supabase
+    .from("task_templates")
+    .select("*")
+    .eq("service_type", serviceType)
+    .eq("journey_phase", phase)
+    .eq("is_active", true)
+    .order("order_index", { ascending: true });
+
+  if (!error && data) {
+    setTemplates(data as TaskTemplate[]);
+    setSelectedTemplates(data.map((t) => t.id));
   }
-}, [user, roles, profile, isLoading, rolesLoaded, navigate]);
+};
 ```
 
-### 2. Exibir mensagem de erro para clientes sem vínculo
+### Logica de troca de servico/fase
 
-Adicionar tratamento do `location.state.error`:
+- Quando `selectedServiceType` muda: atualizar `selectedTemplatePhase` para a primeira fase do servico e recarregar templates
+- Quando `selectedTemplatePhase` muda: recarregar templates
 
-```typescript
-const location = useLocation();
-const errorMessage = location.state?.error;
+### Interface TaskTemplate
 
-// No JSX, mostrar alerta se houver erro
-{errorMessage && (
-  <Alert variant="destructive">
-    <AlertCircle className="h-4 w-4" />
-    <AlertDescription>{errorMessage}</AlertDescription>
-  </Alert>
-)}
-```
-
-### 3. Mostrar estado de "conta não vinculada"
-
-Se o usuário estiver logado mas sem `client_id`, mostrar uma mensagem explicativa em vez do formulário de login:
+Adicionar campo `service_type` na interface local:
 
 ```typescript
-// Se usuário logado mas sem client_id
-if (user && !profile?.client_id && roles.includes("client")) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Conta não vinculada</CardTitle>
-        <CardDescription>
-          Sua conta ainda não está vinculada a um cliente. 
-          Entre em contato com o suporte.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={signOut}>Sair</Button>
-        <Button asChild>
-          <a href="https://wa.me/5541988988054">Contatar Suporte</a>
-        </Button>
-      </CardContent>
-    </Card>
-  );
+interface TaskTemplate {
+  id: string;
+  service_type: string;  // NOVO
+  journey_phase: string;
+  // ... restante
 }
 ```
 
 ---
 
-## Arquivos a Modificar
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/pages/Auth.tsx` | Adicionar verificação de `client_id` antes de redirecionar; Exibir mensagem de erro; Mostrar tela de "conta não vinculada" |
-
----
-
-## Solução de Dados (Opcional)
-
-Se o usuário `degustai2022@gmail.com` deveria estar vinculado a um cliente existente, podemos atualizar o banco de dados para associá-lo:
-
-```sql
-UPDATE profiles 
-SET client_id = 'id_do_cliente_correto'
-WHERE email = 'degustai2022@gmail.com';
-```
-
-Clientes disponíveis para vincular:
-- FullCar Concessionaria
-- MEGA FONE
-- Elite Veiculos / Tainara
-- AK VEICULOS
-- LINKOU Consultoria de tráfego
-- Forza Construtora
-
----
-
 ## Resultado Esperado
 
-1. Usuários com role `client` mas sem `client_id` não ficam em loop
-2. Mensagem clara explicando que a conta não está vinculada
-3. Opções para contatar suporte ou fazer logout
-4. Sistema robusto para lidar com contas mal configuradas
+1. Admin abre o dialog de templates no detalhe do cliente
+2. Seleciona o servico desejado (ex: "Design")
+3. As fases mudam para "Descoberta, Conceito, Desenvolvimento, Entrega"
+4. Seleciona a fase (ex: "Descoberta")
+5. Ve os templates daquela combinacao e escolhe quais aplicar
+6. Tarefas sao criadas com a fase e templates corretos
+7. Pode repetir o processo para aplicar templates de outros servicos ao mesmo cliente
 
