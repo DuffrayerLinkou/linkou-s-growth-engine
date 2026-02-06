@@ -1,174 +1,227 @@
 
 
-# Plano: Adicionar Servicos de Site/Landing Page e Aplicacao Web
+# Plano: Guias de Execucao e Templates Anexaveis nas Tarefas
 
-## O que muda
+## Problema Atual
 
-Adicionar dois novos tipos de servico ao sistema:
-- **Site e Landing Page** - Criacao de sites institucionais e landing pages de alta conversao
-- **Aplicacao Web** - Desenvolvimento de aplicacoes web com auxilio e suporte de IA
-
-Esses novos servicos aparecerao em:
-1. Configuracao de fases e jornadas (admin)
-2. Pagina de Templates (admin)
-3. Dialog de aplicar templates no detalhe do cliente
-4. Landing page publica (secao de servicos)
+Hoje os templates de tarefas tem apenas titulo e descricao curta. Quando a tarefa e criada para o cliente ou equipe, nao ha orientacao de **como executar** aquela tarefa, nem documentos/planilhas prontos para uso.
 
 ---
 
-## Novos Servicos e Fases
+## Solucao Proposta: 3 Camadas
 
-### Site e Landing Page
-| Fase | Label |
-|------|-------|
-| briefing | Briefing |
-| wireframe | Wireframe |
-| desenvolvimento | Desenvolvimento |
-| revisao | Revisao |
-| publicacao | Publicacao |
+### Camada 1 - Instrucoes de Execucao (Markdown)
 
-### Aplicacao Web (IA)
-| Fase | Label |
-|------|-------|
-| descoberta | Descoberta |
-| prototipo | Prototipo |
-| desenvolvimento | Desenvolvimento |
-| testes | Testes |
-| deploy | Deploy |
+Adicionar um campo `execution_guide` (texto longo, Markdown) no `task_templates` e no `tasks`. Esse campo contem o passo a passo detalhado de como executar a tarefa.
+
+**Exemplo para "Reuniao de briefing do projeto":**
+```
+## Passo a Passo
+1. Agendar reuniao com o cliente (30-60min)
+2. Preparar roteiro de perguntas (ver template anexo)
+3. Durante a reuniao, preencher o formulario de briefing
+4. Documentar decisoes e proximos passos
+5. Enviar resumo ao cliente em ate 24h
+
+## Pontos Importantes
+- Sempre gravar a reuniao (com autorizacao)
+- Confirmar objetivos SMART
+- Definir prazos claros
+```
+
+Quando o admin cria tarefas a partir de templates, o `execution_guide` e copiado automaticamente para a tarefa.
+
+### Camada 2 - Arquivos Template Anexaveis
+
+Permitir anexar arquivos (planilhas, PDFs, docs) diretamente aos **templates de tarefas**. Quando a tarefa e criada a partir do template, os arquivos sao referenciados automaticamente.
+
+Isso usa a infraestrutura existente de `files` + Storage, adicionando suporte a `template_id` na tabela `files`.
+
+### Camada 3 - Geracao por IA (Opcional)
+
+Adicionar um botao "Gerar com IA" no campo de instrucoes que usa o Lovable AI para gerar um guia de execucao baseado no titulo e contexto da tarefa. O admin pode editar o resultado antes de salvar.
+
+---
+
+## Alteracoes no Banco de Dados
+
+### Migration SQL
+
+```sql
+-- Adicionar campo de guia de execucao aos templates
+ALTER TABLE public.task_templates 
+ADD COLUMN execution_guide TEXT;
+
+-- Adicionar campo de guia de execucao as tarefas
+ALTER TABLE public.tasks 
+ADD COLUMN execution_guide TEXT;
+
+-- Permitir anexar arquivos a templates (alem de tarefas)
+ALTER TABLE public.files 
+ADD COLUMN template_id UUID REFERENCES public.task_templates(id) ON DELETE SET NULL;
+```
 
 ---
 
 ## Arquivos a Modificar
 
-### 1. `src/lib/service-phases-config.ts`
-- Expandir o type `ServiceType` para incluir `"site"` e `"webapp"`
-- Adicionar as entradas em `serviceTypes[]`
-- Adicionar as fases em `servicePhases{}`
+### 1. `src/pages/admin/Templates.tsx`
 
-### 2. `src/lib/services-config.ts`
-- Adicionar os dois novos servicos no array `services[]` com icones (Globe para Site, Code para WebApp), titulo, subtitulo, descricao e features
+- Adicionar campo `execution_guide` (Textarea com Markdown) no dialog de criar/editar template
+- Adicionar secao de upload de arquivos template (reutilizando FileUploader)
+- Adicionar botao "Gerar com IA" ao lado do campo de instrucoes
+- Preview do guia em Markdown
 
-### 3. `src/components/landing/Services.tsx`
-- Nenhuma alteracao necessaria (ja renderiza dinamicamente a partir de `services-config.ts`)
+### 2. `src/pages/admin/ClientDetail.tsx`
 
-### 4. Migration SQL (banco de dados)
-- Inserir templates iniciais para os dois novos servicos em `task_templates`
+- Ao criar tarefas a partir de templates, copiar o `execution_guide` para a tarefa criada
+
+### 3. `src/pages/admin/Tasks.tsx`
+
+- Exibir o `execution_guide` no dialog de editar tarefa (aba ou secao expansivel)
+- Permitir editar as instrucoes por tarefa
+
+### 4. `src/components/cliente/TasksKanbanClient.tsx`
+
+- Exibir o guia de execucao na visualizacao da tarefa pelo cliente (read-only)
+- Mostrar arquivos template anexados
+
+### 5. `src/integrations/supabase/types.ts`
+
+- Atualizar tipos para incluir `execution_guide` em `tasks` e `task_templates`
+- Atualizar tipo de `files` para incluir `template_id`
+
+### 6. Nova Edge Function: `supabase/functions/generate-task-guide/index.ts`
+
+- Recebe titulo, descricao e contexto do servico
+- Usa Lovable AI para gerar instrucoes de execucao
+- Retorna texto em Markdown
 
 ---
 
-## Templates Iniciais
+## Fluxo do Admin
 
-### Site e Landing Page
+```text
+Admin abre Templates
+       |
+       v
+Seleciona servico e fase
+       |
+       v
+Edita/Cria template
+       |
+       v
++------------------------------------------+
+|  Titulo: Reuniao de briefing             |
+|  Descricao: Alinhar expectativas...      |
+|                                          |
+|  Instrucoes de Execucao:                 |
+|  [Gerar com IA]                          |
+|  +--------------------------------------+|
+|  | ## Passo a Passo                     ||
+|  | 1. Agendar reuniao...                ||
+|  | 2. Preparar roteiro...               ||
+|  +--------------------------------------+|
+|                                          |
+|  Arquivos Template:                      |
+|  [Roteiro-Briefing.xlsx]  [Upload +]     |
+|  [Checklist-Projeto.pdf]                 |
+|                                          |
+|  [Cancelar]  [Salvar]                    |
++------------------------------------------+
+```
 
-**Briefing:**
-1. Reuniao de briefing do projeto
-2. Definir objetivos e publico-alvo
-3. Levantar conteudos e referencias
+## Fluxo do Cliente
 
-**Wireframe:**
-4. Criar wireframe das paginas
-5. Aprovar estrutura com cliente
+```text
+Cliente abre tarefa
+       |
+       v
++------------------------------------------+
+|  Reuniao de briefing do projeto          |
+|  Status: A Fazer  |  Prazo: 10/02       |
+|                                          |
+|  Como executar esta tarefa:              |
+|  +--------------------------------------+|
+|  | 1. Agendar reuniao (30-60min)        ||
+|  | 2. Preparar roteiro de perguntas     ||
+|  | 3. Preencher formulario de briefing  ||
+|  +--------------------------------------+|
+|                                          |
+|  Documentos de apoio:                    |
+|  [Baixar] Roteiro-Briefing.xlsx          |
+|  [Baixar] Checklist-Projeto.pdf          |
+|                                          |
+|  Arquivos enviados: [Anexar arquivo]     |
++------------------------------------------+
+```
 
-**Desenvolvimento:**
-6. Desenvolvimento do layout
-7. Implementacao responsiva
-8. Integracao de formularios e tracking
+---
 
-**Revisao:**
-9. Revisao com cliente
-10. Ajustes finais
+## Edge Function: Geracao por IA
 
-**Publicacao:**
-11. Configurar dominio e hospedagem
-12. Publicar e testar
+A funcao recebe o contexto do template e retorna instrucoes formatadas:
 
-### Aplicacao Web (IA)
+```typescript
+// Input
+{
+  title: "Reuniao de briefing do projeto",
+  description: "Alinhar expectativas...",
+  service_type: "site",
+  journey_phase: "briefing"
+}
 
-**Descoberta:**
-1. Definir escopo e funcionalidades
-2. Mapear fluxos do usuario
-3. Definir stack e integracao com IA
+// Output: Markdown com passo a passo detalhado
+```
 
-**Prototipo:**
-4. Criar prototipo navegavel
-5. Validar com cliente
-
-**Desenvolvimento:**
-6. Desenvolvimento com Lovable/IA
-7. Integracoes (Supabase, APIs)
-8. Ajustes de UI/UX
-
-**Testes:**
-9. Testes funcionais
-10. Revisao com cliente
-
-**Deploy:**
-11. Deploy em producao
-12. Treinamento do usuario
+Prompt do sistema orientara a IA a gerar instrucoes praticas, objetivas e com formato consistente (passos numerados, pontos importantes, checklist).
 
 ---
 
 ## Detalhes Tecnicos
 
-### Alteracao no ServiceType
+### Interface TaskTemplate atualizada
 
 ```typescript
-export type ServiceType = "auditoria" | "producao" | "gestao" | "design" | "site" | "webapp";
+interface TaskTemplate {
+  id: string;
+  service_type: string;
+  journey_phase: string;
+  title: string;
+  description: string | null;
+  execution_guide: string | null;  // NOVO
+  priority: string;
+  order_index: number;
+  visible_to_client: boolean;
+  is_active: boolean;
+}
 ```
 
-### Novos itens em serviceTypes
+### Copia do guia ao aplicar templates (ClientDetail.tsx)
 
 ```typescript
-{ value: "site", label: "Site e Landing Page", description: "Criacao de sites institucionais e landing pages" },
-{ value: "webapp", label: "Aplicacao Web", description: "Desenvolvimento de apps web com suporte de IA" },
+// Ao criar tarefa a partir do template
+const taskData = {
+  title: template.title,
+  description: template.description,
+  execution_guide: template.execution_guide, // Copiar guia
+  journey_phase: selectedPhase,
+  // ...outros campos
+};
 ```
 
-### Novas fases
+### Componente de visualizacao do guia
 
-```typescript
-site: [
-  { value: "briefing", label: "Briefing", color: "bg-rose-500/20 text-rose-600 border-rose-500/30", order: 1 },
-  { value: "wireframe", label: "Wireframe", color: "bg-amber-500/20 text-amber-600 border-amber-500/30", order: 2 },
-  { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", order: 3 },
-  { value: "revisao", label: "Revisao", color: "bg-cyan-500/20 text-cyan-600 border-cyan-500/30", order: 4 },
-  { value: "publicacao", label: "Publicacao", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
-],
-webapp: [
-  { value: "descoberta", label: "Descoberta", color: "bg-violet-500/20 text-violet-600 border-violet-500/30", order: 1 },
-  { value: "prototipo", label: "Prototipo", color: "bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/30", order: 2 },
-  { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-sky-500/20 text-sky-600 border-sky-500/30", order: 3 },
-  { value: "testes", label: "Testes", color: "bg-orange-500/20 text-orange-600 border-orange-500/30", order: 4 },
-  { value: "deploy", label: "Deploy", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
-],
-```
-
-### Novos servicos na landing page (services-config.ts)
-
-```typescript
-{
-  id: "site",
-  icon: Globe,
-  title: "Sites e Landing Pages",
-  subtitle: "Presenca Digital",
-  description: "Sites institucionais e landing pages de alta conversao...",
-  features: ["Sites institucionais", "Landing pages", "Design responsivo", "SEO otimizado"],
-},
-{
-  id: "webapp",
-  icon: Code,
-  title: "Aplicacao Web",
-  subtitle: "Desenvolvido com IA",
-  description: "Aplicacoes web sob medida, criadas com auxilio de inteligencia artificial...",
-  features: ["Apps sob medida", "Integracao com IA", "Banco de dados", "Deploy automatizado"],
-},
-```
+Reutilizar Markdown rendering simples (o campo ja suporta formatacao basica com quebras de linha e listas) ou adicionar `react-markdown` se necessario para renderizacao mais rica.
 
 ---
 
 ## Resultado Esperado
 
-1. Admin ve 6 servicos no seletor de Templates e no dialog de aplicar templates
-2. Cada servico tem suas fases proprias com templates pre-configurados
-3. Landing page exibe os 6 servicos para visitantes
-4. Sistema de jornada funciona normalmente com os novos tipos
+1. Templates de tarefas incluem instrucoes detalhadas de execucao
+2. Arquivos modelo (planilhas, PDFs) podem ser anexados aos templates
+3. IA pode gerar instrucoes automaticamente como ponto de partida
+4. Ao aplicar templates, tudo e copiado para as tarefas do cliente
+5. Cliente ve o passo a passo e pode baixar os documentos de apoio
+6. Admin pode personalizar as instrucoes por tarefa apos criacao
 
