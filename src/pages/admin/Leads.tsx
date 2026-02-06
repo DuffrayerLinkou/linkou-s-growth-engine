@@ -69,6 +69,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logLeadActivity } from "@/lib/lead-activity-utils";
+import { sendCRMEventToMeta } from "@/lib/crm-capi-utils";
 import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { ExportLeads } from "@/components/admin/ExportLeads";
@@ -231,6 +232,8 @@ export default function AdminLeads() {
       const oldLead = leads.find((l) => l.id === leadId);
       if (oldLead) {
         logLeadActivity(leadId, "status_change", `Status: ${statusLabels[oldLead.status || "new"]} → ${statusLabels[newStatus]}`).catch(() => {});
+        // Enviar evento offline para Meta CAPI
+        sendCRMEventToMeta(oldLead, newStatus).catch(console.error);
       }
 
       setLeads((prev) =>

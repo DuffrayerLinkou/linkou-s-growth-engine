@@ -39,6 +39,7 @@ interface CAPIRequestBody {
   fbc?: string;
   fbp?: string;
   event_name?: string;
+  crm_stage?: string;
 }
 
 Deno.serve(async (req) => {
@@ -115,6 +116,10 @@ Deno.serve(async (req) => {
     const eventId = crypto.randomUUID();
     const eventTime = Math.floor(Date.now() / 1000);
 
+    // Determine action_source based on origin (website form vs CRM system)
+    const isCRMEvent = !!body.crm_stage;
+    const actionSource = isCRMEvent ? 'system_generated' : 'website';
+
     // Build the event payload
     const eventPayload: Record<string, unknown> = {
       data: [{
@@ -122,12 +127,13 @@ Deno.serve(async (req) => {
         event_time: eventTime,
         event_id: eventId,
         event_source_url: body.source_url,
-        action_source: 'website',
+        action_source: actionSource,
         user_data: userData,
         custom_data: {
-          lead_type: 'audit_request',
+          lead_type: isCRMEvent ? 'crm_offline' : 'audit_request',
           segment: body.segment || 'not_specified',
           investment: body.investment || 'not_specified',
+          ...(body.crm_stage && { crm_stage: body.crm_stage }),
         }
       }]
     };
