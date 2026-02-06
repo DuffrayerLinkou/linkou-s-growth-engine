@@ -82,6 +82,7 @@ export default function AdminTasks() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    execution_guide: "",
     client_id: "",
     project_id: "",
     assigned_to: "",
@@ -181,6 +182,7 @@ export default function AdminTasks() {
       const taskData = {
         title: data.title,
         description: data.description || null,
+        execution_guide: data.execution_guide || null,
         client_id: data.client_id,
         project_id: data.project_id || null,
         assigned_to: data.assigned_to || null,
@@ -190,7 +192,7 @@ export default function AdminTasks() {
         journey_phase: data.journey_phase === "none" ? null : data.journey_phase || null,
         visible_to_client: data.visible_to_client,
         executor_type: data.executor_type,
-      };
+      } as any;
 
       if (data.id) {
         const { error } = await supabase
@@ -269,6 +271,7 @@ export default function AdminTasks() {
     setFormData({
       title: "",
       description: "",
+      execution_guide: "",
       client_id: "",
       project_id: "",
       assigned_to: "",
@@ -286,6 +289,7 @@ export default function AdminTasks() {
     setFormData({
       title: task.title,
       description: task.description || "",
+      execution_guide: (task as any).execution_guide || "",
       client_id: task.client_id,
       project_id: task.project_id || "",
       assigned_to: task.assigned_to || "",
@@ -374,6 +378,27 @@ export default function AdminTasks() {
                   rows={3}
                 />
               </div>
+
+              {/* Execution Guide - collapsible */}
+              {editingTask && (
+                <details className="space-y-2 border rounded-lg p-3">
+                  <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
+                    📋 Instruções de Execução
+                    {(editingTask as any).execution_guide && (
+                      <Badge variant="secondary" className="text-xs">Preenchido</Badge>
+                    )}
+                  </summary>
+                  <Textarea
+                    value={formData.execution_guide || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, execution_guide: e.target.value })
+                    }
+                    placeholder="Passo a passo de como executar esta tarefa..."
+                    rows={6}
+                    className="mt-2 font-mono text-sm"
+                  />
+                </details>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
