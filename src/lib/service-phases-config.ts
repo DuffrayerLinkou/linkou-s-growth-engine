@@ -1,4 +1,4 @@
-export type ServiceType = "auditoria" | "producao" | "gestao" | "design";
+export type ServiceType = "auditoria" | "producao" | "gestao" | "design" | "site" | "webapp";
 
 export interface ServicePhase {
   value: string;
@@ -18,6 +18,8 @@ export const serviceTypes: ServiceConfig[] = [
   { value: "producao", label: "Produção de Mídia", description: "Criação de anúncios e conteúdo orgânico" },
   { value: "gestao", label: "Gestão de Tráfego", description: "Gestão recorrente de campanhas pagas" },
   { value: "design", label: "Design", description: "Identidade visual, apps, sites e landing pages" },
+  { value: "site", label: "Site e Landing Page", description: "Criação de sites institucionais e landing pages" },
+  { value: "webapp", label: "Aplicação Web", description: "Desenvolvimento de apps web com suporte de IA" },
 ];
 
 export const servicePhases: Record<ServiceType, ServicePhase[]> = {
@@ -44,6 +46,20 @@ export const servicePhases: Record<ServiceType, ServicePhase[]> = {
     { value: "conceito", label: "Conceito", color: "bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/30", order: 2 },
     { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-sky-500/20 text-sky-600 border-sky-500/30", order: 3 },
     { value: "entrega", label: "Entrega", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 4 },
+  ],
+  site: [
+    { value: "briefing", label: "Briefing", color: "bg-rose-500/20 text-rose-600 border-rose-500/30", order: 1 },
+    { value: "wireframe", label: "Wireframe", color: "bg-amber-500/20 text-amber-600 border-amber-500/30", order: 2 },
+    { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-blue-500/20 text-blue-600 border-blue-500/30", order: 3 },
+    { value: "revisao", label: "Revisão", color: "bg-cyan-500/20 text-cyan-600 border-cyan-500/30", order: 4 },
+    { value: "publicacao", label: "Publicação", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
+  ],
+  webapp: [
+    { value: "descoberta", label: "Descoberta", color: "bg-violet-500/20 text-violet-600 border-violet-500/30", order: 1 },
+    { value: "prototipo", label: "Protótipo", color: "bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/30", order: 2 },
+    { value: "desenvolvimento", label: "Desenvolvimento", color: "bg-sky-500/20 text-sky-600 border-sky-500/30", order: 3 },
+    { value: "testes", label: "Testes", color: "bg-orange-500/20 text-orange-600 border-orange-500/30", order: 4 },
+    { value: "deploy", label: "Deploy", color: "bg-green-500/20 text-green-600 border-green-500/30", order: 5 },
   ],
 };
 

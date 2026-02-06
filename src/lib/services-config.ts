@@ -3,6 +3,8 @@ import {
   Video, 
   BarChart3, 
   Palette,
+  Globe,
+  Code,
   type LucideIcon 
 } from "lucide-react";
 
@@ -72,6 +74,34 @@ export const services: Service[] = [
       "Apps Web e Mobile",
       "Sites institucionais",
       "Landing Pages de alta conversão",
+    ],
+  },
+  {
+    id: "site",
+    icon: Globe,
+    title: "Sites e Landing Pages",
+    subtitle: "Presença Digital",
+    description:
+      "Sites institucionais e landing pages de alta conversão. Do wireframe à publicação, com design responsivo e otimização para resultados.",
+    features: [
+      "Sites institucionais",
+      "Landing pages de conversão",
+      "Design responsivo",
+      "SEO otimizado",
+    ],
+  },
+  {
+    id: "webapp",
+    icon: Code,
+    title: "Aplicação Web",
+    subtitle: "Desenvolvido com IA",
+    description:
+      "Aplicações web sob medida, criadas com auxílio de inteligência artificial. Do protótipo ao deploy, com banco de dados e integrações.",
+    features: [
+      "Apps sob medida",
+      "Integração com IA",
+      "Banco de dados",
+      "Deploy automatizado",
     ],
   },
 ];
