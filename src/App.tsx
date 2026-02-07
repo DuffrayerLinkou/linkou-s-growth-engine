@@ -47,6 +47,8 @@ const AdminTemplates = lazy(() => import("./pages/admin/Templates"));
 const AdminOnboarding = lazy(() => import("./pages/admin/Onboarding"));
 const AdminLandingPage = lazy(() => import("./pages/admin/LandingPage"));
 const AdminWhatsApp = lazy(() => import("./pages/admin/WhatsApp"));
+const AdminCapturePages = lazy(() => import("./pages/admin/CapturePages"));
+const CapturePage = lazy(() => import("./pages/CapturePage"));
 
 // Page loading fallback component
 function PageLoader() {
@@ -92,6 +94,7 @@ const App = () => (
               <Route path="/privacidade" element={<Suspense fallback={<PageLoader />}><Privacidade /></Suspense>} />
               <Route path="/termos" element={<Suspense fallback={<PageLoader />}><Termos /></Suspense>} />
               <Route path="/obrigado" element={<Suspense fallback={<PageLoader />}><Obrigado /></Suspense>} />
+              <Route path="/c/:slug" element={<Suspense fallback={<PageLoader />}><CapturePage /></Suspense>} />
 
               {/* Client routes */}
               <Route
@@ -135,6 +138,7 @@ const App = () => (
                 <Route path="projetos" element={<Suspense fallback={<PageLoader />}><AdminProjects /></Suspense>} />
                 <Route path="usuarios" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
                 <Route path="whatsapp" element={<Suspense fallback={<PageLoader />}><AdminWhatsApp /></Suspense>} />
+                <Route path="capturas" element={<Suspense fallback={<PageLoader />}><AdminCapturePages /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
