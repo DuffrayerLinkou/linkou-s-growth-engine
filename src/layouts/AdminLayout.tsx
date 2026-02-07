@@ -18,6 +18,7 @@ import {
   FolderKanban,
   Megaphone,
   MessageCircle,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const navItems = [
   { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
   { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
+  { href: "/admin/capturas", icon: Zap, label: "Capturas" },
   { href: "/admin/templates", icon: FileText, label: "Templates" },
   { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
 ];

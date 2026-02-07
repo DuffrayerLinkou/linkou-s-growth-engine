@@ -350,6 +350,78 @@ export type Database = {
           },
         ]
       }
+      capture_pages: {
+        Row: {
+          background_color: string | null
+          background_image_url: string | null
+          benefits: Json | null
+          button_text: string | null
+          created_at: string
+          created_by: string | null
+          form_fields: Json | null
+          headline: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          meta_description: string | null
+          meta_title: string | null
+          primary_color: string | null
+          slug: string
+          subheadline: string | null
+          text_color: string | null
+          thank_you_message: string | null
+          thank_you_redirect_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          background_color?: string | null
+          background_image_url?: string | null
+          benefits?: Json | null
+          button_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          form_fields?: Json | null
+          headline?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          primary_color?: string | null
+          slug: string
+          subheadline?: string | null
+          text_color?: string | null
+          thank_you_message?: string | null
+          thank_you_redirect_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          background_color?: string | null
+          background_image_url?: string | null
+          benefits?: Json | null
+          button_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          form_fields?: Json | null
+          headline?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          meta_description?: string | null
+          meta_title?: string | null
+          primary_color?: string | null
+          slug?: string
+          subheadline?: string | null
+          text_color?: string | null
+          thank_you_message?: string | null
+          thank_you_redirect_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_users: {
         Row: {
           client_id: string
