@@ -1,57 +1,74 @@
 
 
-# Assistente IA para Criar Paginas de Captura com Prompt
+# Landing Page com VSL (Video Sales Letter) nas Paginas de Captura
 
 ## Objetivo
-Adicionar um botao "Criar com IA" na tela de Paginas de Captura (`/admin/capturas`) que permite ao usuario descrever em texto livre o que deseja (ex: "pagina de Black Friday para loja de roupas com foco em desconto de 50%") e a IA gera automaticamente todos os campos do formulario: titulo, slug, headline, sub-headline, beneficios, texto do botao, cores e SEO.
+Adicionar suporte a Video Sales Letter (VSL) nas paginas de captura, permitindo que o usuario insira um link do YouTube que sera exibido como elemento central da landing page, acima ou ao lado do formulario de captura.
 
-## Como vai funcionar
+## O que muda
 
-1. O usuario clica em "Criar com IA" (icone de varinha magica)
-2. Um dialog abre com um campo de texto para descrever a pagina desejada
-3. A IA processa o prompt e retorna todos os campos preenchidos
-4. O formulario de criacao abre ja preenchido com os dados gerados
-5. O usuario pode revisar, ajustar e salvar
+### 1. Banco de Dados
+Adicionar duas novas colunas na tabela `capture_pages`:
+- `video_url` (text, nullable) - Link do YouTube (ex: `https://www.youtube.com/watch?v=XXXXX`)
+- `layout_type` (text, default `'standard'`) - Tipo de layout: `standard` (atual, sem video) ou `vsl` (com video em destaque)
 
-## Detalhes Tecnicos
-
-### 1. Nova Edge Function: `generate-capture-page`
-- Arquivo: `supabase/functions/generate-capture-page/index.ts`
-- Usa a mesma arquitetura da funcao `generate-task-guide` existente
-- Chama a Lovable AI Gateway (`ai.gateway.lovable.dev`) com tool calling para retornar JSON estruturado
-- Modelo: `google/gemini-3-flash-preview`
-- Prompt de sistema instruira a IA a gerar: titulo, slug, headline, subheadline, beneficios (3-5), texto do botao, mensagem de obrigado, cores (primaria, fundo, texto) e meta tags SEO
-- Autenticacao via header Authorization (mesmo padrao existente)
-- Tratamento de erros 429 (rate limit) e 402 (creditos)
-
-### 2. Atualizacao do Frontend: `CapturePages.tsx`
-- Novo botao "Criar com IA" ao lado de "Nova Pagina"
-- Dialog com textarea para o prompt do usuario
-- Estado de loading com spinner durante a geracao
-- Ao receber resposta, preenche o formulario existente e abre o dialog de edicao
-- O usuario revisa e confirma antes de salvar (nao salva automaticamente)
-
-### 3. Configuracao
-- Adicionar `[functions.generate-capture-page]` no `supabase/config.toml` com `verify_jwt = false`
-- A funcao valida autenticacao internamente (mesmo padrao das outras funcoes)
-
-### Exemplo do fluxo
+Migration SQL:
 ```text
-Usuario digita: "Pagina para clinica odontologica oferecendo clareamento dental com 30% de desconto"
-
-IA retorna:
-- Titulo: "Promo Clareamento Dental"
-- Slug: "promo-clareamento-dental"  
-- Headline: "Clareamento Dental com 30% de Desconto"
-- Subheadline: "Agende sua avaliacao gratuita e conquiste o sorriso dos seus sonhos"
-- Beneficios: ["Resultado em apenas 1 sessao", "Profissionais certificados", "Parcelamento em ate 12x"]
-- Botao: "Agendar minha avaliacao"
-- Cores: primaria #2563EB, fundo #0F172A, texto #FFFFFF
-- Meta Title/Description preenchidos
+ALTER TABLE capture_pages 
+  ADD COLUMN video_url text,
+  ADD COLUMN layout_type text DEFAULT 'standard';
 ```
 
-### Arquivos que serao criados/editados
-- **Criar**: `supabase/functions/generate-capture-page/index.ts`
-- **Editar**: `src/pages/admin/CapturePages.tsx` (botao + dialog de prompt)
-- **Editar**: `supabase/config.toml` (adicionar funcao)
+### 2. Formulario Admin (`CapturePages.tsx`)
+- Adicionar toggle "Pagina com VSL (Video)" que alterna o `layout_type` entre `standard` e `vsl`
+- Quando VSL estiver ativo, exibir campo "Link do YouTube" com validacao basica de URL do YouTube
+- O campo aceita URLs nos formatos:
+  - `https://www.youtube.com/watch?v=ID`
+  - `https://youtu.be/ID`
+- Preview no dialog mostrara um indicador de video quando preenchido
+- A IA (`generate-capture-page`) tambem sera atualizada para aceitar o parametro de VSL
+
+### 3. Pagina Publica (`CapturePage.tsx`)
+- Quando `layout_type === 'vsl'` e `video_url` estiver preenchido:
+  - Layout muda para video centralizado no topo em formato 16:9 responsivo
+  - Headline e subheadline ficam acima do video
+  - Beneficios e formulario ficam abaixo do video (layout empilhado vertical)
+- Quando `layout_type === 'standard'`: layout atual (grid 2 colunas) permanece inalterado
+- O video e embeddado como iframe do YouTube (convertendo a URL para formato embed)
+
+### 4. Edge Function (`generate-capture-page`)
+- Atualizar o prompt da IA para quando o usuario mencionar "video" ou "VSL", sugerir `layout_type: "vsl"` automaticamente
+
+## Arquivos que serao criados/editados
+- **Criar**: Nova migration SQL para adicionar colunas
+- **Editar**: `src/pages/admin/CapturePages.tsx` (campos de video + toggle de layout)
+- **Editar**: `src/pages/CapturePage.tsx` (layout VSL com embed do YouTube)
+- **Editar**: `supabase/functions/generate-capture-page/index.ts` (suporte a VSL no prompt)
+
+## Layout VSL (visualizacao)
+
+```text
++-----------------------------------------------+
+|              Logo (se houver)                  |
+|                                                |
+|         HEADLINE PRINCIPAL                     |
+|         Sub-headline                           |
+|                                                |
+|  +------------------------------------------+  |
+|  |                                          |  |
+|  |         VIDEO YOUTUBE (16:9)             |  |
+|  |           iframe embed                   |  |
+|  |                                          |  |
+|  +------------------------------------------+  |
+|                                                |
+|    * Beneficio 1                               |
+|    * Beneficio 2                               |
+|    * Beneficio 3                               |
+|                                                |
+|  +------------------------------------------+  |
+|  |        FORMULARIO DE CAPTURA             |  |
+|  |   Nome / Email / WhatsApp / Botao CTA    |  |
+|  +------------------------------------------+  |
++-----------------------------------------------+
+```
 
