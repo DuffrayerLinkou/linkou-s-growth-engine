@@ -362,6 +362,7 @@ export type Database = {
           headline: string
           id: string
           is_active: boolean
+          layout_type: string | null
           logo_url: string | null
           meta_description: string | null
           meta_title: string | null
@@ -373,6 +374,7 @@ export type Database = {
           thank_you_redirect_url: string | null
           title: string
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           background_color?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           headline?: string
           id?: string
           is_active?: boolean
+          layout_type?: string | null
           logo_url?: string | null
           meta_description?: string | null
           meta_title?: string | null
@@ -396,6 +399,7 @@ export type Database = {
           thank_you_redirect_url?: string | null
           title: string
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           background_color?: string | null
@@ -408,6 +412,7 @@ export type Database = {
           headline?: string
           id?: string
           is_active?: boolean
+          layout_type?: string | null
           logo_url?: string | null
           meta_description?: string | null
           meta_title?: string | null
@@ -419,6 +424,7 @@ export type Database = {
           thank_you_redirect_url?: string | null
           title?: string
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: []
       }

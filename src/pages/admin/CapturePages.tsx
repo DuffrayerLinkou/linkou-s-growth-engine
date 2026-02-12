@@ -37,6 +37,8 @@ interface CapturePage {
   is_active: boolean;
   meta_title: string | null;
   meta_description: string | null;
+  video_url: string | null;
+  layout_type: string | null;
   created_at: string;
 }
 
@@ -57,6 +59,8 @@ const defaultForm = {
   is_active: true,
   meta_title: "",
   meta_description: "",
+  layout_type: "standard",
+  video_url: "",
 };
 
 const CapturePages = () => {
@@ -157,6 +161,8 @@ const CapturePages = () => {
           is_active: true,
           meta_title: page.meta_title || "",
           meta_description: page.meta_description || "",
+          layout_type: page.layout_type || "standard",
+          video_url: page.video_url || "",
         });
         setAiDialogOpen(false);
         setAiPrompt("");
@@ -194,6 +200,8 @@ const CapturePages = () => {
       is_active: page.is_active,
       meta_title: page.meta_title || "",
       meta_description: page.meta_description || "",
+      layout_type: (page as any).layout_type || "standard",
+      video_url: (page as any).video_url || "",
     });
     setDialogOpen(true);
   };
@@ -222,6 +230,8 @@ const CapturePages = () => {
       is_active: form.is_active,
       meta_title: form.meta_title || null,
       meta_description: form.meta_description || null,
+      layout_type: form.layout_type || "standard",
+      video_url: form.video_url || null,
     };
 
     let error;
@@ -431,6 +441,30 @@ const CapturePages = () => {
                 <Plus className="h-3 w-3 mr-1" />
                 Adicionar
               </Button>
+            </div>
+
+            {/* VSL / Video */}
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Switch
+                  checked={form.layout_type === "vsl"}
+                  onCheckedChange={(v) => setForm({ ...form, layout_type: v ? "vsl" : "standard", video_url: v ? form.video_url : "" })}
+                />
+                <Label>Página com VSL (Vídeo)</Label>
+              </div>
+              {form.layout_type === "vsl" && (
+                <div className="space-y-2">
+                  <Label>Link do YouTube *</Label>
+                  <Input
+                    value={form.video_url}
+                    onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                    placeholder="https://www.youtube.com/watch?v=XXXXX ou https://youtu.be/XXXXX"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O vídeo será exibido em destaque acima do formulário no layout VSL
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* CTA */}

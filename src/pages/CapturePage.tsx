@@ -32,7 +32,14 @@ interface CapturePageData {
   form_fields: string[];
   meta_title: string | null;
   meta_description: string | null;
+  video_url: string | null;
+  layout_type: string | null;
 }
+
+const extractYouTubeId = (url: string): string | null => {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+  return match ? match[1] : null;
+};
 
 const CapturePage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -180,6 +187,115 @@ const CapturePage = () => {
     );
   }
 
+  const isVsl = page.layout_type === "vsl" && page.video_url;
+  const videoId = page.video_url ? extractYouTubeId(page.video_url) : null;
+
+  const formElement = (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-2xl p-6 md:p-8 space-y-5 shadow-2xl"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.08)",
+          backdropFilter: "blur(16px)",
+          border: `1px solid rgba(255,255,255,0.15)`,
+        }}
+      >
+        <div className="text-center mb-2">
+          <Sparkles className="h-6 w-6 mx-auto mb-2" style={{ color: page.primary_color }} />
+          <p className="font-semibold text-lg">Preencha para continuar</p>
+        </div>
+
+        {page.form_fields.includes("name") && (
+          <div className="space-y-2">
+            <Label htmlFor="cap-name" style={{ color: page.text_color }}>Nome completo *</Label>
+            <Input id="cap-name" placeholder="Seu nome" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50" />
+          </div>
+        )}
+        {page.form_fields.includes("email") && (
+          <div className="space-y-2">
+            <Label htmlFor="cap-email" style={{ color: page.text_color }}>E-mail *</Label>
+            <Input id="cap-email" type="email" placeholder="seu@email.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50" />
+          </div>
+        )}
+        {page.form_fields.includes("phone") && (
+          <div className="space-y-2">
+            <Label htmlFor="cap-phone" style={{ color: page.text_color }}>WhatsApp *</Label>
+            <Input id="cap-phone" type="tel" placeholder="(11) 99999-9999" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50" />
+          </div>
+        )}
+
+        <button type="submit" disabled={isSubmitting} className="w-full py-3 px-6 rounded-xl font-semibold text-white text-lg transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2" style={{ backgroundColor: page.primary_color }}>
+          {isSubmitting ? (<><Loader2 className="h-5 w-5 animate-spin" />Enviando...</>) : (<><Send className="h-5 w-5" />{page.button_text}</>)}
+        </button>
+
+        <p className="text-xs text-center opacity-60">
+          Seus dados estão seguros.{" "}
+          <a href="/privacidade" className="underline hover:opacity-100">Política de Privacidade</a>
+        </p>
+      </form>
+    </motion.div>
+  );
+
+  if (isVsl && videoId) {
+    // VSL Layout - vertical stack
+    return (
+      <div
+        className="min-h-screen p-4 md:p-8 relative overflow-hidden"
+        style={{
+          backgroundColor: page.background_color,
+          color: page.text_color,
+          backgroundImage: page.background_image_url ? `url(${page.background_image_url})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {page.background_image_url && <div className="absolute inset-0 bg-black/60 z-0" />}
+        <div className="relative z-10 w-full max-w-4xl mx-auto space-y-8 py-8">
+          {/* Header */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center space-y-4">
+            {page.logo_url && <img src={page.logo_url} alt="Logo" className="h-10 w-auto mx-auto mb-4" />}
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">{page.headline}</h1>
+            {page.subheadline && <p className="text-lg opacity-80 max-w-2xl mx-auto">{page.subheadline}</p>}
+          </motion.div>
+
+          {/* Video */}
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${videoId}?rel=0`}
+                title="Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </motion.div>
+
+          {/* Benefits */}
+          {page.benefits.length > 0 && (
+            <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+              {page.benefits.map((benefit, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" style={{ color: page.primary_color }} />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </motion.ul>
+          )}
+
+          {/* Form */}
+          <div className="max-w-lg mx-auto">{formElement}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard Layout - side by side
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 md:p-8 relative overflow-hidden"
@@ -191,149 +307,24 @@ const CapturePage = () => {
         backgroundPosition: "center",
       }}
     >
-      {/* Overlay for background image */}
-      {page.background_image_url && (
-        <div className="absolute inset-0 bg-black/60 z-0" />
-      )}
-
+      {page.background_image_url && <div className="absolute inset-0 bg-black/60 z-0" />}
       <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-        {/* Left - Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="space-y-6"
-        >
-          {page.logo_url && (
-            <img src={page.logo_url} alt="Logo" className="h-10 w-auto mb-4" />
-          )}
-
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
-            {page.headline}
-          </h1>
-
-          {page.subheadline && (
-            <p className="text-lg opacity-80">{page.subheadline}</p>
-          )}
-
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-6">
+          {page.logo_url && <img src={page.logo_url} alt="Logo" className="h-10 w-auto mb-4" />}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">{page.headline}</h1>
+          {page.subheadline && <p className="text-lg opacity-80">{page.subheadline}</p>}
           {page.benefits.length > 0 && (
             <ul className="space-y-3">
               {page.benefits.map((benefit, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  className="flex items-start gap-3"
-                >
-                  <CheckCircle2
-                    className="h-5 w-5 shrink-0 mt-0.5"
-                    style={{ color: page.primary_color }}
-                  />
+                <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.1 }} className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" style={{ color: page.primary_color }} />
                   <span>{benefit}</span>
                 </motion.li>
               ))}
             </ul>
           )}
         </motion.div>
-
-        {/* Right - Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-2xl p-6 md:p-8 space-y-5 shadow-2xl"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(16px)",
-              border: `1px solid rgba(255,255,255,0.15)`,
-            }}
-          >
-            <div className="text-center mb-2">
-              <Sparkles className="h-6 w-6 mx-auto mb-2" style={{ color: page.primary_color }} />
-              <p className="font-semibold text-lg">Preencha para continuar</p>
-            </div>
-
-            {page.form_fields.includes("name") && (
-              <div className="space-y-2">
-                <Label htmlFor="cap-name" style={{ color: page.text_color }}>
-                  Nome completo *
-                </Label>
-                <Input
-                  id="cap-name"
-                  placeholder="Seu nome"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50"
-                />
-              </div>
-            )}
-
-            {page.form_fields.includes("email") && (
-              <div className="space-y-2">
-                <Label htmlFor="cap-email" style={{ color: page.text_color }}>
-                  E-mail *
-                </Label>
-                <Input
-                  id="cap-email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50"
-                />
-              </div>
-            )}
-
-            {page.form_fields.includes("phone") && (
-              <div className="space-y-2">
-                <Label htmlFor="cap-phone" style={{ color: page.text_color }}>
-                  WhatsApp *
-                </Label>
-                <Input
-                  id="cap-phone"
-                  type="tel"
-                  placeholder="(11) 99999-9999"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
-                  className="bg-white/10 border-white/20 text-inherit placeholder:text-white/50"
-                />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 px-6 rounded-xl font-semibold text-white text-lg transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ backgroundColor: page.primary_color }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="h-5 w-5" />
-                  {page.button_text}
-                </>
-              )}
-            </button>
-
-            <p className="text-xs text-center opacity-60">
-              Seus dados estão seguros.{" "}
-              <a href="/privacidade" className="underline hover:opacity-100">
-                Política de Privacidade
-              </a>
-            </p>
-          </form>
-        </motion.div>
+        {formElement}
       </div>
     </div>
   );
