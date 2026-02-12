@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Eye, Copy, ExternalLink, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Copy, ExternalLink, ToggleLeft, ToggleRight, Wand2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +67,9 @@ const CapturePages = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const fetchPages = async () => {
     const { data } = await supabase
@@ -118,6 +121,58 @@ const CapturePages = () => {
     setEditingId(null);
     setForm(defaultForm);
     setDialogOpen(true);
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim() || aiPrompt.trim().length < 10) {
+      toast({ variant: "destructive", title: "Descreva a página com pelo menos 10 caracteres" });
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-capture-page", {
+        body: { prompt: aiPrompt },
+      });
+
+      if (error) throw error;
+
+      if (data?.page) {
+        const page = data.page;
+        setEditingId(null);
+        setForm({
+          title: page.title || "",
+          slug: page.slug || "",
+          headline: page.headline || "",
+          subheadline: page.subheadline || "",
+          benefits: page.benefits?.length > 0 ? page.benefits : [""],
+          button_text: page.button_text || "Quero começar agora",
+          thank_you_message: page.thank_you_message || "Obrigado! Entraremos em contato em breve.",
+          thank_you_redirect_url: "",
+          primary_color: page.primary_color || "#7C3AED",
+          background_color: page.background_color || "#0F0A1A",
+          text_color: page.text_color || "#FFFFFF",
+          logo_url: "",
+          background_image_url: "",
+          is_active: true,
+          meta_title: page.meta_title || "",
+          meta_description: page.meta_description || "",
+        });
+        setAiDialogOpen(false);
+        setAiPrompt("");
+        setDialogOpen(true);
+        toast({ title: "Página gerada pela IA!", description: "Revise os campos e salve." });
+      }
+    } catch (err: any) {
+      console.error("AI generation error:", err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao gerar página",
+        description: err?.message || "Tente novamente.",
+      });
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const openEdit = (page: CapturePage) => {
@@ -217,10 +272,16 @@ const CapturePages = () => {
             Crie páginas de conversão para suas campanhas
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Página
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setAiDialogOpen(true)}>
+            <Wand2 className="h-4 w-4 mr-2" />
+            Criar com IA
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Página
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -530,6 +591,47 @@ const CapturePages = () => {
               </Button>
               <Button onClick={handleSave}>
                 {editingId ? "Salvar alterações" : "Criar página"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* AI Prompt Dialog */}
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5" />
+              Criar Página com IA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Descreva a página de captura que deseja criar. A IA vai gerar headline, benefícios, cores e SEO automaticamente.
+            </p>
+            <Textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Ex: Página de Black Friday para clínica odontológica oferecendo clareamento dental com 30% de desconto"
+              rows={4}
+              disabled={aiLoading}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAiDialogOpen(false)} disabled={aiLoading}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAiGenerate} disabled={aiLoading || aiPrompt.trim().length < 10}>
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    Gerar página
+                  </>
+                )}
               </Button>
             </div>
           </div>
