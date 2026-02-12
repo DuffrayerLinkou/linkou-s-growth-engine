@@ -64,7 +64,8 @@ Regras:
 - Escolha cores que combinem com o nicho/segmento descrito
 - Meta title máximo 60 caracteres, meta description máximo 160 caracteres
 - Texto do botão deve ter senso de urgência (máx 30 caracteres)
-- Tudo em português brasileiro`;
+- Tudo em português brasileiro
+- Se o usuário mencionar "vídeo", "VSL", "video sales letter" ou "youtube", defina layout_type como "vsl". Caso contrário, use "standard".`;
 
     console.log("Generating capture page for prompt:", prompt.substring(0, 100));
 
@@ -105,8 +106,10 @@ Regras:
                   text_color: { type: "string", description: "Cor do texto em hexadecimal (#RRGGBB)" },
                   meta_title: { type: "string", description: "Meta title para SEO (máx 60 caracteres)" },
                   meta_description: { type: "string", description: "Meta description para SEO (máx 160 caracteres)" },
+                  layout_type: { type: "string", description: "Tipo de layout: 'standard' (padrão) ou 'vsl' (com vídeo em destaque)" },
+                  video_url: { type: "string", description: "URL do YouTube para o vídeo (apenas quando layout_type é 'vsl'). Pode ser vazio." },
                 },
-                required: ["title", "slug", "headline", "subheadline", "benefits", "button_text", "thank_you_message", "primary_color", "background_color", "text_color", "meta_title", "meta_description"],
+                required: ["title", "slug", "headline", "subheadline", "benefits", "button_text", "thank_you_message", "primary_color", "background_color", "text_color", "meta_title", "meta_description", "layout_type"],
                 additionalProperties: false,
               },
             },
