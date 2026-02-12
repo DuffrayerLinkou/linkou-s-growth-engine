@@ -1,96 +1,57 @@
 
 
-# Plano: SEO Completo com Sitemap, Canonical, JSON-LD e Meta Tags Dinamicas
+# Assistente IA para Criar Paginas de Captura com Prompt
 
-## Situacao Atual
+## Objetivo
+Adicionar um botao "Criar com IA" na tela de Paginas de Captura (`/admin/capturas`) que permite ao usuario descrever em texto livre o que deseja (ex: "pagina de Black Friday para loja de roupas com foco em desconto de 50%") e a IA gera automaticamente todos os campos do formulario: titulo, slug, headline, sub-headline, beneficios, texto do botao, cores e SEO.
 
-A landing page tem meta tags estaticas no `index.html`, mas faltam elementos criticos para indexacao pelos buscadores. A aba SEO no admin salva dados no banco, porem eles nao sao aplicados na pagina real.
+## Como vai funcionar
 
-## O que sera feito
-
-### 1. Criar `public/sitemap.xml`
-
-Arquivo estatico com todas as rotas publicas do site:
-
-```text
-/                 (landing page - prioridade 1.0)
-/auth             (login - prioridade 0.3)
-/privacidade      (prioridade 0.2)
-/termos           (prioridade 0.2)
-/obrigado         (prioridade 0.1)
-```
-
-O sitemap usara a URL publicada `https://linkou-ecosystem-builder.lovable.app` como base.
-
-### 2. Atualizar `public/robots.txt`
-
-Adicionar referencia ao sitemap:
-
-```text
-Sitemap: https://linkou-ecosystem-builder.lovable.app/sitemap.xml
-```
-
-### 3. Adicionar Canonical Tag e OG URL no `index.html`
-
-```text
-<link rel="canonical" href="https://linkou-ecosystem-builder.lovable.app/" />
-<meta property="og:url" content="https://linkou-ecosystem-builder.lovable.app/" />
-```
-
-Atualizar tambem a imagem OG para apontar para uma URL propria (quando configurada).
-
-### 4. Injetar JSON-LD (Schema.org) na Landing Page
-
-Adicionar dados estruturados no componente `Index.tsx` com schema `ProfessionalService`:
-
-```text
-{
-  "@context": "https://schema.org",
-  "@type": "ProfessionalService",
-  "name": "Agencia Linkou",
-  "description": "Auditoria e Consultoria de Trafego Pago...",
-  "url": "https://linkou-ecosystem-builder.lovable.app",
-  "serviceType": ["Auditoria de Trafego", "Gestao de Trafego", ...],
-  "areaServed": { "@type": "Country", "name": "BR" },
-  "priceRange": "$$"
-}
-```
-
-Sera injetado via `<script type="application/ld+json">` usando um `useEffect` no componente da landing page.
-
-### 5. Aplicar Meta Tags Dinamicas do Banco na Pagina
-
-Atualizar o componente `TrackingScripts.tsx` para, alem dos pixels, tambem injetar dinamicamente:
-
-- `document.title` com o titulo do banco
-- Meta description
-- OG image, OG title, OG description
-- Canonical URL (se configurada)
-
-Isso garante que o que o admin configura na aba SEO realmente apareca na pagina.
-
----
+1. O usuario clica em "Criar com IA" (icone de varinha magica)
+2. Um dialog abre com um campo de texto para descrever a pagina desejada
+3. A IA processa o prompt e retorna todos os campos preenchidos
+4. O formulario de criacao abre ja preenchido com os dados gerados
+5. O usuario pode revisar, ajustar e salvar
 
 ## Detalhes Tecnicos
 
-### Arquivos a Criar
+### 1. Nova Edge Function: `generate-capture-page`
+- Arquivo: `supabase/functions/generate-capture-page/index.ts`
+- Usa a mesma arquitetura da funcao `generate-task-guide` existente
+- Chama a Lovable AI Gateway (`ai.gateway.lovable.dev`) com tool calling para retornar JSON estruturado
+- Modelo: `google/gemini-3-flash-preview`
+- Prompt de sistema instruira a IA a gerar: titulo, slug, headline, subheadline, beneficios (3-5), texto do botao, mensagem de obrigado, cores (primaria, fundo, texto) e meta tags SEO
+- Autenticacao via header Authorization (mesmo padrao existente)
+- Tratamento de erros 429 (rate limit) e 402 (creditos)
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `public/sitemap.xml` | Sitemap XML com rotas publicas |
+### 2. Atualizacao do Frontend: `CapturePages.tsx`
+- Novo botao "Criar com IA" ao lado de "Nova Pagina"
+- Dialog com textarea para o prompt do usuario
+- Estado de loading com spinner durante a geracao
+- Ao receber resposta, preenche o formulario existente e abre o dialog de edicao
+- O usuario revisa e confirma antes de salvar (nao salva automaticamente)
 
-### Arquivos a Modificar
+### 3. Configuracao
+- Adicionar `[functions.generate-capture-page]` no `supabase/config.toml` com `verify_jwt = false`
+- A funcao valida autenticacao internamente (mesmo padrao das outras funcoes)
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `public/robots.txt` | Adicionar linha `Sitemap:` |
-| `index.html` | Adicionar `<link rel="canonical">`, `<meta og:url>` |
-| `src/pages/Index.tsx` | Injetar JSON-LD (Schema.org) via useEffect |
-| `src/components/TrackingScripts.tsx` | Aplicar title, description e OG tags do banco dinamicamente |
+### Exemplo do fluxo
+```text
+Usuario digita: "Pagina para clinica odontologica oferecendo clareamento dental com 30% de desconto"
 
-### Limitacao importante (SPA)
+IA retorna:
+- Titulo: "Promo Clareamento Dental"
+- Slug: "promo-clareamento-dental"  
+- Headline: "Clareamento Dental com 30% de Desconto"
+- Subheadline: "Agende sua avaliacao gratuita e conquiste o sorriso dos seus sonhos"
+- Beneficios: ["Resultado em apenas 1 sessao", "Profissionais certificados", "Parcelamento em ate 12x"]
+- Botao: "Agendar minha avaliacao"
+- Cores: primaria #2563EB, fundo #0F172A, texto #FFFFFF
+- Meta Title/Description preenchidos
+```
 
-Como o projeto e uma Single Page Application (SPA), crawlers que nao executam JavaScript verao apenas as meta tags estaticas do `index.html`. As tags dinamicas injetadas via React ajudam com crawlers modernos (Google, Bing) que renderizam JS. Para crawlers mais antigos, as meta tags estaticas do `index.html` servem como fallback.
-
-O sitemap.xml e o JSON-LD sao lidos diretamente pelos crawlers sem depender de JavaScript.
+### Arquivos que serao criados/editados
+- **Criar**: `supabase/functions/generate-capture-page/index.ts`
+- **Editar**: `src/pages/admin/CapturePages.tsx` (botao + dialog de prompt)
+- **Editar**: `supabase/config.toml` (adicionar funcao)
 
