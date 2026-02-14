@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MessageCircle, Mail, StickyNote } from "lucide-react";
+import { Phone, MessageCircle, Mail, StickyNote, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { logLeadActivity } from "@/lib/lead-activity-utils";
 import { WhatsAppTemplateSelector } from "./WhatsAppTemplateSelector";
+import { ProposalGenerator } from "../proposals/ProposalGenerator";
 
 interface Lead {
   id: string;
@@ -30,6 +31,7 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
   const [callNoteOpen, setCallNoteOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [proposalOpen, setProposalOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [callNote, setCallNote] = useState("");
   const { toast } = useToast();
@@ -117,6 +119,10 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
           <StickyNote className="h-3.5 w-3.5" />
           Nota
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setProposalOpen(true)} className="gap-1.5">
+          <FileText className="h-3.5 w-3.5" />
+          Proposta
+        </Button>
       </div>
 
       {/* Call Note Dialog */}
@@ -171,6 +177,14 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
         onOpenChange={setWhatsappOpen}
         lead={lead}
         onSent={handleWhatsAppSent}
+      />
+
+      {/* Proposal Generator */}
+      <ProposalGenerator
+        open={proposalOpen}
+        onOpenChange={setProposalOpen}
+        lead={lead}
+        onCreated={onActivityLogged}
       />
     </>
   );

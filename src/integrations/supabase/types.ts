@@ -1234,6 +1234,63 @@ export type Database = {
           },
         ]
       }
+      proposals: {
+        Row: {
+          client_name: string
+          client_segment: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string | null
+          service_type: string
+          slides: Json
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          client_segment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+          service_type: string
+          slides?: Json
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          client_segment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+          service_type?: string
+          slides?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       strategic_plans: {
         Row: {
           budget_allocation: Json | null
