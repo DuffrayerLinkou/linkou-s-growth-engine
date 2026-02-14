@@ -33,6 +33,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import { RequestCampaignDialog } from "@/components/cliente/RequestCampaignDialog";
+import { useClientPermissions } from "@/hooks/useClientPermissions";
 
 type CampaignStatus = "draft" | "pending_approval" | "running" | "completed" | "paused";
 
@@ -108,7 +110,7 @@ const placementLabels: Record<string, string> = {
 
 export default function ClienteCampanhas() {
   const { clientInfo, profile } = useAuth();
-  const canViewFinancials = profile?.user_type === "manager";
+  const { canViewFinancials, canRequestCampaigns } = useClientPermissions();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -165,11 +167,14 @@ export default function ClienteCampanhas() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Campanhas</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Acompanhe as campanhas de marketing do seu projeto
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Campanhas</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Acompanhe as campanhas de marketing do seu projeto
+          </p>
+        </div>
+        {canRequestCampaigns && <RequestCampaignDialog />}
       </div>
 
       {/* Stats Cards */}

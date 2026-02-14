@@ -13,5 +13,10 @@ export function useClientPermissions() {
     canUploadFiles: isPontoFocal || userType === "manager",
     canViewFinancials: userType === "manager",
     canEditMetrics: isPontoFocal,
+    canCreateTasks: isPontoFocal || userType === "manager",
+    canRequestCampaigns: isPontoFocal || userType === "manager",
+    canScheduleAppointments: true,
+    canEditProfile: true,
+    canManageTeam: userType === "manager",
   };
 }

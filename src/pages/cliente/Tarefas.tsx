@@ -50,6 +50,8 @@ import {
 import { TasksKanbanClient } from "@/components/cliente/TasksKanbanClient";
 import { TaskFileAttachment } from "@/components/cliente/TaskFileAttachment";
 import { Label } from "@/components/ui/label";
+import { CreateTaskDialog } from "@/components/cliente/CreateTaskDialog";
+import { useClientPermissions } from "@/hooks/useClientPermissions";
 
 interface Task {
   id: string;
@@ -68,6 +70,7 @@ interface Task {
 
 export default function ClienteTarefas() {
   const { clientInfo, user } = useAuth();
+  const { canCreateTasks } = useClientPermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
@@ -239,8 +242,9 @@ export default function ClienteTarefas() {
           </p>
         </div>
         
-        {/* View Toggle */}
+        {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {canCreateTasks && <CreateTaskDialog />}
           <Button
             variant={viewMode === "list" ? "default" : "outline"}
             size="sm"
