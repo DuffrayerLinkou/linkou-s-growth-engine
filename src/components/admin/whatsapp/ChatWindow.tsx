@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, FileText, Check, CheckCheck, Clock, AlertCircle, ExternalLink } from "lucide-react";
+import { Send, FileText, Check, CheckCheck, Clock, AlertCircle, ExternalLink, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,9 +28,10 @@ interface ChatWindowProps {
   leadName: string | null;
   messages: Message[];
   onMessageSent: () => void;
+  onBack?: () => void;
 }
 
-export function ChatWindow({ phone, leadId, leadName, messages, onMessageSent }: ChatWindowProps) {
+export function ChatWindow({ phone, leadId, leadName, messages, onMessageSent, onBack }: ChatWindowProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -76,10 +77,17 @@ export function ChatWindow({ phone, leadId, leadName, messages, onMessageSent }:
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b bg-card">
-        <div>
-          <h3 className="font-semibold text-sm">{leadName || formatPhone(phone)}</h3>
-          <p className="text-xs text-muted-foreground">{formatPhone(phone)}</p>
+      <div className="flex items-center justify-between p-3 border-b bg-card gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div className="min-w-0">
+            <h3 className="font-semibold text-sm truncate">{leadName || formatPhone(phone)}</h3>
+            <p className="text-xs text-muted-foreground truncate">{formatPhone(phone)}</p>
+          </div>
         </div>
         {leadId && (
           <Link to={`/admin/leads`}>

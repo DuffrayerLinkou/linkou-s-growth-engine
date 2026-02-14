@@ -7,6 +7,7 @@ import { ConversationList } from "@/components/admin/whatsapp/ConversationList";
 import { ChatWindow } from "@/components/admin/whatsapp/ChatWindow";
 import { BulkSender } from "@/components/admin/whatsapp/BulkSender";
 import { WhatsAppConfig } from "@/components/admin/whatsapp/WhatsAppConfig";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WhatsAppMessage {
   id: string;
@@ -33,6 +34,7 @@ interface Conversation {
 
 export default function WhatsApp() {
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
   // Fetch all messages
@@ -159,37 +161,42 @@ export default function WhatsApp() {
         </TabsList>
 
         <TabsContent value="conversations" className="mt-0">
-          <div className="border rounded-lg overflow-hidden flex h-[calc(100vh-220px)] bg-background">
-            {/* Conversation List */}
-            <div className="w-[320px] border-r shrink-0">
-              <ConversationList
-                conversations={conversations}
-                selectedPhone={selectedPhone}
-                onSelect={setSelectedPhone}
-                isLoading={loadingMessages}
-              />
-            </div>
-
-            {/* Chat Area */}
-            <div className="flex-1">
-              {selectedPhone ? (
-                <ChatWindow
-                  phone={selectedPhone}
-                  leadId={selectedConv?.lead_id || null}
-                  leadName={selectedConv?.lead_name || null}
-                  messages={selectedMessages}
-                  onMessageSent={handleMessageSent}
+          <div className="border rounded-lg overflow-hidden flex h-[calc(100vh-220px)] md:h-[calc(100vh-220px)] bg-background">
+            {/* Conversation List - hidden on mobile when chat is open */}
+            {(!isMobile || !selectedPhone) && (
+              <div className={isMobile ? "w-full" : "w-[280px] lg:w-[320px] border-r shrink-0"}>
+                <ConversationList
+                  conversations={conversations}
+                  selectedPhone={selectedPhone}
+                  onSelect={setSelectedPhone}
+                  isLoading={loadingMessages}
                 />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg font-medium">Selecione uma conversa</p>
-                    <p className="text-sm">Escolha um contato à esquerda para ver as mensagens</p>
+              </div>
+            )}
+
+            {/* Chat Area - hidden on mobile when no chat selected */}
+            {(!isMobile || selectedPhone) && (
+              <div className="flex-1">
+                {selectedPhone ? (
+                  <ChatWindow
+                    phone={selectedPhone}
+                    leadId={selectedConv?.lead_id || null}
+                    leadName={selectedConv?.lead_name || null}
+                    messages={selectedMessages}
+                    onMessageSent={handleMessageSent}
+                    onBack={isMobile ? () => setSelectedPhone(null) : undefined}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center">
+                      <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                      <p className="text-lg font-medium">Selecione uma conversa</p>
+                      <p className="text-sm">Escolha um contato à esquerda para ver as mensagens</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
 
