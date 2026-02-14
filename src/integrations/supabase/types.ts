@@ -1692,6 +1692,8 @@ export type Database = {
       }
       client_has_ponto_focal: { Args: { _client_id: string }; Returns: boolean }
       count_client_users: { Args: { _client_id: string }; Returns: number }
+      get_capture_page_by_slug: { Args: { _slug: string }; Returns: Json }
+      get_public_tracking_config: { Args: never; Returns: Json }
       get_user_client_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

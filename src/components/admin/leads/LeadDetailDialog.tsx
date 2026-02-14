@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building2, Archive, Trash2, Mail, Phone } from "lucide-react";
+import { Building2, Archive, Trash2, Mail, Phone, Presentation } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ interface LeadDetailDialogProps {
   onConvert: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
   onLeadUpdated: (lead: Lead) => void;
+  onGenerateProposal?: (lead: Lead) => void;
 }
 
 export function LeadDetailDialog({
@@ -57,6 +58,7 @@ export function LeadDetailDialog({
   onConvert,
   onDelete,
   onLeadUpdated,
+  onGenerateProposal,
 }: LeadDetailDialogProps) {
   const [activityRefresh, setActivityRefresh] = useState(0);
 
@@ -165,22 +167,30 @@ export function LeadDetailDialog({
         {/* Bottom Actions */}
         <div className="border-t pt-3 space-y-2 mt-2">
           {lead.status !== "converted" && lead.status !== "archived" && (
-            <div className="flex gap-2">
-              <Button className="flex-1" size="sm" onClick={() => onConvert(lead)}>
-                <Building2 className="h-4 w-4 mr-1.5" />
-                Converter em Cliente
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  onStatusChange(lead.id, "archived");
-                  onLeadUpdated({ ...lead, status: "archived" });
-                }}
-              >
-                <Archive className="h-4 w-4 mr-1.5" />
-                Arquivar
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button className="flex-1" size="sm" onClick={() => onConvert(lead)}>
+                  <Building2 className="h-4 w-4 mr-1.5" />
+                  Converter em Cliente
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onStatusChange(lead.id, "archived");
+                    onLeadUpdated({ ...lead, status: "archived" });
+                  }}
+                >
+                  <Archive className="h-4 w-4 mr-1.5" />
+                  Arquivar
+                </Button>
+              </div>
+              {onGenerateProposal && (
+                <Button variant="outline" size="sm" className="w-full" onClick={() => onGenerateProposal(lead)}>
+                  <Presentation className="h-4 w-4 mr-1.5" />
+                  Gerar Proposta Comercial
+                </Button>
+              )}
             </div>
           )}
           {lead.status === "converted" && (
