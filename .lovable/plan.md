@@ -1,146 +1,175 @@
 
+# Auditoria e Plano de Melhorias - Ecossistema Linkou
 
-# Modulo de Propostas Comerciais Automaticas para Leads
+## Resumo da Auditoria
 
-## Objetivo
-Criar um sistema completo de propostas comerciais que pode ser acionado diretamente a partir de um lead no CRM. O usuario seleciona um lead, escolhe um template de proposta (ou gera via IA), visualiza a apresentacao no formato de slides, edita se necessario, e exporta como PDF para enviar ao prospect.
+Fiz uma varredura completa na aplicacao cobrindo: arquitetura, seguranca (RLS/banco), edge functions, UX dos 3 perfis de usuario, performance e lacunas funcionais. A aplicacao esta muito bem estruturada - vou organizar as descobertas e sugestoes por prioridade.
 
-## Como vai funcionar
+---
 
-### Fluxo do usuario
-1. Na tela de Leads, ao abrir o detalhe de um lead, um novo botao "Gerar Proposta" aparece
-2. Um dialog abre com opcoes: escolher template pronto ou gerar com IA
-3. Se escolher IA, descreve brevemente o contexto e a IA gera todo o conteudo
-4. Os slides sao exibidos em preview (formato 16:9 escalado)
-5. O usuario pode editar textos diretamente nos slides
-6. Ao finalizar, exporta como PDF (usando jsPDF ja instalado) ou salva como rascunho
+## 1. CRITICO - Seguranca (Corrigir Primeiro)
 
-### Templates prontos disponiveis
-- **Proposta de Gestao de Trafego** - para leads interessados em Meta/Google Ads
-- **Proposta de Auditoria** - diagnostico de contas de anuncios
-- **Proposta de Producao de Midia** - criativos e conteudo
-- **Proposta de Site/Landing Page** - desenvolvimento web
-- **Proposta de Design** - identidade visual
-- **Proposta de Aplicacao Web** - desenvolvimento com IA
+### 1.1 Credenciais de Marketing Expostas Publicamente
+A tabela `landing_settings` esta acessivel sem autenticacao (policy "Anyone can view landing settings"). Ela contem: Meta Pixel IDs, access tokens, app secrets, webhook tokens, TikTok access tokens, Google Ads IDs e configuracao WhatsApp.
 
-Cada template tera slides padrao: Capa, Sobre a Linkou, Diagnostico do Cliente, Solucao Proposta, Escopo e Entregaveis, Investimento, Proximos Passos.
+**Correcao:** Remover a policy publica de SELECT e restringir a admin/account_manager. Os scripts de tracking no frontend podem buscar apenas os pixel IDs necessarios via uma edge function dedicada ou injetar os valores no build.
+
+### 1.2 Paginas de Captura Totalmente Expostas
+A tabela `capture_pages` esta 100% legivel publicamente, expondo toda a estrategia de marketing (headlines, copy, form fields, beneficios, pixels). Concorrentes podem copiar tudo.
+
+**Correcao:** Criar uma view publica que exponha apenas os campos necessarios para renderizar a pagina (slug, headline, form_fields, cta) e restringir o acesso completo a admins.
+
+### 1.3 Leaked Password Protection Desativada
+O Supabase nao esta verificando senhas vazadas em breaches conhecidos.
+
+**Correcao:** Ativar no painel do Supabase em Auth > Settings > Password Security.
+
+---
+
+## 2. IMPORTANTE - Melhorias de Governanca por Perfil
+
+### 2.1 Diferenciar Permissoes: Ponto Focal vs Gestor/Dono
+
+Atualmente o sistema distingue `ponto_focal` (boolean) e `user_type` (operator/manager), mas a **logica de permissoes nao esta aplicada de forma consistente**. O Gestor/Dono deveria ter acesso diferente do Ponto Focal:
+
+| Recurso | Ponto Focal | Gestor/Dono |
+|---------|-------------|-------------|
+| Aprovar campanhas | Sim | Sim |
+| Ver contratos | Sim | Sim |
+| Ver pagamentos/financeiro | Nao | Sim |
+| Ver briefings estrategicos | Sim | Sim |
+| Editar dados da conta | Nao | Sim |
+| Gerenciar usuarios do cliente | Nao | Sim |
+
+**Correcao:** Atualizar RLS policies de `payments`, `contracts` e `briefings` para checar `user_type = 'manager'` ou `ponto_focal = true` conforme a tabela acima. Atualizar tambem o frontend para esconder/mostrar menus condicionalmente.
+
+### 2.2 Controle de Leads por Account Manager
+Atualmente todos os account_managers veem TODOS os leads. Se a agencia crescer, sera necessario segmentar por responsavel.
+
+**Sugestao futura:** Adicionar coluna `assigned_to` na tabela leads e filtrar por ela.
+
+---
+
+## 3. IMPORTANTE - Melhorias Funcionais
+
+### 3.1 Sessao Expirada Trava na Tela de Loading
+Quando o token de autenticacao expira, o usuario fica preso no "Carregando..." infinitamente. Isso ja foi identificado anteriormente.
+
+**Correcao:** No `useAuth`, detectar erro de refresh token e chamar `signOut()` automaticamente, redirecionando para `/auth` com mensagem amigavel.
+
+### 3.2 Dashboard Admin - Otimizacao de Queries
+O Dashboard admin faz **15+ queries paralelas** ao Supabase. A pagina de Clientes faz N+1 queries (uma por cliente para contar usuarios e verificar ponto focal).
+
+**Correcao:**
+- Criar uma database function `get_dashboard_summary()` que retorna todos os KPIs em uma unica chamada
+- Na pagina Clientes, usar uma unica query com `count` e join ao inves de Promise.all com queries individuais
+
+### 3.3 Pagina de Propostas - Integrar com Lead Detail
+O botao "Proposta" foi adicionado ao `LeadQuickActions` mas nao ao `LeadDetailDialog`. O fluxo ideal seria o usuario abrir o detalhe do lead e ter acesso direto.
+
+**Correcao:** Adicionar botao "Gerar Proposta" no `LeadDetailDialog.tsx` ao lado de "Converter em Cliente".
+
+### 3.4 Notificacoes em Tempo Real - Melhorias
+O sistema de notificacoes ja tem realtime via subscription, mas so notifica em poucos cenarios (comentarios em campanhas e deadlines de tarefas).
+
+**Sugestao:** Expandir para notificar:
+- Novo lead capturado (para admins)
+- Lead mudou de status
+- Campanha aprovada pelo ponto focal
+- Arquivo enviado pelo cliente
+- Nova proposta gerada
+
+### 3.5 Validacao de Leads - Anti-Spam
+A tabela `leads` permite INSERT sem autenticacao (necessario para landing page), mas nao tem protecao contra spam.
+
+**Correcao:** Adicionar rate limiting na edge function ou no frontend (honeypot field + debounce) e verificar duplicatas recentes por email no ContactForm.
+
+---
+
+## 4. MELHORIAS DE UX
+
+### 4.1 Sidebar Admin - Muitos Itens (14 links)
+A navegacao tem 14 itens, o que pode ser esmagador. 
+
+**Sugestao:** Agrupar em categorias colapsaveis:
+- **Comercial**: Leads, Propostas, Capturas
+- **Operacional**: Clientes, Projetos, Campanhas, Tarefas
+- **Comunicacao**: WhatsApp, Templates
+- **Configuracao**: Landing Page, Onboarding, Usuarios
+
+### 4.2 Area do Cliente - Feedback Visual de Progresso
+O dashboard do cliente mostra KPIs basicos mas poderia ter:
+- Barra de progresso geral da jornada (4 fases)
+- Indicador de "saude" do projeto (baseado em tarefas vencidas)
+- Timeline visual mais proeminente
+
+### 4.3 Mobile - Responsividade
+Os layouts ja sao responsivos mas paginas como Dashboard admin com muitas cards e tabelas poderiam ter melhores breakpoints para tablets (834px).
+
+---
+
+## 5. INTEGRIDADE DE DADOS
+
+### 5.1 Conversao de Lead para Cliente
+Ao converter, o status do cliente e criado como `"active"` mas o enum esperado e `"ativo"`. Isso pode causar inconsistencia.
+
+**Correcao:** Na funcao `convertToClient` em `Leads.tsx` (linha 347), mudar `status: "active"` para `status: "ativo"`.
+
+### 5.2 Edge Functions - verify_jwt Desativado
+Todas as 9 edge functions estao com `verify_jwt = false` no `config.toml`. Algumas (como `manage-users`) fazem verificacao manual do token, mas outras como `generate-proposal` e `generate-capture-page` ficam expostas.
+
+**Correcao:** Ativar `verify_jwt = true` para funcoes que so devem ser chamadas por usuarios autenticados (generate-proposal, generate-capture-page, generate-task-guide). Manter `false` apenas para webhooks (meta-lead-webhook, whatsapp-api) e crons (check-task-deadlines).
+
+---
+
+## 6. PERFORMANCE
+
+### 6.1 Lazy Loading - Bem Implementado
+Todas as paginas usam `React.lazy()` com Suspense. Otimo.
+
+### 6.2 React Query - Configuracao Solida
+`staleTime: 5min`, `gcTime: 30min`, `refetchOnWindowFocus: false`. Adequado para o caso de uso.
+
+### 6.3 N+1 na Listagem de Clientes
+Ja mencionado em 3.2 - a funcao `fetchClients` faz queries individuais para cada cliente. Com 50+ clientes, isso sera um gargalo.
+
+---
+
+## Sequencia de Implementacao Recomendada
+
+1. **Seguranca** (itens 1.1, 1.2, 1.3, 5.2) - Corrigir exposicao de dados
+2. **Bug critico** (item 3.1) - Sessao expirada
+3. **Integridade** (item 5.1) - Status de conversao
+4. **Governanca** (item 2.1) - Permissoes por perfil de usuario
+5. **Performance** (item 3.2) - Otimizar queries do dashboard
+6. **UX** (itens 3.3, 3.4, 4.1, 4.2) - Melhorias de interface
+7. **Anti-spam** (item 3.5) - Protecao de leads
+
+---
 
 ## Detalhes Tecnicos
 
-### 1. Banco de Dados - Nova tabela `proposals`
+### Arquivos que precisam de alteracao (por prioridade):
 
-```text
-CREATE TABLE proposals (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  lead_id uuid REFERENCES leads(id) ON DELETE SET NULL,
-  client_name text NOT NULL,
-  client_segment text,
-  service_type text NOT NULL,
-  title text NOT NULL,
-  slides jsonb NOT NULL DEFAULT '[]',
-  status text DEFAULT 'draft',
-  created_by uuid REFERENCES profiles(id),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+**Seguranca (SQL migrations):**
+- Nova migration para alterar RLS de `landing_settings` e `capture_pages`
+- Nova migration para refinar RLS de `payments`, `contracts`, `briefings`
 
-ALTER TABLE proposals ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage proposals" ON proposals
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','account_manager'))
-  );
-```
+**Bug de sessao:**
+- `src/hooks/useAuth.tsx` - Adicionar tratamento de erro no `onAuthStateChange`
 
-Cada slide e um objeto JSON com a estrutura:
-```text
-{
-  "type": "cover" | "about" | "diagnostic" | "solution" | "scope" | "investment" | "next_steps" | "custom",
-  "title": "Titulo do slide",
-  "content": ["Linha 1", "Linha 2"],
-  "highlights": ["Destaque 1", "Destaque 2"],
-  "image_url": "opcional"
-}
-```
+**Integridade:**
+- `src/pages/admin/Leads.tsx` (linha 347) - Corrigir status "active" para "ativo"
 
-### 2. Nova Edge Function: `generate-proposal`
+**Governanca:**
+- `src/layouts/ClientLayout.tsx` - Condicionar menu por user_type
+- `src/pages/cliente/Dashboard.tsx` - Mostrar/esconder secoes por perfil
 
-- Arquivo: `supabase/functions/generate-proposal/index.ts`
-- Recebe: `lead_name`, `lead_segment`, `lead_objective`, `service_type`, `custom_context`
-- Usa a Lovable AI Gateway (Gemini 3 Flash) com tool calling
-- Retorna array de 6-8 slides estruturados em JSON
-- O prompt de sistema inclui conhecimento sobre os servicos da Linkou (extraido do `services-config.ts`) para gerar conteudo preciso
-- Tratamento de erros 429/402
+**Performance:**
+- `src/pages/admin/Clients.tsx` - Refatorar fetchClients para query unica
+- `src/pages/admin/Dashboard.tsx` - Consolidar queries em menos chamadas
 
-### 3. Componentes Frontend
-
-**Novos arquivos:**
-- `src/components/admin/proposals/ProposalGenerator.tsx` - Dialog principal com escolha de template ou IA
-- `src/components/admin/proposals/ProposalSlidePreview.tsx` - Visualizacao dos slides em formato 16:9 escalado
-- `src/components/admin/proposals/ProposalSlideEditor.tsx` - Edicao inline dos textos de cada slide
-- `src/components/admin/proposals/ProposalTemplates.ts` - Templates prontos com slides pre-definidos para cada servico
-- `src/components/admin/proposals/ProposalPDFExport.ts` - Funcao de exportar slides como PDF formatado (usando jsPDF)
-
-**Arquivos editados:**
-- `src/pages/admin/Leads.tsx` - Botao "Gerar Proposta" no detalhe do lead
-- `src/components/admin/leads/LeadDetailDialog.tsx` - Integrar botao de proposta
-- `src/components/admin/leads/LeadQuickActions.tsx` - Acao rapida de proposta
-- `src/layouts/AdminLayout.tsx` - Adicionar link "Propostas" na navegacao
-- `src/App.tsx` - Nova rota `/admin/propostas`
-- `src/integrations/supabase/types.ts` - Tipos da nova tabela
-- `supabase/config.toml` - Registrar nova edge function
-
-**Nova pagina:**
-- `src/pages/admin/Proposals.tsx` - Listagem de todas as propostas com filtros por status (rascunho, enviada, aceita, recusada)
-
-### 4. Visualizacao dos Slides
-
-Cada slide renderiza em um container 16:9 com resolucao fixa de 1920x1080 escalado via CSS transform para caber no viewport. Os slides seguem o design system da Linkou com cores roxo (#7C3AED), preto e branco.
-
-Layout de cada tipo de slide:
-- **Capa**: Logo Linkou + nome do cliente + titulo da proposta + data
-- **Sobre**: Texto sobre a empresa com icones dos servicos
-- **Diagnostico**: Bullets com os problemas/oportunidades identificados
-- **Solucao**: Descricao do que sera feito, com destaques
-- **Escopo**: Lista de entregaveis com checkmarks
-- **Investimento**: Valores e condicoes (editavel pelo usuario)
-- **Proximos Passos**: Timeline com etapas e prazos
-
-### 5. Exportacao PDF
-
-Reutiliza e expande o `pdf-generator.ts` existente para gerar um PDF formatado como apresentacao:
-- Uma pagina por slide em formato paisagem (A4 landscape)
-- Cores e tipografia consistentes com a marca
-- Capa com logo
-- Rodape com data e numero da pagina
-
-## Sequencia de implementacao
-
-1. Migration SQL (tabela `proposals` + RLS)
-2. Templates prontos (`ProposalTemplates.ts`)
-3. Edge function `generate-proposal`
-4. Componentes de preview e editor de slides
-5. Exportacao PDF
-6. Integracao com tela de Leads (botao + dialog)
-7. Pagina de listagem de propostas (`/admin/propostas`)
-8. Rota e navegacao
-
-## Arquivos que serao criados/editados
-
-**Criar:**
-- Migration SQL
-- `supabase/functions/generate-proposal/index.ts`
-- `src/pages/admin/Proposals.tsx`
-- `src/components/admin/proposals/ProposalGenerator.tsx`
-- `src/components/admin/proposals/ProposalSlidePreview.tsx`
-- `src/components/admin/proposals/ProposalSlideEditor.tsx`
-- `src/components/admin/proposals/ProposalTemplates.ts`
-- `src/components/admin/proposals/ProposalPDFExport.ts`
-
-**Editar:**
-- `src/components/admin/leads/LeadDetailDialog.tsx`
-- `src/components/admin/leads/LeadQuickActions.tsx`
-- `src/layouts/AdminLayout.tsx`
-- `src/App.tsx`
-- `src/integrations/supabase/types.ts`
-- `supabase/config.toml`
-
+**UX:**
+- `src/layouts/AdminLayout.tsx` - Agrupar navegacao em categorias
+- `src/components/admin/leads/LeadDetailDialog.tsx` - Adicionar botao Proposta
+- `supabase/config.toml` - Ativar verify_jwt nas funcoes adequadas
