@@ -22,14 +22,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useTheme } from "@/hooks/useTheme";
+import { useClientPermissions } from "@/hooks/useClientPermissions";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
-const navItems = [
+type PermissionKey = "canViewFinancials";
+
+const navItems: { href: string; icon: typeof LayoutDashboard; label: string; permission?: PermissionKey }[] = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
   { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
-  { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Métricas de Tráfego" },
+  { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Métricas de Tráfego", permission: "canViewFinancials" },
   { href: "/cliente/campanhas", icon: Megaphone, label: "Campanhas" },
   { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
   { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
@@ -41,8 +44,14 @@ export function ClientLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { profile, signOut } = useAuth();
   const { theme } = useTheme();
+  const { userType, canViewFinancials } = useClientPermissions();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const permissions: Record<PermissionKey, boolean> = { canViewFinancials };
+  const filteredNavItems = navItems.filter(
+    (item) => !item.permission || permissions[item.permission]
+  );
 
   const handleSignOut = async () => {
     await signOut();
@@ -117,6 +126,11 @@ export function ClientLayout() {
                       Ponto Focal
                     </span>
                   )}
+                  {userType === "manager" && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-medium">
+                      Gestor
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {profile?.email}
@@ -127,7 +141,7 @@ export function ClientLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link

@@ -113,7 +113,8 @@ export default function ClienteArquivos() {
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadDescription, setUploadDescription] = useState("");
 
-  const canUploadFiles = profile?.ponto_focal === true || profile?.user_type === 'manager';
+  // Permissions are derived from profile but using the centralized hook pattern
+  const canUploadFiles = profile?.ponto_focal === true || profile?.user_type === "manager";
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["client-files", clientInfo?.id],

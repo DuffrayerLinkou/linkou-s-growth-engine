@@ -107,7 +107,8 @@ const placementLabels: Record<string, string> = {
 };
 
 export default function ClienteCampanhas() {
-  const { clientInfo } = useAuth();
+  const { clientInfo, profile } = useAuth();
+  const canViewFinancials = profile?.user_type === "manager";
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -319,7 +320,7 @@ export default function ClienteCampanhas() {
                             Fim: {format(new Date(campaign.end_date), "dd/MM/yyyy", { locale: ptBR })}
                           </span>
                         )}
-                        {campaign.budget && (
+                        {canViewFinancials && campaign.budget && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
                             R$ {campaign.budget.toLocaleString("pt-BR")}
                           </span>
@@ -383,7 +384,7 @@ export default function ClienteCampanhas() {
                           </div>
                         )}
 
-                        {(campaign.budget || campaign.daily_budget || campaign.bidding_strategy) && (
+                        {canViewFinancials && (campaign.budget || campaign.daily_budget || campaign.bidding_strategy) && (
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Orçamento e Lances</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
