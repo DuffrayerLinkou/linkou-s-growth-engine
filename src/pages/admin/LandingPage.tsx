@@ -12,7 +12,7 @@ const LandingPage = () => {
   const [activeTab, setActiveTab] = useState("pixels");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Landing Page</h1>
         <p className="text-muted-foreground">
@@ -20,49 +20,49 @@ const LandingPage = () => {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex w-full h-auto gap-2 p-1 overflow-x-auto scrollbar-hide bg-muted/50 rounded-lg">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 min-w-0">
+        <TabsList className="flex w-full h-auto gap-1 sm:gap-2 p-1 overflow-x-auto scrollbar-hide bg-muted/50 rounded-lg">
           <TabsTrigger
             value="pixels"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Tag className="h-4 w-4 flex-shrink-0" />
-            <span>Pixels</span>
+            <span className="hidden sm:inline">Pixels</span>
           </TabsTrigger>
           <TabsTrigger
             value="google"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Globe className="h-4 w-4 flex-shrink-0" />
-            <span>Google</span>
+            <span className="hidden sm:inline">Google</span>
           </TabsTrigger>
           <TabsTrigger
             value="seo"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Search className="h-4 w-4 flex-shrink-0" />
-            <span>SEO</span>
+            <span className="hidden sm:inline">SEO</span>
           </TabsTrigger>
           <TabsTrigger
             value="utm"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Link2 className="h-4 w-4 flex-shrink-0" />
-            <span>UTM Builder</span>
+            <span className="hidden sm:inline">UTM Builder</span>
           </TabsTrigger>
           <TabsTrigger
             value="scripts"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Code className="h-4 w-4 flex-shrink-0" />
-            <span>Scripts</span>
+            <span className="hidden sm:inline">Scripts</span>
           </TabsTrigger>
           <TabsTrigger
             value="performance"
-            className="flex items-center gap-2 flex-shrink-0 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
+            className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <CheckSquare className="h-4 w-4 flex-shrink-0" />
-            <span>Checklist</span>
+            <span className="hidden sm:inline">Checklist</span>
           </TabsTrigger>
         </TabsList>
 
