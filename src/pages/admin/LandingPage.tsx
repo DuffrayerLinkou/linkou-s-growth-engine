@@ -27,42 +27,42 @@ const LandingPage = () => {
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Tag className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Pixels</span>
+            <span>Pixels</span>
           </TabsTrigger>
           <TabsTrigger
             value="google"
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Globe className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Google</span>
+            <span>Google</span>
           </TabsTrigger>
           <TabsTrigger
             value="seo"
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Search className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">SEO</span>
+            <span>SEO</span>
           </TabsTrigger>
           <TabsTrigger
             value="utm"
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Link2 className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">UTM Builder</span>
+            <span>UTM</span>
           </TabsTrigger>
           <TabsTrigger
             value="scripts"
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <Code className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Scripts</span>
+            <span>Scripts</span>
           </TabsTrigger>
           <TabsTrigger
             value="performance"
             className="flex items-center gap-2 flex-shrink-0 px-2 sm:px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap"
           >
             <CheckSquare className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Checklist</span>
+            <span>Check</span>
           </TabsTrigger>
         </TabsList>
 
