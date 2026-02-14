@@ -2,21 +2,46 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface PublicTrackingConfig {
+  meta_pixel_enabled: boolean;
+  meta_pixel_id: string | null;
+  gtm_enabled: boolean;
+  gtm_id: string | null;
+  ga4_enabled: boolean;
+  ga4_measurement_id: string | null;
+  tiktok_pixel_enabled: boolean;
+  tiktok_pixel_id: string | null;
+  google_ads_enabled: boolean;
+  google_ads_id: string | null;
+  linkedin_enabled: boolean;
+  linkedin_partner_id: string | null;
+  hotjar_enabled: boolean;
+  hotjar_id: string | null;
+  chat_widget_enabled: boolean;
+  chat_widget_script: string | null;
+  head_scripts: string | null;
+  body_scripts: string | null;
+  site_title: string | null;
+  site_description: string | null;
+  og_image_url: string | null;
+  favicon_url: string | null;
+  whatsapp_number: string | null;
+  whatsapp_message: string | null;
+  search_console_verification: string | null;
+}
+
 export function TrackingScripts() {
   const { data: settings } = useQuery({
-    queryKey: ["landing-settings"],
+    queryKey: ["public-tracking-config"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("landing_settings")
-        .select("*")
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_public_tracking_config");
       if (error) throw error;
-      return data;
+      return data as unknown as PublicTrackingConfig | null;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    staleTime: 1000 * 60 * 5,
   });
 
-  // Dynamic SEO meta tags from database
+  // Dynamic SEO meta tags
   useEffect(() => {
     if (!settings) return;
 
@@ -70,7 +95,7 @@ export function TrackingScripts() {
       }
     }
 
-    // Google Tag Manager - Head
+    // Google Tag Manager
     if (settings.gtm_enabled && settings.gtm_id) {
       const gtmScript = document.createElement("script");
       gtmScript.innerHTML = `
@@ -85,7 +110,6 @@ export function TrackingScripts() {
         document.head.appendChild(gtmScript);
       }
 
-      // GTM noscript iframe
       const noscript = document.createElement("noscript");
       noscript.innerHTML = `<iframe src="https://www.googletagmanager.com/ns.html?id=${settings.gtm_id}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`;
       noscript.id = "gtm-noscript";
@@ -94,7 +118,7 @@ export function TrackingScripts() {
       }
     }
 
-    // Google Analytics 4
+    // GA4
     if (settings.ga4_enabled && settings.ga4_measurement_id) {
       const ga4Loader = document.createElement("script");
       ga4Loader.src = `https://www.googletagmanager.com/gtag/js?id=${settings.ga4_measurement_id}`;
@@ -204,7 +228,6 @@ export function TrackingScripts() {
       chatDiv.innerHTML = settings.chat_widget_script;
       if (!document.getElementById("chat-widget-container")) {
         document.body.appendChild(chatDiv);
-        // Execute scripts within the container
         const scripts = chatDiv.getElementsByTagName("script");
         for (let i = 0; i < scripts.length; i++) {
           const newScript = document.createElement("script");

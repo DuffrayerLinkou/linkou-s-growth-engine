@@ -55,23 +55,19 @@ const CapturePage = () => {
   useEffect(() => {
     if (!slug) return;
     const fetchPage = async () => {
-      const { data, error } = await supabase
-        .from("capture_pages")
-        .select("*")
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_capture_page_by_slug", { _slug: slug });
 
       if (error || !data) {
         setNotFound(true);
       } else {
-        const benefits = Array.isArray(data.benefits) ? (data.benefits as string[]) : [];
-        const form_fields = Array.isArray(data.form_fields) ? (data.form_fields as string[]) : ["name", "email", "phone"];
-        setPage({ ...data, benefits, form_fields } as CapturePageData);
+        const pageData = data as unknown as Record<string, unknown>;
+        const benefits = Array.isArray(pageData.benefits) ? (pageData.benefits as string[]) : [];
+        const form_fields = Array.isArray(pageData.form_fields) ? (pageData.form_fields as string[]) : ["name", "email", "phone"];
+        setPage({ ...pageData, benefits, form_fields } as unknown as CapturePageData);
 
         // Set meta tags
-        if (data.meta_title) document.title = data.meta_title;
-        else if (data.headline) document.title = data.headline;
+        if (pageData.meta_title) document.title = pageData.meta_title as string;
+        else if (pageData.headline) document.title = pageData.headline as string;
       }
       setLoading(false);
     };

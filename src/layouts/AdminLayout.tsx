@@ -20,6 +20,7 @@ import {
   MessageCircle,
   Zap,
   Presentation,
+  ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,24 +29,50 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useTheme } from "@/hooks/useTheme";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
-const navItems = [
-  { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/leads", icon: UserPlus, label: "Leads" },
-  { href: "/admin/clientes", icon: Users, label: "Clientes" },
-  { href: "/admin/campanhas", icon: Megaphone, label: "Campanhas" },
-  { href: "/admin/projetos", icon: FolderKanban, label: "Projetos" },
-  { href: "/admin/onboarding", icon: ClipboardList, label: "Onboarding" },
-  { href: "/admin/landing", icon: Globe, label: "Landing Page" },
-  { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
-  { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
-  { href: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
-  { href: "/admin/capturas", icon: Zap, label: "Capturas" },
-  { href: "/admin/propostas", icon: Presentation, label: "Propostas" },
-  { href: "/admin/templates", icon: FileText, label: "Templates" },
-  { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
+const navGroups = [
+  {
+    label: null,
+    items: [
+      { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+    ],
+  },
+  {
+    label: "Comercial",
+    items: [
+      { href: "/admin/leads", icon: UserPlus, label: "Leads" },
+      { href: "/admin/propostas", icon: Presentation, label: "Propostas" },
+      { href: "/admin/capturas", icon: Zap, label: "Capturas" },
+    ],
+  },
+  {
+    label: "Operacional",
+    items: [
+      { href: "/admin/clientes", icon: Users, label: "Clientes" },
+      { href: "/admin/projetos", icon: FolderKanban, label: "Projetos" },
+      { href: "/admin/campanhas", icon: Megaphone, label: "Campanhas" },
+      { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
+      { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
+    ],
+  },
+  {
+    label: "Comunicação",
+    items: [
+      { href: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
+      { href: "/admin/templates", icon: FileText, label: "Templates" },
+    ],
+  },
+  {
+    label: "Configuração",
+    items: [
+      { href: "/admin/landing", icon: Globe, label: "Landing Page" },
+      { href: "/admin/onboarding", icon: ClipboardList, label: "Onboarding" },
+      { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
+    ],
+  },
 ];
 
 export function AdminLayout() {
@@ -54,6 +81,19 @@ export function AdminLayout() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Track which groups are open - default all open
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    navGroups.forEach((g) => {
+      if (g.label) initial[g.label] = true;
+    });
+    return initial;
+  });
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -136,23 +176,64 @@ export function AdminLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.href;
+            {navGroups.map((group, gi) => {
+              // Ungrouped items (Dashboard)
+              if (!group.label) {
+                return group.items.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setIsSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  );
+                });
+              }
+
+              // Grouped items with collapsible
+              const isGroupActive = group.items.some((item) => location.pathname === item.href);
               return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
+                <Collapsible
+                  key={group.label}
+                  open={openGroups[group.label]}
+                  onOpenChange={() => toggleGroup(group.label)}
                 >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                    <span className={cn(isGroupActive && "text-primary")}>{group.label}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openGroups[group.label] && "rotate-180")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-0.5 mt-0.5">
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          to={item.href}
+                          onClick={() => setIsSidebarOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors pl-5",
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
               );
             })}
           </nav>

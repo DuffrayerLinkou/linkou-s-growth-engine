@@ -342,7 +342,7 @@ export default function AdminLeads() {
         .insert({
           name: convertFormData.name,
           segment: convertFormData.segment || null,
-          status: "active",
+          status: "ativo",
           phase: "diagnostico",
         })
         .select()
