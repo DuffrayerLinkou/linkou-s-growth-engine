@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, isSameDay, isAfter, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
+import { RequestAppointmentDialog } from "@/components/cliente/RequestAppointmentDialog";
 
 interface Appointment {
   id: string;
@@ -188,11 +189,14 @@ export default function ClienteAgendamentos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Meus Agendamentos</h1>
-        <p className="text-muted-foreground">
-          Visualize suas reuniões, compromissos e prazos de tarefas
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Meus Agendamentos</h1>
+          <p className="text-muted-foreground">
+            Visualize suas reuniões, compromissos e prazos de tarefas
+          </p>
+        </div>
+        <RequestAppointmentDialog />
       </div>
 
       {/* Stats */}
