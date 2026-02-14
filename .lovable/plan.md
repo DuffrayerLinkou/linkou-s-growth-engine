@@ -1,129 +1,197 @@
 
 
-# Governanca por Perfil de Cliente
+# Autonomia Total para o Cliente: Plano de Empoderamento
 
-## Contexto Atual
+## Visao Geral
 
-O sistema possui dois eixos de permissao no lado do cliente:
-- **user_type**: `operator` (padrao) ou `manager` (gestor/dono)
-- **ponto_focal**: booleano que indica quem aprova campanhas/briefings
+Atualmente o usuario cliente funciona como um "espectador" - ele ve tarefas, campanhas, agendamentos e arquivos que foram criados pelo admin. A proposta e transformar o cliente (gestor e/ou ponto focal) em um **gestor autonomo** do seu proprio marketing, capaz de criar, gerenciar e executar sem depender do admin.
 
-Atualmente, todos os usuarios do cliente veem as mesmas paginas e dados. A proposta e restringir acesso conforme o perfil.
+## Diagnostico: O que o cliente NAO consegue fazer hoje
 
-## Matriz de Permissoes
+| Funcionalidade | Situacao Atual | Ideal |
+|---|---|---|
+| Tarefas | Apenas visualiza e conclui tarefas criadas pelo admin | Criar suas proprias tarefas internas |
+| Campanhas | Apenas visualiza e aprova campanhas do admin | Criar briefings/solicitacoes de campanhas |
+| Projetos | Nao tem acesso | Ver seus projetos e progresso |
+| Agendamentos | Apenas visualiza reunioes agendadas | Solicitar/agendar reunioes |
+| Metricas | Apenas visualiza (manager) | Adicionar metas e comentar |
+| Minha Conta | Somente leitura | Editar nome, telefone, avatar |
+| Base de Conhecimento | Conteudo estatico/fixo | Acessar documentos e guias do proprio projeto |
 
-| Funcionalidade | Operator | Ponto Focal | Manager |
-|---|---|---|---|
-| Dashboard (KPIs basicos) | Sim | Sim | Sim |
-| Tarefas (ver/comentar) | Sim | Sim | Sim |
-| Campanhas (visualizar) | Sim | Sim | Sim |
-| Aprovar campanhas | Nao | Sim | Nao* |
-| Arquivos (visualizar/baixar) | Sim | Sim | Sim |
-| Arquivos (upload) | Nao | Sim | Sim |
-| Metricas de Trafego | Nao | Nao | Sim |
-| Minha Jornada | Sim | Sim | Sim |
-| Base de Conhecimento | Sim | Sim | Sim |
-| Agendamentos | Sim | Sim | Sim |
-| Minha Conta | Sim | Sim | Sim |
-| Dados financeiros (orcamento campanhas, investimento) | Oculto | Oculto | Visivel |
+## Mudancas Propostas (Ordenadas por Impacto)
 
-*Aprovacao fica exclusiva do ponto focal, independente de ser manager ou operator.
+### Fase 1 - Criacao e Gestao (maior impacto)
 
-## Mudancas Planejadas
+#### 1.1 Cliente pode criar tarefas proprias
+**Arquivo:** `src/pages/cliente/Tarefas.tsx`
 
-### 1. Hook de permissoes centralizado
-**Novo arquivo:** `src/hooks/useClientPermissions.ts`
+- Adicionar botao "Nova Tarefa" (visivel para ponto_focal e manager)
+- Dialog de criacao com campos: titulo, descricao, prioridade, data limite
+- Tarefas criadas pelo cliente terao `executor_type = "client"` e `assigned_to = user.id` automaticamente
+- `visible_to_client = true` e `journey_phase` baseado na fase atual do cliente
+- Permissao: ponto focal e manager podem criar; operator pode ver
 
-Criar um hook que retorna as permissoes do usuario baseado no `user_type` e `ponto_focal`:
-
-```
-useClientPermissions() => {
-  canApprove: boolean      // ponto_focal === true
-  canUploadFiles: boolean  // ponto_focal || manager
-  canViewFinancials: boolean  // manager only
-  canEditMetrics: boolean     // ponto_focal (ja existe)
-  userType: "operator" | "manager"
-  isPontoFocal: boolean
-}
-```
-
-### 2. Navegacao condicional
-**Arquivo:** `src/layouts/ClientLayout.tsx`
-
-- Filtrar `navItems` baseado nas permissoes
-- Ocultar "Metricas de Trafego" para operator e ponto_focal (somente manager ve)
-- Manter todas as outras paginas visiveis
-
-### 3. Protecao na pagina de Metricas
-**Arquivo:** `src/pages/cliente/MetricasTrafego.tsx`
-
-- Verificar se `user_type === 'manager'` no inicio
-- Se nao for manager, mostrar tela de "acesso restrito" com orientacao para falar com o gestor
-
-### 4. Ocultar dados financeiros nas Campanhas
+#### 1.2 Cliente pode solicitar campanhas (Briefing Request)
 **Arquivo:** `src/pages/cliente/Campanhas.tsx`
 
-- Usar `canViewFinancials` do hook
-- Ocultar campo de orcamento (`budget`, `daily_budget`) quando nao for manager
-- Ocultar secao "Orcamento e Lances" no detalhe expandido
+- Adicionar botao "Solicitar Campanha" (ponto_focal e manager)
+- Formulario simplificado de briefing: nome, objetivo, publico-alvo, mensagem principal, materiais de referencia (upload), prazo desejado
+- Campanha criada com `status = "draft"` automaticamente
+- Admin recebe notificacao e complementa os dados tecnicos (plataforma, orcamento, segmentacao)
+- Permissao: ponto focal e manager
 
-### 5. Ocultar investimento no Dashboard
-**Arquivo:** `src/pages/cliente/Dashboard.tsx`
+#### 1.3 Cliente pode agendar reunioes
+**Arquivo:** `src/pages/cliente/Agendamentos.tsx`
 
-- Nao mostrar valores financeiros nos KPIs para quem nao e manager
-- Manter contadores de tarefas e campanhas visiveis para todos
+- Adicionar botao "Solicitar Reuniao"
+- Campos: tipo (alinhamento, revisao, duvida), data/hora sugerida, descricao
+- Agendamento criado com `status = "pending"` para admin confirmar
+- Permissao: todos os perfis de cliente
 
-### 6. Indicador visual de perfil
-**Arquivo:** `src/layouts/ClientLayout.tsx`
+### Fase 2 - Edicao e Personalizacao
 
-- Ao lado do nome, alem do badge "Ponto Focal" (que ja existe), mostrar badge "Gestor" para managers
-- Operator nao recebe badge adicional
+#### 2.1 Minha Conta editavel
+**Arquivo:** `src/pages/cliente/MinhaConta.tsx`
+
+- Transformar campos em formulario editavel
+- Permitir alterar: nome completo, telefone, avatar (upload de foto)
+- Email continua read-only (vem do auth)
+- Botao "Salvar" que atualiza tabela `profiles`
+
+#### 2.2 Gestao de equipe do cliente (Manager only)
+**Novo arquivo:** `src/pages/cliente/MinhaEquipe.tsx`
+
+- Manager pode visualizar os usuarios vinculados ao mesmo `client_id`
+- Ver quem e ponto focal, quem e operator
+- Solicitar adição de novo usuario (gera pedido para admin)
+- Nao pode alterar roles diretamente (seguranca)
+
+### Fase 3 - Inteligencia e Autonomia
+
+#### 3.1 Notas e comentarios em metricas
+**Arquivo:** `src/pages/cliente/MetricasTrafego.tsx`
+
+- Manager pode adicionar notas/observacoes em cada mes de metrica
+- Campo "Meta do mes" para definir objetivos (ex: "Atingir 50 leads")
+- Comparativo automatico meta vs realizado
+
+#### 3.2 Documentos do projeto na Base de Conhecimento
+**Arquivo:** `src/pages/cliente/BaseConhecimento.tsx`
+
+- Alem dos guias estaticos, incluir uma aba "Meus Documentos"
+- Puxa arquivos do tipo `deliverable` da tabela `files`
+- Inclui briefings aprovados, relatorios, e materiais entregues
+- Organizado por projeto e data
+
+---
 
 ## Detalhes Tecnicos
 
-### Hook useClientPermissions
+### Permissoes para criacao (useClientPermissions atualizado)
 
 ```typescript
-// src/hooks/useClientPermissions.ts
-export function useClientPermissions() {
-  const { profile } = useAuth();
-  
-  const userType = (profile?.user_type || "operator") as "operator" | "manager";
-  const isPontoFocal = profile?.ponto_focal === true;
-  
-  return {
-    userType,
-    isPontoFocal,
-    canApprove: isPontoFocal,
-    canUploadFiles: isPontoFocal || userType === "manager",
-    canViewFinancials: userType === "manager",
-    canEditMetrics: isPontoFocal,
-  };
-}
+// Novas permissoes adicionadas ao hook existente
+canCreateTasks: isPontoFocal || userType === "manager",
+canRequestCampaigns: isPontoFocal || userType === "manager",
+canScheduleAppointments: true, // todos
+canEditProfile: true, // todos
+canManageTeam: userType === "manager",
+canAddMetricNotes: userType === "manager",
 ```
 
-### Navegacao filtrada no ClientLayout
+### Formulario de criacao de tarefa
 
-O array `navItems` tera um campo opcional `requiredPermission` e sera filtrado antes da renderizacao:
+Campos simplificados (sem complexidade do admin):
+- Titulo (obrigatorio)
+- Descricao (opcional, textarea)
+- Prioridade (select: baixa, media, alta, urgente)
+- Data limite (date picker, opcional)
+
+Campos preenchidos automaticamente:
+- `client_id`: do clientInfo
+- `executor_type`: "client"
+- `assigned_to`: user.id
+- `visible_to_client`: true
+- `journey_phase`: fase atual do cliente
+- `status`: "todo"
+
+### Formulario de solicitacao de campanha
+
+Campos simplificados (foco no briefing):
+- Nome da campanha (obrigatorio)
+- Objetivo (select: gerar leads, vendas, reconhecimento, engajamento)
+- Descricao / mensagem principal (textarea)
+- Publico-alvo (textarea livre)
+- Prazo desejado (date picker)
+- Material de referencia (upload opcional)
+
+Campos preenchidos automaticamente:
+- `client_id`: do clientInfo
+- `status`: "draft"
+- `platform`: null (admin define depois)
+- `budget`/`daily_budget`: null (admin define)
+
+### Formulario de agendamento
+
+- Titulo (obrigatorio)
+- Tipo (select: alinhamento, revisao, duvida, outro)
+- Data e hora sugerida (datetime picker)
+- Duracao estimada (select: 30min, 1h, 1h30)
+- Descricao (textarea)
+
+Campos automaticos:
+- `client_id`: do clientInfo
+- `created_by`: user.id
+- `status`: "pending"
+
+### Edicao de perfil
+
+Campos editaveis:
+- `full_name` (input text)
+- `phone` (input tel)
+- `avatar_url` (upload de imagem)
+
+Update via: `supabase.from("profiles").update({...}).eq("id", user.id)`
+
+### Nova rota e navegacao
 
 ```typescript
-const navItems = [
-  { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/cliente/minha-jornada", icon: Route, label: "Minha Jornada" },
-  { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
-  { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Metricas", permission: "canViewFinancials" },
-  { href: "/cliente/campanhas", icon: Megaphone, label: "Campanhas" },
-  { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
-  { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
-  { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
-  { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
-];
+// App.tsx - nova rota
+<Route path="minha-equipe" element={<MinhaEquipe />} />
+
+// ClientLayout.tsx - novo nav item (condicional)
+{ href: "/cliente/minha-equipe", icon: Users, label: "Minha Equipe", permission: "canManageTeam" }
 ```
 
-### Arquivos alterados
-1. `src/hooks/useClientPermissions.ts` (novo)
-2. `src/layouts/ClientLayout.tsx` (navegacao condicional + badge manager)
-3. `src/pages/cliente/MetricasTrafego.tsx` (bloqueio de acesso para nao-manager)
-4. `src/pages/cliente/Campanhas.tsx` (ocultar dados financeiros)
-5. `src/pages/cliente/Dashboard.tsx` (ocultar valores financeiros)
-6. `src/pages/cliente/Arquivos.tsx` (usar hook centralizado em vez de checagem inline)
+### Arquivos alterados/criados
+
+**Alterados:**
+1. `src/hooks/useClientPermissions.ts` - novas permissoes
+2. `src/pages/cliente/Tarefas.tsx` - botao + dialog de criacao
+3. `src/pages/cliente/Campanhas.tsx` - botao + dialog de solicitacao
+4. `src/pages/cliente/Agendamentos.tsx` - botao + dialog de agendamento
+5. `src/pages/cliente/MinhaConta.tsx` - formulario editavel
+6. `src/pages/cliente/BaseConhecimento.tsx` - aba "Meus Documentos"
+7. `src/layouts/ClientLayout.tsx` - novo item de navegacao
+8. `src/App.tsx` - nova rota
+
+**Criados:**
+1. `src/pages/cliente/MinhaEquipe.tsx` - gestao de equipe do cliente
+
+---
+
+## Recomendacao de Implementacao
+
+Dado o volume, sugiro implementar em **3 etapas**:
+
+**Etapa 1** (prioridade alta): Criacao de tarefas + Solicitacao de campanhas + Agendamento de reunioes
+- Sao as funcoes que mais impactam a autonomia do cliente
+
+**Etapa 2**: Edicao de perfil + Base de Conhecimento com documentos do projeto
+- Melhoram a experiencia mas nao sao bloqueantes
+
+**Etapa 3**: Gestao de equipe + Notas em metricas
+- Funcoes avancadas para gestores maduros
+
+Qual etapa voce quer comecar?
+
