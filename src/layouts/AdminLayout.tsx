@@ -19,6 +19,7 @@ import {
   Megaphone,
   MessageCircle,
   Zap,
+  Presentation,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const navItems = [
   { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
   { href: "/admin/capturas", icon: Zap, label: "Capturas" },
+  { href: "/admin/propostas", icon: Presentation, label: "Propostas" },
   { href: "/admin/templates", icon: FileText, label: "Templates" },
   { href: "/admin/usuarios", icon: UsersRound, label: "Usuários" },
 ];

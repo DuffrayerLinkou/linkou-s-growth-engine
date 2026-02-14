@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.generate-capture-page]
 verify_jwt = false
+
+[functions.generate-proposal]
+verify_jwt = false
