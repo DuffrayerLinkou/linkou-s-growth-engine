@@ -119,6 +119,7 @@ const formatCurrency = (value: number | null): string => {
 
 export default function MetricasTrafego() {
   const { profile } = useAuth();
+  const isManager = profile?.user_type === "manager";
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -429,6 +430,19 @@ export default function MetricasTrafego() {
       setIsExporting(false);
     }
   };
+
+  if (!isManager) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+        <BarChart3 className="h-16 w-16 text-muted-foreground/50" />
+        <h2 className="text-xl font-semibold">Acesso Restrito</h2>
+        <p className="text-muted-foreground max-w-md">
+          As métricas de tráfego pago estão disponíveis apenas para gestores. 
+          Entre em contato com o gestor da sua conta para acessar esses dados.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
