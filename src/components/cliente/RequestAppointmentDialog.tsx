@@ -53,6 +53,17 @@ export function RequestAppointmentDialog() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-appointments"] });
+
+      // Send email notification (fire-and-forget)
+      supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "appointment_created",
+          client_id: clientInfo?.id,
+          title,
+          appointment_date: new Date(dateTime).toISOString(),
+        },
+      });
+
       toast({ title: "Reunião solicitada!", description: "Sua solicitação foi enviada. A equipe confirmará o horário." });
       resetForm();
     },

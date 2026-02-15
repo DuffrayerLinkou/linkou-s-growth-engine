@@ -72,6 +72,21 @@ export function CommentSection({ entityType, entityId, clientId }: CommentSectio
     enabled: !!entityId,
   });
 
+  // Check if user is admin
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return false;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.id)
+        .eq("role", "admin");
+      return (data?.length || 0) > 0;
+    },
+    enabled: !!profile?.id,
+  });
+
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       const { error } = await supabase.from("comments").insert({
@@ -82,9 +97,24 @@ export function CommentSection({ entityType, entityId, clientId }: CommentSectio
         content,
       });
       if (error) throw error;
+      return content;
     },
-    onSuccess: () => {
+    onSuccess: (content) => {
       queryClient.invalidateQueries({ queryKey: ["comments", entityType, entityId] });
+
+      // Send email notification (fire-and-forget)
+      supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "new_comment",
+          client_id: clientId,
+          commenter_name: profile?.full_name || profile?.email || "Usuário",
+          entity_label: entityId,
+          entity_type: entityType,
+          comment_preview: content.substring(0, 150),
+          commenter_is_admin: isAdmin,
+        },
+      });
+
       setNewComment("");
       toast.success("Comentário adicionado!");
     },
