@@ -729,6 +729,15 @@ export default function ClientDetail() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
 
+      // Send password changed email notification (fire-and-forget)
+      supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "password_changed",
+          user_id: selectedUser.id,
+          new_password: newPassword,
+        },
+      });
+
       toast({
         title: "Senha alterada",
         description: "A nova senha foi definida.",
@@ -860,6 +869,16 @@ export default function ClientDetail() {
         _to_phase: toPhase,
       });
 
+      // Send email notification (fire-and-forget)
+      supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "phase_changed",
+          client_id: id,
+          from_phase: fromPhase,
+          to_phase: toPhase,
+        },
+      });
+
       toast({
         title: "Fase alterada",
         description: `Cliente movido para "${getPhaseLabel(toPhase)}".`,
@@ -934,6 +953,18 @@ export default function ClientDetail() {
       const { error } = await supabase.from("tasks").insert(tasksToCreate);
 
       if (error) throw error;
+
+      // Send email notification for tasks assigned (fire-and-forget)
+      for (const task of tasksToCreate) {
+        supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "task_assigned",
+            client_id: id,
+            task_title: task.title,
+            due_date: task.due_date,
+          },
+        });
+      }
 
       // Invalidate task queries so lists update
       queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });

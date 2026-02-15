@@ -88,6 +88,19 @@ export function ApprovalButton({
       queryClient.invalidateQueries({ queryKey: [entityType === "campaign" ? "campaigns" : "learnings"] });
       queryClient.invalidateQueries({ queryKey: ["client-campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["client-learnings"] });
+
+      // Send email notification for campaign approval (fire-and-forget)
+      if (entityType === "campaign") {
+        supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "campaign_approved",
+            client_id: clientId,
+            campaign_name: entityId, // Will be resolved in the edge function
+            approver_name: profile?.full_name || profile?.email || "Ponto Focal",
+          },
+        });
+      }
+
       toast.success(
         entityType === "campaign"
           ? "Campanha aprovada com sucesso!"
