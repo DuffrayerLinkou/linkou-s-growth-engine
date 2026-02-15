@@ -1,99 +1,97 @@
 
 
-# Minha Equipe: Gestao de Usuarios pelo Cliente Manager
+# Otimizacao de SEO e Remocao de Referencias Lovable
 
-## Problema
+## Problemas Identificados
 
-Hoje, apenas o admin pode criar usuarios via a edge function `manage-users`. O cliente manager nao consegue adicionar funcionarios (operadores) a sua propria equipe. Para autonomia total, o manager precisa convidar e gerenciar membros do seu time.
+### 1. Referencias ao Lovable em todo o codigo
+Existem 4 arquivos com URLs e imagens apontando para o dominio Lovable:
 
-## Solucao
+- **`index.html`**: og:url, og:image, twitter:image e canonical usam `linkou-ecosystem-builder.lovable.app` e `lovable.dev/opengraph-image`
+- **`public/sitemap.xml`**: Todas as 5 URLs usam o dominio Lovable
+- **`public/robots.txt`**: Sitemap aponta para dominio Lovable
+- **`src/pages/Index.tsx`**: JSON-LD Schema com URL Lovable
 
-Criar uma pagina "Minha Equipe" e estender a edge function `manage-users` com acoes especificas para o manager, limitadas ao escopo do seu `client_id`.
+### 2. SPA e SEO - Problema Critico
+O site e uma SPA (Single Page Application). Isso significa que o `index.html` enviado ao Google contem apenas `<div id="root"></div>`. Os meta tags injetados via JavaScript pelo `TrackingScripts.tsx` **nao sao lidos pelos crawlers** na maioria dos casos.
 
-## Matriz de Acoes do Manager
+**Consequencia:** O Google vai indexar apenas o que esta no `index.html` estatico - que hoje ainda tem os dados corretos (titulo, descricao), mas as alteracoes feitas via painel admin (SEO Tab) nao sao refletidas para os buscadores.
 
-| Acao | Permitido | Restricao |
-|---|---|---|
-| Ver membros da equipe | Sim | Somente usuarios com mesmo client_id |
-| Convidar novo membro | Sim | Sempre como role `client`, sempre vinculado ao seu client_id |
-| Definir ponto focal | Sim | Apenas dentro da sua equipe |
-| Definir user_type (operator/manager) | Sim | Apenas dentro da sua equipe |
-| Remover membro | Nao | Somente admin pode excluir usuarios |
-| Alterar roles (admin, account_manager) | Nao | Somente admin |
+### 3. Badge "Edit in Lovable"
+Pode ser removido sem codigo: nas configuracoes do projeto Lovable, ative "Hide 'Lovable' Badge".
 
-## Mudancas Planejadas
+---
 
-### 1. Estender Edge Function `manage-users`
+## Solucao Proposta
 
-**Arquivo:** `supabase/functions/manage-users/index.ts`
+### Etapa 1 - Substituir todas as referencias Lovable
 
-Adicionar duas novas acoes alem das existentes (que continuam exclusivas do admin):
+Trocar todas as URLs pelo seu dominio real. Se voce ja conectou um dominio customizado (ex: `linkou.com.br`), usaremos ele. Caso contrario, mantemos o dominio Lovable mas atualizamos as imagens OG.
 
-- **`list-team`**: Retorna usuarios com o mesmo `client_id` do manager. Nao requer ser admin, mas requer ser `manager` (verificado via `user_type` no profile) e ter um `client_id`.
+**Arquivos a alterar:**
 
-- **`invite-team-member`**: Cria um novo usuario com role `client`, vinculado ao `client_id` do manager. Campos aceitos: email, password, full_name, user_type (operator ou manager), ponto_focal. O `client_id` e forcado para ser o mesmo do manager (nao aceita input do frontend).
+#### `index.html`
+- `og:url` → seu dominio
+- `og:image` → URL da sua propria imagem OG (1200x630px)
+- `twitter:image` → mesma imagem OG
+- `canonical` → seu dominio
 
-- **`update-team-member`**: Permite ao manager alterar `full_name`, `user_type` e `ponto_focal` de um membro da sua equipe. Valida que o usuario alvo pertence ao mesmo `client_id`.
+#### `public/sitemap.xml`
+- Trocar todas as 5 URLs para o dominio correto
 
-A logica de autorizacao funciona assim:
-1. Acoes existentes (list-users, create-user, update-user, delete-user) continuam exigindo role `admin`
-2. Novas acoes (list-team, invite-team-member, update-team-member) exigem `user_type = 'manager'` e `client_id != null`
-3. Todas as operacoes de equipe sao restritas ao `client_id` do manager autenticado
+#### `public/robots.txt`
+- Atualizar URL do sitemap
 
-### 2. Nova Pagina "Minha Equipe"
+#### `src/pages/Index.tsx`
+- Atualizar `url` no JSON-LD Schema
 
-**Novo arquivo:** `src/pages/cliente/MinhaEquipe.tsx`
+### Etapa 2 - Melhorar SEO para SPA
 
-Pagina acessivel apenas para managers (`canManageTeam`) com:
+Como os meta tags dinamicos do TrackingScripts nao sao lidos pelos crawlers, precisamos garantir que o `index.html` estatico tenha os dados corretos.
 
-- **Lista de membros**: Tabela com nome, email, tipo (operator/manager), e se e ponto focal
-- **Botao "Convidar Membro"**: Dialog com campos:
-  - Email (obrigatorio)
-  - Senha temporaria (obrigatorio)
-  - Nome completo
-  - Tipo: Operador ou Gestor (select)
-  - Ponto Focal (switch)
-- **Edicao inline**: Botao de editar em cada membro para alterar tipo e ponto focal
-- **Indicadores visuais**: Badges para "Gestor", "Ponto Focal", "Voce" (usuario logado)
+**Abordagem:** Manter os meta tags estaticos no `index.html` como fonte primaria de SEO (ja estao la) e usar o TrackingScripts apenas como complemento para quando o usuario altera via painel.
 
-### 3. Navegacao e Rota
+O que ja funciona bem:
+- Title, description, og:title, og:description no index.html (estatico, visivel para crawlers)
+- robots.txt e sitemap.xml (estaticos, visiveis para crawlers)
+- JSON-LD Schema (injetado via JS, Google consegue ler na maioria dos casos)
 
-**Arquivo:** `src/layouts/ClientLayout.tsx`
-- Adicionar item "Minha Equipe" com icone `Users` e `permission: "canManageTeam"`
+**Melhoria adicional:** Adicionar meta tag `google-site-verification` diretamente no `index.html` para que o Google Search Console funcione sem depender do TrackingScripts.
 
-**Arquivo:** `src/App.tsx`
-- Adicionar rota `/cliente/minha-equipe` apontando para `MinhaEquipe`
+### Etapa 3 - Criar imagem OG propria
 
-**Arquivo:** `src/hooks/useClientPermissions.ts`
-- Adicionar `"canManageTeam"` ao tipo `PermissionKey` no ClientLayout
+Atualmente a imagem OG aponta para `lovable.dev/opengraph-image`. Voce precisa:
+1. Criar uma imagem 1200x630px com a marca Linkou
+2. Fazer upload para o Storage do Supabase ou usar uma URL publica
+3. Atualizar no index.html e na SeoTab do admin
+
+---
 
 ## Detalhes Tecnicos
 
-### Autorizacao na Edge Function (novas acoes)
+### Arquivos alterados
 
-```text
-Para list-team, invite-team-member, update-team-member:
+1. **`index.html`** - Atualizar og:url, og:image, twitter:image, canonical
+2. **`public/sitemap.xml`** - Atualizar todas as URLs
+3. **`public/robots.txt`** - Atualizar URL do sitemap
+4. **`src/pages/Index.tsx`** - Atualizar URL no JSON-LD
 
-1. Obter user via auth token
-2. Buscar profile do user (client_id, user_type)
-3. Verificar: user_type === 'manager' AND client_id IS NOT NULL
-4. Se nao, retornar 403
-5. Todas as queries filtradas por client_id do manager
-```
+### Sobre dominio customizado
 
-### Seguranca
+Se voce ainda nao conectou um dominio customizado, pode fazer isso em Project Settings, Domains no Lovable. Um plano pago e necessario. Enquanto isso, as URLs continuarao com `linkou-ecosystem-builder.lovable.app` mas sem as imagens/referencias visuais do Lovable.
 
-- O manager NAO pode escolher o client_id do novo usuario (e forcado pelo backend)
-- O manager NAO pode criar usuarios com role admin ou account_manager (forcado como `client`)
-- O manager NAO pode editar usuarios fora do seu client_id (validacao no backend)
-- O manager NAO pode excluir usuarios (acao nao disponivel)
-- Senhas temporarias sao definidas na criacao; o usuario pode trocar depois
+### Sobre o badge
 
-### Arquivos alterados/criados
+Para remover o selo "Edit in Lovable" que aparece no canto do site:
+1. Abra as configuracoes do projeto no Lovable
+2. Ative a opcao "Hide 'Lovable' Badge"
+3. Nao requer alteracao de codigo
 
-1. `supabase/functions/manage-users/index.ts` - novas acoes (list-team, invite-team-member, update-team-member)
-2. `src/pages/cliente/MinhaEquipe.tsx` - nova pagina
-3. `src/layouts/ClientLayout.tsx` - novo nav item com permissao
-4. `src/App.tsx` - nova rota
-5. `src/hooks/useClientPermissions.ts` - sem mudanca de logica (canManageTeam ja existe), apenas atualizar PermissionKey type no layout
+### Checklist SEO pos-implementacao
+
+- Verificar Google Search Console (adicionar propriedade com seu dominio)
+- Submeter sitemap.xml manualmente no Search Console
+- Testar compartilhamento no Facebook Debugger (developers.facebook.com/tools/debug)
+- Testar Twitter Card Validator
+- Criar e fazer upload da imagem OG personalizada
 
