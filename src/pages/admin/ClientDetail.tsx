@@ -536,34 +536,36 @@ export default function ClientDetail() {
     setIsSubmitting(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userFormData.email,
-        password: userFormData.password,
-        options: {
-          data: {
-            full_name: userFormData.full_name,
-          },
+      // Criar usuário via edge function (Admin API + email de boas-vindas via Resend)
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "create-user",
+          email: userFormData.email,
+          password: userFormData.password,
+          full_name: userFormData.full_name,
+          role: "client",
+          client_id: id,
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário");
+      if (fnError) throw new Error(fnError.message || "Erro ao criar usuário");
+      if (fnData?.error) throw new Error(fnData.error);
 
-      const { error: profileError } = await supabase
+      const newUserId = fnData?.user?.id;
+      if (!newUserId) throw new Error("Erro ao criar usuário: ID não retornado");
+
+      // Atualizar ponto_focal e user_type no profile
+      await supabase
         .from("profiles")
         .update({
-          client_id: id,
-          full_name: userFormData.full_name,
           ponto_focal: userFormData.ponto_focal,
           user_type: userFormData.user_type,
         })
-        .eq("id", authData.user.id);
-
-      if (profileError) throw profileError;
+        .eq("id", newUserId);
 
       if (userFormData.ponto_focal) {
         await supabase.rpc("set_ponto_focal", {
-          _user_id: authData.user.id,
+          _user_id: newUserId,
           _client_id: id,
         });
       }
