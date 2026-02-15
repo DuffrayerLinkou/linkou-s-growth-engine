@@ -11,6 +11,7 @@ import {
   newCommentEmail,
   paymentRegisteredEmail,
   passwordChangedEmail,
+  leadThankYouEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -183,6 +184,16 @@ serve(async (req) => {
         if (profile?.email) {
           const { subject, html } = passwordChangedEmail(userName, new_password);
           await sendNotificationEmail(profile.email, subject, html);
+        }
+        break;
+      }
+
+      // ── Lead Thank You ──
+      case "lead_submitted": {
+        const { lead_name, lead_email } = payload;
+        if (lead_email) {
+          const { subject, html } = leadThankYouEmail(lead_name || "");
+          await sendNotificationEmail(lead_email, subject, html);
         }
         break;
       }

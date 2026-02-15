@@ -144,6 +144,19 @@ export function ContactForm() {
         console.warn('TikTok Events API event failed:', tiktokError);
       }
 
+      // Send thank you email to lead
+      try {
+        await supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "lead_submitted",
+            lead_name: formData.name.trim(),
+            lead_email: formData.email.trim(),
+          },
+        });
+      } catch (emailError) {
+        console.warn("Lead thank you email failed:", emailError);
+      }
+
       // Redirect to thank you page
       navigate("/obrigado");
     } catch (error) {

@@ -287,3 +287,22 @@ export function paymentDueReminderEmail(clientName: string, amount: string, desc
     `),
   };
 }
+
+// ── Category 8: Lead Thank You ──
+
+export function leadThankYouEmail(name: string): { subject: string; html: string } {
+  const displayName = name || "Olá";
+  return {
+    subject: "Recebemos seu contato! — Linkou",
+    html: baseEmailLayout(`
+      <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">Olá, ${displayName}! 👋</h2>
+      <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Recebemos seu contato com sucesso! Agradecemos pelo interesse em nossos serviços.</p>
+      <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Nossa equipe está analisando suas informações e <strong>retornará em até 24h úteis</strong> com um diagnóstico inicial do seu cenário.</p>
+      ${infoBox(`
+        <p style="margin:0;color:#1a1a2e;font-size:14px;line-height:1.6;">Enquanto isso, conheça mais sobre nosso trabalho nas redes sociais e no nosso site.</p>
+      `)}
+      ${ctaButton("Conheça a Linkou", "https://agencialinkou.com.br")}
+      <p style="margin:24px 0 0;color:#4a4a68;font-size:13px;line-height:1.5;">Se tiver alguma dúvida urgente, entre em contato pelo nosso WhatsApp.</p>
+    `),
+  };
+}
