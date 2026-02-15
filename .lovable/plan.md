@@ -1,52 +1,46 @@
 
-# Integrar Envio de Email na Criacao de Usuarios
+# Corrigir Envio de Email de Boas-Vindas
 
-## O que sera feito
+## Problema
 
-Quando um novo usuario for criado (via painel admin ou convite de equipe), o sistema enviara automaticamente um email de boas-vindas com as credenciais de acesso.
+A pagina de detalhe do cliente cria usuarios usando `supabase.auth.signUp()` direto no frontend (linha 539 de `ClientDetail.tsx`). Isso causa dois problemas:
 
-## Mudancas
+1. O Supabase envia o email padrao de confirmacao do remetente `noreply@mail.app.supabase.io` -- que cai na lixeira/spam
+2. A edge function `manage-users` (que tem o email bonito via Resend) nunca e chamada
 
-### 1. Edge Function `manage-users/index.ts`
+## Solucao
 
-Adicionar chamada ao `send-email` apos a criacao do usuario em dois fluxos:
+Alterar `ClientDetail.tsx` para chamar a edge function `manage-users` com action `create-user`, em vez de usar `supabase.auth.signUp()` direto. Assim:
 
-#### Fluxo `create-user` (admin cria usuario)
-Apos criar o usuario com sucesso, enviar email de boas-vindas contendo:
-- Nome do usuario
-- Email de login
-- Senha temporaria (a que o admin definiu)
-- Link para acessar a plataforma (`https://www.agencialinkou.com.br/auth`)
-- Orientacao para trocar a senha
-
-#### Fluxo `invite-team-member` (gestor convida membro)
-Mesmo comportamento: enviar email com credenciais apos criar o membro da equipe.
-
-### 2. Template do email
-
-Email HTML com visual profissional usando as cores da Linkou (roxo `#7C3AED`), contendo:
-- Logo ou nome "Linkou" no topo
-- Saudacao personalizada com o nome
-- Credenciais (email e senha)
-- Botao "Acessar Plataforma" apontando para `/auth`
-- Aviso para trocar a senha no primeiro acesso
-- Rodape com dados da Linkou
-
-### 3. Implementacao tecnica
-
-A chamada ao email sera feita internamente na edge function usando `fetch` para o proprio endpoint `send-email`, passando o `SUPABASE_SERVICE_ROLE_KEY` como autorizacao. Isso evita dependencia externa e reutiliza a funcao ja criada.
+- O usuario e criado via Admin API (email ja confirmado automaticamente, sem email do Supabase)
+- O email de boas-vindas personalizado e enviado via Resend (remetente `contato@agencialinkou.com.br`)
+- O email chega na caixa de entrada, nao na lixeira
 
 ```text
-Fluxo:
-1. Admin clica "Criar Usuario"
-2. manage-users cria o usuario no Supabase Auth
-3. manage-users chama send-email internamente com as credenciais
-4. Usuario recebe email de boas-vindas
-5. Resposta de sucesso retorna ao frontend (mesmo que o email falhe)
+Fluxo atual (com problema):
+  ClientDetail.tsx -> supabase.auth.signUp() -> email padrao do Supabase (lixeira)
+
+Fluxo corrigido:
+  ClientDetail.tsx -> manage-users (create-user) -> email Resend personalizado (caixa de entrada)
 ```
 
-O envio do email sera feito em modo "fire and forget" - se falhar, nao bloqueia a criacao do usuario. Um log de erro sera registrado no console.
+## Mudancas tecnicas
 
-### Arquivos alterados
+### Arquivo: `src/pages/admin/ClientDetail.tsx`
 
-1. `supabase/functions/manage-users/index.ts` - Adicionar logica de envio de email nos fluxos `create-user` e `invite-team-member`
+Substituir o bloco `handleCreateUser` (linhas 538-561) para:
+
+1. Chamar `supabase.functions.invoke("manage-users", { body: { action: "create-user", email, password, full_name, role: "client", client_id } })`
+2. Usar o ID do usuario retornado para atualizar `ponto_focal` e `user_type` no profile
+3. Manter a logica de `set_ponto_focal` via RPC
+
+### Arquivo: `supabase/functions/manage-users/index.ts`
+
+Verificar se a action `create-user` ja retorna o ID do usuario criado na resposta (necessario para o frontend atualizar o profile com `ponto_focal` e `user_type`). Ajustar se necessario.
+
+## Resultado esperado
+
+- Admin cria usuario na pagina do cliente
+- Email de boas-vindas profissional chega via Resend com credenciais
+- Nenhum email padrao do Supabase e enviado
+- Usuario ja chega com email confirmado
