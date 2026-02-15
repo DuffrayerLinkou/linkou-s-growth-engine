@@ -14,6 +14,7 @@ import {
   FileDown,
   Star,
   BookOpen,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import { useClientPermissions } from "@/hooks/useClientPermissions";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
-type PermissionKey = "canViewFinancials";
+type PermissionKey = "canViewFinancials" | "canManageTeam";
 
 const navItems: { href: string; icon: typeof LayoutDashboard; label: string; permission?: PermissionKey }[] = [
   { href: "/cliente", icon: LayoutDashboard, label: "Dashboard" },
@@ -37,6 +38,7 @@ const navItems: { href: string; icon: typeof LayoutDashboard; label: string; per
   { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
   { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
+  { href: "/cliente/minha-equipe", icon: Users, label: "Minha Equipe", permission: "canManageTeam" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
 
@@ -44,11 +46,11 @@ export function ClientLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { profile, signOut } = useAuth();
   const { theme } = useTheme();
-  const { userType, canViewFinancials } = useClientPermissions();
+  const { userType, canViewFinancials, canManageTeam } = useClientPermissions();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const permissions: Record<PermissionKey, boolean> = { canViewFinancials };
+  const permissions: Record<PermissionKey, boolean> = { canViewFinancials, canManageTeam: canManageTeam ?? false };
   const filteredNavItems = navItems.filter(
     (item) => !item.permission || permissions[item.permission]
   );
