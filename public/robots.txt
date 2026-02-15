@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://linkou-ecosystem-builder.lovable.app/sitemap.xml
+Sitemap: https://www.agencialinkou.com.br/sitemap.xml

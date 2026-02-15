@@ -17,8 +17,8 @@ const JSON_LD = {
   "@type": "ProfessionalService",
   "name": "Agência Linkou",
   "description": "Não gerenciamos contas. Criamos ecossistemas de tráfego e vendas que aprendem e evoluem. Treinamos seu ponto focal para assumir.",
-  "url": "https://linkou-ecosystem-builder.lovable.app",
-  "image": "https://linkou-ecosystem-builder.lovable.app/og-image.png",
+  "url": "https://www.agencialinkou.com.br",
+  "image": "https://www.agencialinkou.com.br/og-image.png",
   "serviceType": [
     "Auditoria de Tráfego Pago",
     "Gestão de Tráfego Pago",
