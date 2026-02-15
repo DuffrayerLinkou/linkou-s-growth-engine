@@ -49,7 +49,6 @@ const CapturePage = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
 
   useEffect(() => {
@@ -136,10 +135,21 @@ const CapturePage = () => {
         });
       } catch {}
 
+      // Send thank you email to lead
+      try {
+        await supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "lead_submitted",
+            lead_name: formData.name.trim(),
+            lead_email: formData.email.trim(),
+          },
+        });
+      } catch {}
+
       if (page?.thank_you_redirect_url) {
         window.location.href = page.thank_you_redirect_url;
       } else {
-        setSubmitted(true);
+        navigate(`/c/${slug}/obrigado`);
       }
     } catch {
       toast({ variant: "destructive", title: "Erro ao enviar", description: "Tente novamente." });
@@ -161,24 +171,6 @@ const CapturePage = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <h1 className="text-2xl font-bold">Página não encontrada</h1>
         <p className="text-muted-foreground">Esta página de captura não existe ou foi desativada.</p>
-      </div>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center p-6"
-        style={{ backgroundColor: page.background_color, color: page.text_color }}
-      >
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center max-w-md space-y-6"
-        >
-          <CheckCircle2 className="h-16 w-16 mx-auto" style={{ color: page.primary_color }} />
-          <h2 className="text-3xl font-bold">{page.thank_you_message}</h2>
-        </motion.div>
       </div>
     );
   }
