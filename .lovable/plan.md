@@ -1,197 +1,99 @@
 
 
-# Autonomia Total para o Cliente: Plano de Empoderamento
+# Minha Equipe: Gestao de Usuarios pelo Cliente Manager
 
-## Visao Geral
+## Problema
 
-Atualmente o usuario cliente funciona como um "espectador" - ele ve tarefas, campanhas, agendamentos e arquivos que foram criados pelo admin. A proposta e transformar o cliente (gestor e/ou ponto focal) em um **gestor autonomo** do seu proprio marketing, capaz de criar, gerenciar e executar sem depender do admin.
+Hoje, apenas o admin pode criar usuarios via a edge function `manage-users`. O cliente manager nao consegue adicionar funcionarios (operadores) a sua propria equipe. Para autonomia total, o manager precisa convidar e gerenciar membros do seu time.
 
-## Diagnostico: O que o cliente NAO consegue fazer hoje
+## Solucao
 
-| Funcionalidade | Situacao Atual | Ideal |
+Criar uma pagina "Minha Equipe" e estender a edge function `manage-users` com acoes especificas para o manager, limitadas ao escopo do seu `client_id`.
+
+## Matriz de Acoes do Manager
+
+| Acao | Permitido | Restricao |
 |---|---|---|
-| Tarefas | Apenas visualiza e conclui tarefas criadas pelo admin | Criar suas proprias tarefas internas |
-| Campanhas | Apenas visualiza e aprova campanhas do admin | Criar briefings/solicitacoes de campanhas |
-| Projetos | Nao tem acesso | Ver seus projetos e progresso |
-| Agendamentos | Apenas visualiza reunioes agendadas | Solicitar/agendar reunioes |
-| Metricas | Apenas visualiza (manager) | Adicionar metas e comentar |
-| Minha Conta | Somente leitura | Editar nome, telefone, avatar |
-| Base de Conhecimento | Conteudo estatico/fixo | Acessar documentos e guias do proprio projeto |
+| Ver membros da equipe | Sim | Somente usuarios com mesmo client_id |
+| Convidar novo membro | Sim | Sempre como role `client`, sempre vinculado ao seu client_id |
+| Definir ponto focal | Sim | Apenas dentro da sua equipe |
+| Definir user_type (operator/manager) | Sim | Apenas dentro da sua equipe |
+| Remover membro | Nao | Somente admin pode excluir usuarios |
+| Alterar roles (admin, account_manager) | Nao | Somente admin |
 
-## Mudancas Propostas (Ordenadas por Impacto)
+## Mudancas Planejadas
 
-### Fase 1 - Criacao e Gestao (maior impacto)
+### 1. Estender Edge Function `manage-users`
 
-#### 1.1 Cliente pode criar tarefas proprias
-**Arquivo:** `src/pages/cliente/Tarefas.tsx`
+**Arquivo:** `supabase/functions/manage-users/index.ts`
 
-- Adicionar botao "Nova Tarefa" (visivel para ponto_focal e manager)
-- Dialog de criacao com campos: titulo, descricao, prioridade, data limite
-- Tarefas criadas pelo cliente terao `executor_type = "client"` e `assigned_to = user.id` automaticamente
-- `visible_to_client = true` e `journey_phase` baseado na fase atual do cliente
-- Permissao: ponto focal e manager podem criar; operator pode ver
+Adicionar duas novas acoes alem das existentes (que continuam exclusivas do admin):
 
-#### 1.2 Cliente pode solicitar campanhas (Briefing Request)
-**Arquivo:** `src/pages/cliente/Campanhas.tsx`
+- **`list-team`**: Retorna usuarios com o mesmo `client_id` do manager. Nao requer ser admin, mas requer ser `manager` (verificado via `user_type` no profile) e ter um `client_id`.
 
-- Adicionar botao "Solicitar Campanha" (ponto_focal e manager)
-- Formulario simplificado de briefing: nome, objetivo, publico-alvo, mensagem principal, materiais de referencia (upload), prazo desejado
-- Campanha criada com `status = "draft"` automaticamente
-- Admin recebe notificacao e complementa os dados tecnicos (plataforma, orcamento, segmentacao)
-- Permissao: ponto focal e manager
+- **`invite-team-member`**: Cria um novo usuario com role `client`, vinculado ao `client_id` do manager. Campos aceitos: email, password, full_name, user_type (operator ou manager), ponto_focal. O `client_id` e forcado para ser o mesmo do manager (nao aceita input do frontend).
 
-#### 1.3 Cliente pode agendar reunioes
-**Arquivo:** `src/pages/cliente/Agendamentos.tsx`
+- **`update-team-member`**: Permite ao manager alterar `full_name`, `user_type` e `ponto_focal` de um membro da sua equipe. Valida que o usuario alvo pertence ao mesmo `client_id`.
 
-- Adicionar botao "Solicitar Reuniao"
-- Campos: tipo (alinhamento, revisao, duvida), data/hora sugerida, descricao
-- Agendamento criado com `status = "pending"` para admin confirmar
-- Permissao: todos os perfis de cliente
+A logica de autorizacao funciona assim:
+1. Acoes existentes (list-users, create-user, update-user, delete-user) continuam exigindo role `admin`
+2. Novas acoes (list-team, invite-team-member, update-team-member) exigem `user_type = 'manager'` e `client_id != null`
+3. Todas as operacoes de equipe sao restritas ao `client_id` do manager autenticado
 
-### Fase 2 - Edicao e Personalizacao
+### 2. Nova Pagina "Minha Equipe"
 
-#### 2.1 Minha Conta editavel
-**Arquivo:** `src/pages/cliente/MinhaConta.tsx`
-
-- Transformar campos em formulario editavel
-- Permitir alterar: nome completo, telefone, avatar (upload de foto)
-- Email continua read-only (vem do auth)
-- Botao "Salvar" que atualiza tabela `profiles`
-
-#### 2.2 Gestao de equipe do cliente (Manager only)
 **Novo arquivo:** `src/pages/cliente/MinhaEquipe.tsx`
 
-- Manager pode visualizar os usuarios vinculados ao mesmo `client_id`
-- Ver quem e ponto focal, quem e operator
-- Solicitar adição de novo usuario (gera pedido para admin)
-- Nao pode alterar roles diretamente (seguranca)
+Pagina acessivel apenas para managers (`canManageTeam`) com:
 
-### Fase 3 - Inteligencia e Autonomia
+- **Lista de membros**: Tabela com nome, email, tipo (operator/manager), e se e ponto focal
+- **Botao "Convidar Membro"**: Dialog com campos:
+  - Email (obrigatorio)
+  - Senha temporaria (obrigatorio)
+  - Nome completo
+  - Tipo: Operador ou Gestor (select)
+  - Ponto Focal (switch)
+- **Edicao inline**: Botao de editar em cada membro para alterar tipo e ponto focal
+- **Indicadores visuais**: Badges para "Gestor", "Ponto Focal", "Voce" (usuario logado)
 
-#### 3.1 Notas e comentarios em metricas
-**Arquivo:** `src/pages/cliente/MetricasTrafego.tsx`
+### 3. Navegacao e Rota
 
-- Manager pode adicionar notas/observacoes em cada mes de metrica
-- Campo "Meta do mes" para definir objetivos (ex: "Atingir 50 leads")
-- Comparativo automatico meta vs realizado
+**Arquivo:** `src/layouts/ClientLayout.tsx`
+- Adicionar item "Minha Equipe" com icone `Users` e `permission: "canManageTeam"`
 
-#### 3.2 Documentos do projeto na Base de Conhecimento
-**Arquivo:** `src/pages/cliente/BaseConhecimento.tsx`
+**Arquivo:** `src/App.tsx`
+- Adicionar rota `/cliente/minha-equipe` apontando para `MinhaEquipe`
 
-- Alem dos guias estaticos, incluir uma aba "Meus Documentos"
-- Puxa arquivos do tipo `deliverable` da tabela `files`
-- Inclui briefings aprovados, relatorios, e materiais entregues
-- Organizado por projeto e data
-
----
+**Arquivo:** `src/hooks/useClientPermissions.ts`
+- Adicionar `"canManageTeam"` ao tipo `PermissionKey` no ClientLayout
 
 ## Detalhes Tecnicos
 
-### Permissoes para criacao (useClientPermissions atualizado)
+### Autorizacao na Edge Function (novas acoes)
 
-```typescript
-// Novas permissoes adicionadas ao hook existente
-canCreateTasks: isPontoFocal || userType === "manager",
-canRequestCampaigns: isPontoFocal || userType === "manager",
-canScheduleAppointments: true, // todos
-canEditProfile: true, // todos
-canManageTeam: userType === "manager",
-canAddMetricNotes: userType === "manager",
+```text
+Para list-team, invite-team-member, update-team-member:
+
+1. Obter user via auth token
+2. Buscar profile do user (client_id, user_type)
+3. Verificar: user_type === 'manager' AND client_id IS NOT NULL
+4. Se nao, retornar 403
+5. Todas as queries filtradas por client_id do manager
 ```
 
-### Formulario de criacao de tarefa
+### Seguranca
 
-Campos simplificados (sem complexidade do admin):
-- Titulo (obrigatorio)
-- Descricao (opcional, textarea)
-- Prioridade (select: baixa, media, alta, urgente)
-- Data limite (date picker, opcional)
-
-Campos preenchidos automaticamente:
-- `client_id`: do clientInfo
-- `executor_type`: "client"
-- `assigned_to`: user.id
-- `visible_to_client`: true
-- `journey_phase`: fase atual do cliente
-- `status`: "todo"
-
-### Formulario de solicitacao de campanha
-
-Campos simplificados (foco no briefing):
-- Nome da campanha (obrigatorio)
-- Objetivo (select: gerar leads, vendas, reconhecimento, engajamento)
-- Descricao / mensagem principal (textarea)
-- Publico-alvo (textarea livre)
-- Prazo desejado (date picker)
-- Material de referencia (upload opcional)
-
-Campos preenchidos automaticamente:
-- `client_id`: do clientInfo
-- `status`: "draft"
-- `platform`: null (admin define depois)
-- `budget`/`daily_budget`: null (admin define)
-
-### Formulario de agendamento
-
-- Titulo (obrigatorio)
-- Tipo (select: alinhamento, revisao, duvida, outro)
-- Data e hora sugerida (datetime picker)
-- Duracao estimada (select: 30min, 1h, 1h30)
-- Descricao (textarea)
-
-Campos automaticos:
-- `client_id`: do clientInfo
-- `created_by`: user.id
-- `status`: "pending"
-
-### Edicao de perfil
-
-Campos editaveis:
-- `full_name` (input text)
-- `phone` (input tel)
-- `avatar_url` (upload de imagem)
-
-Update via: `supabase.from("profiles").update({...}).eq("id", user.id)`
-
-### Nova rota e navegacao
-
-```typescript
-// App.tsx - nova rota
-<Route path="minha-equipe" element={<MinhaEquipe />} />
-
-// ClientLayout.tsx - novo nav item (condicional)
-{ href: "/cliente/minha-equipe", icon: Users, label: "Minha Equipe", permission: "canManageTeam" }
-```
+- O manager NAO pode escolher o client_id do novo usuario (e forcado pelo backend)
+- O manager NAO pode criar usuarios com role admin ou account_manager (forcado como `client`)
+- O manager NAO pode editar usuarios fora do seu client_id (validacao no backend)
+- O manager NAO pode excluir usuarios (acao nao disponivel)
+- Senhas temporarias sao definidas na criacao; o usuario pode trocar depois
 
 ### Arquivos alterados/criados
 
-**Alterados:**
-1. `src/hooks/useClientPermissions.ts` - novas permissoes
-2. `src/pages/cliente/Tarefas.tsx` - botao + dialog de criacao
-3. `src/pages/cliente/Campanhas.tsx` - botao + dialog de solicitacao
-4. `src/pages/cliente/Agendamentos.tsx` - botao + dialog de agendamento
-5. `src/pages/cliente/MinhaConta.tsx` - formulario editavel
-6. `src/pages/cliente/BaseConhecimento.tsx` - aba "Meus Documentos"
-7. `src/layouts/ClientLayout.tsx` - novo item de navegacao
-8. `src/App.tsx` - nova rota
-
-**Criados:**
-1. `src/pages/cliente/MinhaEquipe.tsx` - gestao de equipe do cliente
-
----
-
-## Recomendacao de Implementacao
-
-Dado o volume, sugiro implementar em **3 etapas**:
-
-**Etapa 1** (prioridade alta): Criacao de tarefas + Solicitacao de campanhas + Agendamento de reunioes
-- Sao as funcoes que mais impactam a autonomia do cliente
-
-**Etapa 2**: Edicao de perfil + Base de Conhecimento com documentos do projeto
-- Melhoram a experiencia mas nao sao bloqueantes
-
-**Etapa 3**: Gestao de equipe + Notas em metricas
-- Funcoes avancadas para gestores maduros
-
-Qual etapa voce quer comecar?
+1. `supabase/functions/manage-users/index.ts` - novas acoes (list-team, invite-team-member, update-team-member)
+2. `src/pages/cliente/MinhaEquipe.tsx` - nova pagina
+3. `src/layouts/ClientLayout.tsx` - novo nav item com permissao
+4. `src/App.tsx` - nova rota
+5. `src/hooks/useClientPermissions.ts` - sem mudanca de logica (canManageTeam ja existe), apenas atualizar PermissionKey type no layout
 
