@@ -57,6 +57,79 @@ function jsonResponse(data: unknown, status = 200) {
   })
 }
 
+// ── Welcome email ──
+
+function buildWelcomeEmailHtml(name: string, email: string, password: string): string {
+  const displayName = name || 'Usuário'
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f7;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 0;">
+<tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+  <tr><td style="background:#7C3AED;padding:32px;text-align:center;">
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;">Linkou</h1>
+  </td></tr>
+  <tr><td style="padding:36px 32px 24px;">
+    <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">Olá, ${displayName}! 👋</h2>
+    <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Sua conta na plataforma da <strong>Linkou</strong> foi criada com sucesso. Abaixo estão suas credenciais de acesso:</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f5ff;border-radius:8px;border:1px solid #e9dffc;margin-bottom:24px;">
+      <tr><td style="padding:20px;">
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">E-mail de acesso</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;">${email}</p>
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">Senha temporária</p>
+        <p style="margin:0;color:#1a1a2e;font-size:15px;font-weight:600;">${password}</p>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <a href="https://www.agencialinkou.com.br/auth" style="display:inline-block;background:#7C3AED;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;">Acessar Plataforma</a>
+      </td></tr>
+    </table>
+    <p style="margin:24px 0 0;padding:16px;background:#fff8e1;border-radius:8px;color:#7a6520;font-size:13px;line-height:1.5;">⚠️ Recomendamos que você troque sua senha no primeiro acesso para garantir a segurança da sua conta.</p>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0;color:#9e9eb8;font-size:12px;">Linkou — Marketing de Performance</p>
+    <p style="margin:4px 0 0;color:#9e9eb8;font-size:12px;">agencialinkou.com.br</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+}
+
+async function sendWelcomeEmail(email: string, name: string, password: string) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: 'Bem-vindo(a) à plataforma Linkou! 🚀',
+        html: buildWelcomeEmailHtml(name, email, password),
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('Welcome email failed:', err)
+    } else {
+      console.log('Welcome email sent to', email)
+    }
+  } catch (e) {
+    console.error('Welcome email error:', e)
+  }
+}
+
 // ── Admin-only actions ──
 
 async function handleAdminActions(action: string, payload: Record<string, unknown>, adminClient: ReturnType<typeof createClient>) {
@@ -95,6 +168,9 @@ async function handleAdminActions(action: string, payload: Record<string, unknow
         await adminClient.from('user_roles').delete().eq('user_id', newUser.user.id).eq('role', 'client')
         await adminClient.from('user_roles').insert({ user_id: newUser.user.id, role })
       }
+
+      // Fire-and-forget welcome email
+      sendWelcomeEmail(email, full_name || '', password)
 
       return jsonResponse({ user: newUser.user })
     }
@@ -168,7 +244,6 @@ async function handleTeamActions(action: string, payload: Record<string, unknown
         return jsonResponse({ error: 'Email and password are required' }, 400)
       }
 
-      // Restrict user_type to operator or manager only
       const safeUserType = user_type === 'manager' ? 'manager' : 'operator'
 
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -179,14 +254,15 @@ async function handleTeamActions(action: string, payload: Record<string, unknown
       })
       if (createError) throw createError
 
-      // Update profile with client_id, user_type, ponto_focal — forced to manager's client
       await adminClient.from('profiles').update({
         client_id: managerClientId,
         user_type: safeUserType,
         ponto_focal: ponto_focal === true,
       }).eq('id', newUser.user.id)
 
-      // Role is always 'client' — the default from handle_new_user trigger
+      // Fire-and-forget welcome email
+      sendWelcomeEmail(email as string, (full_name as string) || '', password as string)
+
       return jsonResponse({ user: newUser.user })
     }
 
@@ -195,7 +271,6 @@ async function handleTeamActions(action: string, payload: Record<string, unknown
 
       if (!user_id) return jsonResponse({ error: 'user_id is required' }, 400)
 
-      // Verify target belongs to same client
       const { data: target } = await adminClient
         .from('profiles')
         .select('client_id')
