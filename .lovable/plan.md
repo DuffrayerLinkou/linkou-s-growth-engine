@@ -1,73 +1,52 @@
 
-
-# Integracao Resend - Envio de Emails
+# Integrar Envio de Email na Criacao de Usuarios
 
 ## O que sera feito
 
-Criar uma edge function `send-email` que usa a API do Resend para enviar emails a partir do dominio `agencialinkou.com.br`, e integrar nos fluxos existentes (notificacao de leads, etc).
-
-## Pre-requisito: Adicionar o Secret
-
-Antes de implementar, preciso adicionar o secret `RESEND_API_KEY` ao projeto. Isso sera feito via ferramenta de secrets do Lovable no momento da implementacao.
+Quando um novo usuario for criado (via painel admin ou convite de equipe), o sistema enviara automaticamente um email de boas-vindas com as credenciais de acesso.
 
 ## Mudancas
 
-### 1. Adicionar secret `RESEND_API_KEY`
+### 1. Edge Function `manage-users/index.ts`
 
-Solicitar ao usuario que cole a API Key do Resend quando o campo aparecer.
+Adicionar chamada ao `send-email` apos a criacao do usuario em dois fluxos:
 
-### 2. Nova Edge Function `send-email`
+#### Fluxo `create-user` (admin cria usuario)
+Apos criar o usuario com sucesso, enviar email de boas-vindas contendo:
+- Nome do usuario
+- Email de login
+- Senha temporaria (a que o admin definiu)
+- Link para acessar a plataforma (`https://www.agencialinkou.com.br/auth`)
+- Orientacao para trocar a senha
 
-**Arquivo:** `supabase/functions/send-email/index.ts`
+#### Fluxo `invite-team-member` (gestor convida membro)
+Mesmo comportamento: enviar email com credenciais apos criar o membro da equipe.
 
-Funcao generica de envio de email via Resend API (`https://api.resend.com/emails`), que aceita:
-- `to`: destinatario(s)
-- `subject`: assunto
-- `html`: corpo HTML do email
-- `from`: remetente (default: `Linkou <contato@agencialinkou.com.br>`)
-- `reply_to`: opcional
+### 2. Template do email
 
-Validacao de autenticacao: apenas usuarios logados ou chamadas internas (com service role key) podem enviar emails.
+Email HTML com visual profissional usando as cores da Linkou (roxo `#7C3AED`), contendo:
+- Logo ou nome "Linkou" no topo
+- Saudacao personalizada com o nome
+- Credenciais (email e senha)
+- Botao "Acessar Plataforma" apontando para `/auth`
+- Aviso para trocar a senha no primeiro acesso
+- Rodape com dados da Linkou
 
-### 3. Registrar no config.toml
+### 3. Implementacao tecnica
 
-**Arquivo:** `supabase/config.toml`
-
-Adicionar:
-```text
-[functions.send-email]
-verify_jwt = false
-```
-
-### 4. Integracao opcional nos fluxos
-
-Apos a funcao estar funcionando, ela pode ser chamada de qualquer lugar do sistema:
-- Notificacao de novo lead para o admin
-- Confirmacao de cadastro para o lead
-- Alertas de tarefas vencidas
-- Qualquer automacao futura
-
-A integracao nos fluxos sera feita sob demanda apos validar que o envio basico funciona.
-
-## Detalhes Tecnicos
-
-### Estrutura da Edge Function
+A chamada ao email sera feita internamente na edge function usando `fetch` para o proprio endpoint `send-email`, passando o `SUPABASE_SERVICE_ROLE_KEY` como autorizacao. Isso evita dependencia externa e reutiliza a funcao ja criada.
 
 ```text
-1. Validar CORS (OPTIONS)
-2. Verificar secret RESEND_API_KEY
-3. Autenticar usuario (token ou service role)
-4. Extrair parametros do body (to, subject, html, from, reply_to)
-5. Chamar POST https://api.resend.com/emails com headers Authorization: Bearer RESEND_API_KEY
-6. Retornar resultado
+Fluxo:
+1. Admin clica "Criar Usuario"
+2. manage-users cria o usuario no Supabase Auth
+3. manage-users chama send-email internamente com as credenciais
+4. Usuario recebe email de boas-vindas
+5. Resposta de sucesso retorna ao frontend (mesmo que o email falhe)
 ```
 
-### Remetente padrao
+O envio do email sera feito em modo "fire and forget" - se falhar, nao bloqueia a criacao do usuario. Um log de erro sera registrado no console.
 
-`Linkou <contato@agencialinkou.com.br>` - usando o dominio ja verificado no Resend.
+### Arquivos alterados
 
-### Arquivos criados/alterados
-
-1. `supabase/functions/send-email/index.ts` - nova edge function
-2. `supabase/config.toml` - registro da funcao
-
+1. `supabase/functions/manage-users/index.ts` - Adicionar logica de envio de email nos fluxos `create-user` e `invite-team-member`
