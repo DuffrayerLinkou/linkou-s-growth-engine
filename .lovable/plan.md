@@ -1,97 +1,73 @@
 
 
-# Otimizacao de SEO e Remocao de Referencias Lovable
+# Integracao Resend - Envio de Emails
 
-## Problemas Identificados
+## O que sera feito
 
-### 1. Referencias ao Lovable em todo o codigo
-Existem 4 arquivos com URLs e imagens apontando para o dominio Lovable:
+Criar uma edge function `send-email` que usa a API do Resend para enviar emails a partir do dominio `agencialinkou.com.br`, e integrar nos fluxos existentes (notificacao de leads, etc).
 
-- **`index.html`**: og:url, og:image, twitter:image e canonical usam `linkou-ecosystem-builder.lovable.app` e `lovable.dev/opengraph-image`
-- **`public/sitemap.xml`**: Todas as 5 URLs usam o dominio Lovable
-- **`public/robots.txt`**: Sitemap aponta para dominio Lovable
-- **`src/pages/Index.tsx`**: JSON-LD Schema com URL Lovable
+## Pre-requisito: Adicionar o Secret
 
-### 2. SPA e SEO - Problema Critico
-O site e uma SPA (Single Page Application). Isso significa que o `index.html` enviado ao Google contem apenas `<div id="root"></div>`. Os meta tags injetados via JavaScript pelo `TrackingScripts.tsx` **nao sao lidos pelos crawlers** na maioria dos casos.
+Antes de implementar, preciso adicionar o secret `RESEND_API_KEY` ao projeto. Isso sera feito via ferramenta de secrets do Lovable no momento da implementacao.
 
-**Consequencia:** O Google vai indexar apenas o que esta no `index.html` estatico - que hoje ainda tem os dados corretos (titulo, descricao), mas as alteracoes feitas via painel admin (SEO Tab) nao sao refletidas para os buscadores.
+## Mudancas
 
-### 3. Badge "Edit in Lovable"
-Pode ser removido sem codigo: nas configuracoes do projeto Lovable, ative "Hide 'Lovable' Badge".
+### 1. Adicionar secret `RESEND_API_KEY`
 
----
+Solicitar ao usuario que cole a API Key do Resend quando o campo aparecer.
 
-## Solucao Proposta
+### 2. Nova Edge Function `send-email`
 
-### Etapa 1 - Substituir todas as referencias Lovable
+**Arquivo:** `supabase/functions/send-email/index.ts`
 
-Trocar todas as URLs pelo seu dominio real. Se voce ja conectou um dominio customizado (ex: `linkou.com.br`), usaremos ele. Caso contrario, mantemos o dominio Lovable mas atualizamos as imagens OG.
+Funcao generica de envio de email via Resend API (`https://api.resend.com/emails`), que aceita:
+- `to`: destinatario(s)
+- `subject`: assunto
+- `html`: corpo HTML do email
+- `from`: remetente (default: `Linkou <contato@agencialinkou.com.br>`)
+- `reply_to`: opcional
 
-**Arquivos a alterar:**
+Validacao de autenticacao: apenas usuarios logados ou chamadas internas (com service role key) podem enviar emails.
 
-#### `index.html`
-- `og:url` → seu dominio
-- `og:image` → URL da sua propria imagem OG (1200x630px)
-- `twitter:image` → mesma imagem OG
-- `canonical` → seu dominio
+### 3. Registrar no config.toml
 
-#### `public/sitemap.xml`
-- Trocar todas as 5 URLs para o dominio correto
+**Arquivo:** `supabase/config.toml`
 
-#### `public/robots.txt`
-- Atualizar URL do sitemap
+Adicionar:
+```text
+[functions.send-email]
+verify_jwt = false
+```
 
-#### `src/pages/Index.tsx`
-- Atualizar `url` no JSON-LD Schema
+### 4. Integracao opcional nos fluxos
 
-### Etapa 2 - Melhorar SEO para SPA
+Apos a funcao estar funcionando, ela pode ser chamada de qualquer lugar do sistema:
+- Notificacao de novo lead para o admin
+- Confirmacao de cadastro para o lead
+- Alertas de tarefas vencidas
+- Qualquer automacao futura
 
-Como os meta tags dinamicos do TrackingScripts nao sao lidos pelos crawlers, precisamos garantir que o `index.html` estatico tenha os dados corretos.
-
-**Abordagem:** Manter os meta tags estaticos no `index.html` como fonte primaria de SEO (ja estao la) e usar o TrackingScripts apenas como complemento para quando o usuario altera via painel.
-
-O que ja funciona bem:
-- Title, description, og:title, og:description no index.html (estatico, visivel para crawlers)
-- robots.txt e sitemap.xml (estaticos, visiveis para crawlers)
-- JSON-LD Schema (injetado via JS, Google consegue ler na maioria dos casos)
-
-**Melhoria adicional:** Adicionar meta tag `google-site-verification` diretamente no `index.html` para que o Google Search Console funcione sem depender do TrackingScripts.
-
-### Etapa 3 - Criar imagem OG propria
-
-Atualmente a imagem OG aponta para `lovable.dev/opengraph-image`. Voce precisa:
-1. Criar uma imagem 1200x630px com a marca Linkou
-2. Fazer upload para o Storage do Supabase ou usar uma URL publica
-3. Atualizar no index.html e na SeoTab do admin
-
----
+A integracao nos fluxos sera feita sob demanda apos validar que o envio basico funciona.
 
 ## Detalhes Tecnicos
 
-### Arquivos alterados
+### Estrutura da Edge Function
 
-1. **`index.html`** - Atualizar og:url, og:image, twitter:image, canonical
-2. **`public/sitemap.xml`** - Atualizar todas as URLs
-3. **`public/robots.txt`** - Atualizar URL do sitemap
-4. **`src/pages/Index.tsx`** - Atualizar URL no JSON-LD
+```text
+1. Validar CORS (OPTIONS)
+2. Verificar secret RESEND_API_KEY
+3. Autenticar usuario (token ou service role)
+4. Extrair parametros do body (to, subject, html, from, reply_to)
+5. Chamar POST https://api.resend.com/emails com headers Authorization: Bearer RESEND_API_KEY
+6. Retornar resultado
+```
 
-### Sobre dominio customizado
+### Remetente padrao
 
-Se voce ainda nao conectou um dominio customizado, pode fazer isso em Project Settings, Domains no Lovable. Um plano pago e necessario. Enquanto isso, as URLs continuarao com `linkou-ecosystem-builder.lovable.app` mas sem as imagens/referencias visuais do Lovable.
+`Linkou <contato@agencialinkou.com.br>` - usando o dominio ja verificado no Resend.
 
-### Sobre o badge
+### Arquivos criados/alterados
 
-Para remover o selo "Edit in Lovable" que aparece no canto do site:
-1. Abra as configuracoes do projeto no Lovable
-2. Ative a opcao "Hide 'Lovable' Badge"
-3. Nao requer alteracao de codigo
-
-### Checklist SEO pos-implementacao
-
-- Verificar Google Search Console (adicionar propriedade com seu dominio)
-- Submeter sitemap.xml manualmente no Search Console
-- Testar compartilhamento no Facebook Debugger (developers.facebook.com/tools/debug)
-- Testar Twitter Card Validator
-- Criar e fazer upload da imagem OG personalizada
+1. `supabase/functions/send-email/index.ts` - nova edge function
+2. `supabase/config.toml` - registro da funcao
 
