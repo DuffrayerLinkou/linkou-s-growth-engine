@@ -1,147 +1,83 @@
 
-# Sistema Completo de Notificacoes por Email
 
-## Visao Geral
+# Email de Agradecimento ao Lead + Pagina de Obrigado para Capturas
 
-Criar uma arquitetura centralizada de templates de email e implementar disparos automaticos em todos os momentos-chave da jornada do usuario na plataforma Linkou. Cada notificacao tera um template HTML profissional e consistente.
+## Problema 1: Nenhum email de agradecimento e enviado ao lead
 
----
+Quando um lead preenche o formulario na landing page (`ContactForm.tsx`) ou numa pagina de captura (`CapturePage.tsx`), o sistema salva o lead no banco, dispara CAPI (Meta/TikTok), mas nao envia nenhum email de confirmacao ao lead informando que o contato foi recebido.
 
-## Arquitetura: Template Base Reutilizavel
+## Problema 2: Paginas de captura mostram mensagem inline ao inves de pagina dedicada
 
-Criar um arquivo compartilhado `supabase/functions/_shared/email-templates.ts` com:
-
-- **Layout base** (header com marca Linkou, corpo, rodape/assinatura)
-- **Assinatura padrao** com dados da agencia e links de redes sociais
-- **Funcoes auxiliares** para cada tipo de email
-- **Funcao `sendNotificationEmail`** que centraliza o envio via `send-email`
-
-```text
-Estrutura:
-  supabase/functions/_shared/email-templates.ts   <- Templates + assinatura
-  supabase/functions/_shared/email-sender.ts      <- Funcao de envio centralizada
-```
-
-### Assinatura padrao (rodape de todos os emails)
-
-- Logo/nome "Linkou"
-- Texto: "Linkou -- Marketing de Performance"
-- Link: agencialinkou.com.br
-- Cor primaria: #7C3AED
+As paginas de captura (`/c/:slug`) atualmente mostram um `<div>` inline com a mensagem de obrigado (`setSubmitted(true)`). Isso impede a metrificacao da conversao via pixel, pois nao ha mudanca de URL para configurar como evento de destino nos gerenciadores de anuncios.
 
 ---
 
-## Categorias de Email e Cenarios
+## Solucao
 
-### Categoria 1: Conta e Acesso
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Boas-vindas (ja existe) | Novo usuario | Admin cria usuario ou gestor convida membro |
-| Senha alterada pelo admin | Usuario afetado | Admin altera senha via painel |
+### 1. Novo template de email: agradecimento ao lead
 
-### Categoria 2: Tarefas
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Nova tarefa atribuida | Usuario do cliente (ponto focal) | Tarefas sao criadas para o cliente |
-| Tarefa concluida | Admin + ponto focal do cliente | Status muda para "completed" |
-| Lembrete de prazo (ja existe como notificacao in-app) | Usuario + responsavel | Prazo hoje ou amanha (via cron) |
+Adicionar em `email-templates.ts` uma funcao `leadThankYouEmail(name)` que gera um email profissional agradecendo pelo contato e informando o prazo de retorno (24h uteis).
 
-### Categoria 3: Campanhas
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Campanha pendente de aprovacao | Ponto focal do cliente | Campanha muda para status "pending_approval" |
-| Campanha aprovada | Admin que criou a campanha | Ponto focal aprova a campanha |
+### 2. Novo event_type no notify-email: `lead_submitted`
 
-### Categoria 4: Agendamentos
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Novo agendamento | Usuario do cliente + admin | Agendamento e criado |
-| Lembrete de agendamento | Todos os envolvidos | 24h antes do agendamento (via cron) |
+Adicionar no `notify-email/index.ts` o handler para `lead_submitted` que:
+- Envia email de agradecimento ao lead (usando o email informado no formulario)
+- Nao precisa buscar ponto focal -- o destinatario e o proprio lead
 
-### Categoria 5: Jornada do Cliente
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Mudanca de fase | Ponto focal do cliente | Admin muda a fase do cliente (diagnostico -> estruturacao, etc.) |
+### 3. Disparar notify-email no ContactForm.tsx
 
-### Categoria 6: Comentarios
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Novo comentario em campanha | Admin (se comentou cliente) ou ponto focal (se comentou admin) | Comentario e adicionado |
+Apos o insert do lead na landing page, chamar `notify-email` com `event_type: "lead_submitted"` passando nome e email do lead.
 
-### Categoria 7: Pagamentos
-| Cenario | Destinatario | Disparado quando |
-|---------|-------------|------------------|
-| Novo pagamento registrado | Ponto focal do cliente | Admin registra pagamento |
-| Pagamento vencendo | Ponto focal do cliente | Vencimento em 3 dias (via cron) |
+### 4. Disparar notify-email no CapturePage.tsx
+
+Apos o insert do lead nas paginas de captura, chamar `notify-email` com `event_type: "lead_submitted"`.
+
+### 5. Pagina de obrigado dedicada para capturas
+
+Criar uma rota `/c/:slug/obrigado` com uma pagina generica de agradecimento que:
+- Busca os dados da pagina de captura pelo slug (cores, logo, mensagem)
+- Exibe a mensagem de agradecimento personalizada (`thank_you_message`)
+- Mantem o visual (cores, logo) da pagina de captura original
+- Permite metrificacao via pixel (URL unica por captura)
+
+No `CapturePage.tsx`, substituir o `setSubmitted(true)` por `navigate(\`/c/${slug}/obrigado\`)`.
+
+Se a pagina tiver `thank_you_redirect_url` configurado, continua redirecionando para a URL externa (comportamento atual mantido).
+
+### 6. Registrar a nova rota no App.tsx
+
+Adicionar `<Route path="/c/:slug/obrigado">` apontando para o novo componente.
 
 ---
 
-## Implementacao Tecnica
-
-### Fase 1: Infraestrutura (base)
-
-**Arquivo: `supabase/functions/_shared/email-templates.ts`**
-
-Contera:
-- `baseEmailLayout(content: string)` -- wrapper HTML com header Linkou + assinatura/rodape
-- Funcoes de template por cenario: `welcomeEmail()`, `taskAssignedEmail()`, `campaignApprovalEmail()`, etc.
-- Todas retornam `{ subject: string, html: string }`
-
-**Arquivo: `supabase/functions/_shared/email-sender.ts`**
-
-Contera:
-- `sendNotificationEmail(to, subject, html)` -- faz fetch para `send-email` com service role key
-
-### Fase 2: Integracao nos fluxos existentes
-
-1. **`manage-users/index.ts`** -- Atualizar para usar templates do arquivo compartilhado (refatorar `buildWelcomeEmailHtml`)
-2. **`check-task-deadlines/index.ts`** -- Adicionar envio de email alem da notificacao in-app
-
-### Fase 3: Nova Edge Function para eventos em tempo real
-
-**Arquivo: `supabase/functions/notify-email/index.ts`**
-
-Uma edge function generica que aceita um `event_type` e dispara o email correto. Sera chamada pelo frontend nos momentos-chave:
-
-- Quando tarefas sao criadas para um cliente
-- Quando uma campanha muda para "pending_approval"
-- Quando ponto focal aprova uma campanha
-- Quando agendamento e criado
-- Quando fase do cliente muda
-- Quando comentarios sao adicionados
-- Quando pagamentos sao registrados
-- Quando admin altera senha de um usuario
-
-### Fase 4: Cron para lembretes
-
-Atualizar `check-task-deadlines/index.ts` para tambem:
-- Enviar email de lembrete de prazo (alem da notificacao in-app)
-- Verificar agendamentos nas proximas 24h e enviar lembrete
-- Verificar pagamentos vencendo em 3 dias
-
----
-
-## Arquivos a Criar/Alterar
+## Arquivos a criar/alterar
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/functions/_shared/email-templates.ts` | Criar -- templates HTML + assinatura |
-| `supabase/functions/_shared/email-sender.ts` | Criar -- funcao de envio centralizada |
-| `supabase/functions/notify-email/index.ts` | Criar -- edge function para eventos |
-| `supabase/functions/manage-users/index.ts` | Alterar -- usar template compartilhado |
-| `supabase/functions/check-task-deadlines/index.ts` | Alterar -- adicionar envio de email |
-| `supabase/config.toml` | Alterar -- registrar nova funcao |
-| `src/pages/admin/ClientDetail.tsx` | Alterar -- chamar notify-email em mudanca de fase, criacao de tarefas |
-| `src/components/cliente/ApprovalButton.tsx` | Alterar -- chamar notify-email ao aprovar campanha |
-| `src/components/cliente/CommentSection.tsx` | Alterar -- chamar notify-email ao comentar |
-| `src/components/cliente/RequestAppointmentDialog.tsx` | Alterar -- chamar notify-email ao agendar |
+| `supabase/functions/_shared/email-templates.ts` | Adicionar `leadThankYouEmail()` |
+| `supabase/functions/notify-email/index.ts` | Adicionar handler `lead_submitted` |
+| `src/components/landing/ContactForm.tsx` | Chamar `notify-email` apos insert do lead |
+| `src/pages/CapturePage.tsx` | Chamar `notify-email` + redirecionar para `/c/:slug/obrigado` |
+| `src/pages/CaptureThankYou.tsx` | Criar pagina de obrigado para capturas |
+| `src/App.tsx` | Adicionar rota `/c/:slug/obrigado` |
 
 ---
 
-## Resultado Esperado
+## Detalhes tecnicos
 
-- Todos os emails seguem o mesmo visual (header Linkou roxo + assinatura no rodape)
-- Usuarios recebem emails nos momentos certos sem precisar ficar acessando a plataforma
-- Admins sao notificados de acoes dos clientes e vice-versa
-- Lembretes automaticos mantém prazos e compromissos em dia
-- Sistema escalavel: adicionar novo tipo de email = criar uma funcao de template + chamar `sendNotificationEmail`
+### Template `leadThankYouEmail(name: string)`
+
+Conteudo:
+- Assunto: "Recebemos seu contato! -- Linkou"
+- Corpo: agradecimento personalizado, informando que a equipe retornara em ate 24h uteis
+- CTA: link para o site/Instagram
+- Usa o `baseEmailLayout` padrao com branding Linkou
+
+### Pagina `/c/:slug/obrigado`
+
+- Busca dados da captura via `get_capture_page_by_slug` (reutiliza a mesma RPC)
+- Aplica `background_color`, `text_color`, `primary_color` e `logo_url` da pagina original
+- Exibe `thank_you_message` como titulo principal
+- Estrutura simples: icone de sucesso + mensagem + botao de voltar
+- URL rastreavel: permite configurar `/c/meu-slug/obrigado` como destino de conversao no Meta/Google Ads
+
