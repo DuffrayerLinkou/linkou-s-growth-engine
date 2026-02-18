@@ -39,3 +39,6 @@ verify_jwt = false
 [functions.generate-funnel-steps]
 verify_jwt = false
 
+[functions.linkouzinho-chat]
+verify_jwt = false
+

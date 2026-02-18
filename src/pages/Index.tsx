@@ -10,7 +10,7 @@ import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
 import { ContactForm } from "@/components/landing/ContactForm";
 import { Footer } from "@/components/landing/Footer";
-import { MobileWhatsAppCTA } from "@/components/landing/MobileWhatsAppCTA";
+import { LinkouzinhoWidget } from "@/components/landing/LinkouzinhoWidget";
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -62,7 +62,7 @@ const Index = () => {
         <ContactForm />
       </main>
       <Footer />
-      <MobileWhatsAppCTA />
+      <LinkouzinhoWidget />
     </div>
   );
 };
