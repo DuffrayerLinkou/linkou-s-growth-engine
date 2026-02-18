@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
-  Mail, Plus, Pencil, Trash2, Eye, ChevronRight, Users, Layers, Play, Pause, CheckCircle2, Clock, Search, UserPlus
+  Mail, Plus, Pencil, Trash2, Eye, ChevronRight, Users, Layers, Play, Pause, CheckCircle2, Clock, Search, UserPlus, Sparkles, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -68,6 +69,8 @@ export default function EmailFunnel() {
   const [stepDialog, setStepDialog] = useState<{ open: boolean; step?: FunnelStep }>({ open: false });
   const [previewStep, setPreviewStep] = useState<FunnelStep | null>(null);
   const [enrollDialog, setEnrollDialog] = useState(false);
+  const [aiDialog, setAiDialog] = useState(false);
+  const [generatedSteps, setGeneratedSteps] = useState<Omit<FunnelStep, "id" | "funnel_id">[]>([]);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: funnels = [], isLoading: loadingFunnels } = useQuery({
@@ -234,6 +237,33 @@ export default function EmailFunnel() {
     onError: (e: any) => toast({ variant: "destructive", title: "Erro", description: e.message }),
   });
 
+  const saveGeneratedSteps = useMutation({
+    mutationFn: async (stepsToSave: Omit<FunnelStep, "id" | "funnel_id">[]) => {
+      if (!selectedFunnelId) throw new Error("Nenhum funil selecionado");
+      // Calculate offset based on existing steps
+      const lastStep = steps.length > 0 ? steps[steps.length - 1] : null;
+      const dayOffset = lastStep ? lastStep.delay_days : 0;
+
+      const rows = stepsToSave.map((s, i) => ({
+        funnel_id: selectedFunnelId,
+        step_number: (lastStep?.step_number ?? 0) + i + 1,
+        delay_days: dayOffset + s.delay_days,
+        subject: s.subject,
+        html_body: s.html_body,
+      }));
+
+      const { error } = await supabase.from("email_funnel_steps").insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email_funnel_steps", selectedFunnelId] });
+      setAiDialog(false);
+      setGeneratedSteps([]);
+      toast({ title: `✅ ${generatedSteps.length} steps salvos com sucesso!` });
+    },
+    onError: (e: any) => toast({ variant: "destructive", title: "Erro ao salvar steps", description: e.message }),
+  });
+
   // ── Enrollment counts per funnel ──────────────────────────────────────────
   const enrollmentCounts = funnels.reduce((acc, f) => {
     acc[f.id] = enrollments.filter((e) => e.funnel_id === f.id).length;
@@ -358,12 +388,21 @@ export default function EmailFunnel() {
               </div>
             </div>
             {selectedFunnelId && (
-              <Button
-                onClick={() => setStepDialog({ open: true })}
-                className="mt-5"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Adicionar Step
-              </Button>
+              <div className="flex gap-2 mt-5">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setGeneratedSteps([]);
+                    setAiDialog(true);
+                  }}
+                  className="border-primary/40 text-primary hover:bg-primary/5"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" /> Gerar com IA
+                </Button>
+                <Button onClick={() => setStepDialog({ open: true })}>
+                  <Plus className="h-4 w-4 mr-2" /> Adicionar Step
+                </Button>
+              </div>
             )}
           </div>
 
@@ -524,6 +563,18 @@ export default function EmailFunnel() {
         onClose={() => setEnrollDialog(false)}
         onEnroll={(leadId, funnelId) => manualEnroll.mutate({ leadId, funnelId })}
         loading={manualEnroll.isPending}
+      />
+
+      {/* ── Dialog: Generate Steps with AI ── */}
+      <GenerateStepsDialog
+        open={aiDialog}
+        funnelName={selectedFunnel?.name || ""}
+        existingStepsCount={steps.length}
+        generatedSteps={generatedSteps}
+        onGenerated={setGeneratedSteps}
+        onClose={() => { setAiDialog(false); setGeneratedSteps([]); }}
+        onSave={() => saveGeneratedSteps.mutate(generatedSteps)}
+        saving={saveGeneratedSteps.isPending}
       />
 
       {/* ── Dialog: Preview Step ── */}
@@ -796,5 +847,261 @@ function EnrollLeadDialog({ open, funnels, onClose, onEnroll, loading }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── GenerateStepsDialog ─────────────────────────────────────────────────────
+type GeneratedStep = Omit<FunnelStep, "id" | "funnel_id">;
+
+function GenerateStepsDialog({ open, funnelName, existingStepsCount, generatedSteps, onGenerated, onClose, onSave, saving }: {
+  open: boolean;
+  funnelName: string;
+  existingStepsCount: number;
+  generatedSteps: GeneratedStep[];
+  onGenerated: (steps: GeneratedStep[]) => void;
+  onClose: () => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const { toast } = useToast();
+  const [objective, setObjective] = useState("");
+  const [audience, setAudience] = useState("");
+  const [tone, setTone] = useState<"professional" | "consultive" | "direct">("consultive");
+  const [stepCount, setStepCount] = useState<3 | 4 | 5>(3);
+  const [intervalDays, setIntervalDays] = useState(2);
+  const [generating, setGenerating] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const handleGenerate = async () => {
+    if (!objective.trim() || !audience.trim()) {
+      toast({ variant: "destructive", title: "Preencha objetivo e público-alvo" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-funnel-steps", {
+        body: {
+          objective,
+          audience,
+          tone,
+          step_count: stepCount,
+          interval_days: intervalDays,
+          funnel_name: funnelName,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        if (data.error.includes("Limite")) {
+          toast({ variant: "destructive", title: "Rate limit atingido", description: data.error });
+        } else if (data.error.includes("Créditos")) {
+          toast({ variant: "destructive", title: "Créditos esgotados", description: data.error });
+        } else {
+          toast({ variant: "destructive", title: "Erro ao gerar", description: data.error });
+        }
+        return;
+      }
+
+      if (!data?.steps || !Array.isArray(data.steps)) {
+        toast({ variant: "destructive", title: "Resposta inesperada da IA" });
+        return;
+      }
+
+      onGenerated(data.steps);
+      toast({ title: `✨ ${data.steps.length} steps gerados! Revise e salve.` });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Erro ao gerar steps", description: e.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleClose = () => {
+    setObjective("");
+    setAudience("");
+    setTone("consultive");
+    setStepCount(3);
+    setIntervalDays(2);
+    setPreviewIndex(null);
+    onClose();
+  };
+
+  const hasGenerated = generatedSteps.length > 0;
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Gerar Steps com IA
+            </DialogTitle>
+            <DialogDescription>
+              Funil: <strong>{funnelName}</strong>
+              {existingStepsCount > 0 && (
+                <span className="ml-2 text-amber-600 dark:text-amber-400">
+                  · Este funil já possui {existingStepsCount} step{existingStepsCount > 1 ? "s" : ""}. Os novos serão adicionados ao final.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!hasGenerated ? (
+            <div className="space-y-5 mt-2">
+              {/* Objective */}
+              <div className="space-y-1.5">
+                <Label>Objetivo do funil <span className="text-destructive">*</span></Label>
+                <Textarea
+                  rows={2}
+                  value={objective}
+                  onChange={(e) => setObjective(e.target.value)}
+                  placeholder="Ex: converter leads frios que viram a landing page mas não responderam"
+                />
+              </div>
+
+              {/* Audience */}
+              <div className="space-y-1.5">
+                <Label>Público-alvo <span className="text-destructive">*</span></Label>
+                <Input
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value)}
+                  placeholder="Ex: e-commerce, academias, clínicas estéticas"
+                />
+              </div>
+
+              {/* Tone */}
+              <div className="space-y-2">
+                <Label>Tom de voz</Label>
+                <RadioGroup
+                  value={tone}
+                  onValueChange={(v) => setTone(v as typeof tone)}
+                  className="flex gap-4 flex-wrap"
+                >
+                  {[
+                    { value: "professional", label: "Profissional" },
+                    { value: "consultive", label: "Consultivo" },
+                    { value: "direct", label: "Direto / Urgente" },
+                  ].map((t) => (
+                    <div key={t.value} className="flex items-center gap-2">
+                      <RadioGroupItem value={t.value} id={`tone-${t.value}`} />
+                      <Label htmlFor={`tone-${t.value}`} className="cursor-pointer font-normal">{t.label}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* Step count + interval */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Quantidade de steps</Label>
+                  <Select value={String(stepCount)} onValueChange={(v) => setStepCount(Number(v) as 3 | 4 | 5)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 steps</SelectItem>
+                      <SelectItem value="4">4 steps</SelectItem>
+                      <SelectItem value="5">5 steps</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Intervalo entre emails (dias)</Label>
+                  <Select value={String(intervalDays)} onValueChange={(v) => setIntervalDays(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">A cada 1 dia</SelectItem>
+                      <SelectItem value="2">A cada 2 dias</SelectItem>
+                      <SelectItem value="3">A cada 3 dias</SelectItem>
+                      <SelectItem value="5">A cada 5 dias</SelectItem>
+                      <SelectItem value="7">A cada 7 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Preview dos steps gerados */
+            <div className="space-y-3 mt-2">
+              <p className="text-sm text-muted-foreground">
+                ✨ <strong>{generatedSteps.length} steps gerados.</strong> Revise abaixo antes de salvar.
+              </p>
+              {generatedSteps.map((step, i) => (
+                <Card key={i} className="border-primary/20">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                          {i + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">{step.subject}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Dia {step.delay_days}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {step.html_body.replace(/<[^>]+>/g, " ").trim().substring(0, 120)}…
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setPreviewIndex(i)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 gap-2">
+            <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+            {hasGenerated ? (
+              <>
+                <Button variant="ghost" onClick={() => onGenerated([])} disabled={generating || saving}>
+                  ← Refazer
+                </Button>
+                <Button onClick={onSave} disabled={saving}>
+                  {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : `Salvar ${generatedSteps.length} steps`}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleGenerate} disabled={generating || !objective.trim() || !audience.trim()}>
+                {generating
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando...</>
+                  : <><Sparkles className="h-4 w-4 mr-2" />Gerar {stepCount} Steps</>
+                }
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview de step individual gerado */}
+      {previewIndex !== null && generatedSteps[previewIndex] && (
+        <Dialog open={previewIndex !== null} onOpenChange={() => setPreviewIndex(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Preview: {generatedSteps[previewIndex].subject}</DialogTitle>
+            </DialogHeader>
+            <div
+              className="prose prose-sm max-w-none mt-2 border rounded-lg p-4 bg-background"
+              dangerouslySetInnerHTML={{
+                __html: generatedSteps[previewIndex].html_body
+                  .replace(/\{\{nome\}\}/g, "João Silva")
+                  .replace(/\{\{segmento\}\}/g, "E-commerce")
+                  .replace(/\{\{objetivo\}\}/g, "aumentar vendas online"),
+              }}
+            />
+            <p className="text-xs text-muted-foreground">Preview com dados de exemplo.</p>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
