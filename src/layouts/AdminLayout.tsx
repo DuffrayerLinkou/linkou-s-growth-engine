@@ -21,6 +21,7 @@ import {
   Zap,
   Presentation,
   ChevronDown,
+  Mail,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ const navGroups = [
     items: [
       { href: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
       { href: "/admin/templates", icon: FileText, label: "Templates" },
+      { href: "/admin/funil-email", icon: Mail, label: "Funil de Email" },
     ],
   },
   {

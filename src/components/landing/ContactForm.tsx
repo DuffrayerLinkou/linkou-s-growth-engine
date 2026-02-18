@@ -157,6 +157,18 @@ export function ContactForm() {
         console.warn("Lead thank you email failed:", emailError);
       }
 
+      // Enroll lead in default active funnel
+      try {
+        await supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "lead_funnel_enroll",
+            lead_email: formData.email.trim(),
+          },
+        });
+      } catch (funnelError) {
+        console.warn("Lead funnel enrollment failed:", funnelError);
+      }
+
       // Redirect to thank you page
       navigate("/obrigado");
     } catch (error) {

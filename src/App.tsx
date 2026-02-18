@@ -50,6 +50,7 @@ const AdminLandingPage = lazy(() => import("./pages/admin/LandingPage"));
 const AdminWhatsApp = lazy(() => import("./pages/admin/WhatsApp"));
 const AdminCapturePages = lazy(() => import("./pages/admin/CapturePages"));
 const AdminProposals = lazy(() => import("./pages/admin/Proposals"));
+const AdminEmailFunnel = lazy(() => import("./pages/admin/EmailFunnel"));
 const CapturePage = lazy(() => import("./pages/CapturePage"));
 const CaptureThankYou = lazy(() => import("./pages/CaptureThankYou"));
 
@@ -145,6 +146,7 @@ const App = () => (
                 <Route path="whatsapp" element={<Suspense fallback={<PageLoader />}><AdminWhatsApp /></Suspense>} />
                 <Route path="capturas" element={<Suspense fallback={<PageLoader />}><AdminCapturePages /></Suspense>} />
                 <Route path="propostas" element={<Suspense fallback={<PageLoader />}><AdminProposals /></Suspense>} />
+                <Route path="funil-email" element={<Suspense fallback={<PageLoader />}><AdminEmailFunnel /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
