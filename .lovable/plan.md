@@ -1,106 +1,83 @@
 
-# Funil de Email Automático para Novos Leads
+# Inscrição Manual de Leads no Funil de Email
 
-## O que é e por que é valioso
+## O que será feito
 
-Um funil de email (drip campaign) é uma sequência de emails que são enviados automaticamente em intervalos programados depois que o lead se cadastra. Em vez de um único email de agradecimento, o lead recebe uma série de comunicações estratégicas que o aquece e aumenta a chance de conversão.
+Adicionar um botão "Inscrever Lead" na aba "Leads Inscritos" da página `/admin/funil-email` que abre um dialog para o admin buscar e selecionar um lead e um funil, inscrevendo-o manualmente.
 
-**Exemplo de sequência padrão:**
-```text
-Dia 0  → Email 1: "Recebemos seu contato" (já existe)
-Dia 1  → Email 2: Apresentação da Linkou + prova social
-Dia 3  → Email 3: Conteúdo de valor (diagnóstico gratuito / dor do segmento)
-Dia 7  → Email 4: Case de resultado / depoimento
-Dia 14 → Email 5: Urgência / convite para conversa (CTA direto)
+## Fluxo da funcionalidade
+
+1. Admin clica em **"+ Inscrever Lead"** (botão novo no topo da aba "Leads Inscritos")
+2. Abre um dialog com:
+   - **Campo de busca de lead** — digita nome ou email e filtra os leads cadastrados
+   - **Seleção do funil** — dropdown com os funis disponíveis
+3. Ao confirmar, verifica se já existe inscrição ativa do lead naquele funil (prevenção de duplicidade)
+4. Se não existir, insere em `lead_funnel_enrollments` com `status = 'active'`
+5. Feedback de sucesso via toast + atualização da tabela
+
+## Detalhes técnicos
+
+### Query de busca de leads
+Busca na tabela `leads` filtrando por `name` ou `email` com `ilike` para busca parcial. Limitado a 50 resultados para performance.
+
+### Verificação de duplicidade
+Antes de inserir, verifica se já existe um enrollment com mesmo `lead_id` + `funnel_id` e `status = 'active'` ou `status = 'paused'`. Se existir, mostra mensagem de aviso.
+
+### Arquivo alterado
+Apenas **`src/pages/admin/EmailFunnel.tsx`** — sem necessidade de migração de banco ou novos arquivos.
+
+## Mudanças no código
+
+### Estado novo
+```typescript
+const [enrollDialog, setEnrollDialog] = useState(false);
 ```
 
-O funil para quando o lead avança de status (contacted, qualified, etc.) — evitando envio desnecessário.
+### Nova mutation `manualEnroll`
+```typescript
+const manualEnroll = useMutation({
+  mutationFn: async ({ leadId, funnelId }) => {
+    // Verifica duplicidade
+    const { data: existing } = await supabase
+      .from("lead_funnel_enrollments")
+      .select("id, status")
+      .eq("lead_id", leadId)
+      .eq("funnel_id", funnelId)
+      .in("status", ["active", "paused"])
+      .maybeSingle();
 
----
+    if (existing) throw new Error("Lead já está inscrito neste funil.");
 
-## Arquitetura técnica
-
-### Banco de dados: nova tabela `email_funnels`
-
-Armazena os funis configurados pelo admin:
-
-```text
-email_funnels
-  id, name, is_active, description, created_at
-
-email_funnel_steps
-  id, funnel_id, step_number, delay_days, subject, html_body, created_at
-
-lead_funnel_enrollments
-  id, lead_id, funnel_id, enrolled_at, current_step, status (active/paused/completed/converted)
-
-lead_funnel_emails_sent
-  id, enrollment_id, step_id, sent_at
+    const { error } = await supabase
+      .from("lead_funnel_enrollments")
+      .insert({ lead_id: leadId, funnel_id: funnelId, status: "active" });
+    if (error) throw error;
+  },
+  onSuccess: () => { ... }
+});
 ```
 
-### Edge Function: `process-lead-funnels`
+### Novo componente `EnrollLeadDialog`
+Dialog com:
+- **Input de busca** com debounce que filtra leads por nome/email via Supabase query
+- **Lista de resultados** em scroll com seleção do lead
+- **Select de funil** com os funis ativos
+- **Botão Inscrever** habilitado apenas quando lead e funil estão selecionados
 
-Roda via cron diariamente (junto com o `check-task-deadlines`) e:
-1. Busca enrollments ativos
-2. Para cada enrollment, verifica se é hora de enviar o próximo step (baseado em `delay_days`)
-3. Envia o email e registra em `lead_funnel_emails_sent`
-4. Pausa/completa o enrollment se o lead foi convertido/arquivado
+### Botão na tab "Leads Inscritos"
+Adicionado no topo da aba ao lado de um eventual filtro futuro:
+```tsx
+<div className="flex justify-end mb-4">
+  <Button onClick={() => setEnrollDialog(true)}>
+    <Plus className="h-4 w-4 mr-2" /> Inscrever Lead
+  </Button>
+</div>
+```
 
-### Inscrição automática no funil
+## Resumo das mudanças
 
-Quando um lead é criado (via `ContactForm.tsx` ou `CapturePage.tsx`), é chamada a edge function `notify-email` — vamos adicionar um evento `lead_funnel_enroll` que matricula o lead no funil padrão (o primeiro funil ativo).
+| Arquivo | Tipo de mudança |
+|---------|----------------|
+| `src/pages/admin/EmailFunnel.tsx` | Adicionar estado, mutation e componente `EnrollLeadDialog` |
 
----
-
-## Interface admin: seção "Funil de Email"
-
-Uma nova página `/admin/funil-email` com:
-
-### Aba 1: Funis
-- Listar funis criados (nome, status ativo/inativo, quantidade de steps, inscritos)
-- Criar / editar / ativar/desativar funis
-
-### Aba 2: Editor de Steps
-- Ao selecionar um funil, exibir os steps em ordem
-- Cada step tem: Dia do envio, Assunto, Corpo HTML (editor simples)
-- Variáveis disponíveis: `{{nome}}`, `{{segmento}}`, `{{objetivo}}`
-- Preview do email
-
-### Aba 3: Leads inscritos
-- Ver leads em cada funil, em qual step estão, status
-- Ação manual: pausar, remover do funil, avançar step
-
----
-
-## Arquivos a criar/alterar
-
-| Arquivo | Ação |
-|---------|------|
-| `supabase/migrations/...` | Criar tabelas `email_funnels`, `email_funnel_steps`, `lead_funnel_enrollments`, `lead_funnel_emails_sent` com RLS |
-| `supabase/functions/process-lead-funnels/index.ts` | Criar — edge function de processamento diário |
-| `supabase/functions/notify-email/index.ts` | Alterar — adicionar handler `lead_funnel_enroll` |
-| `supabase/config.toml` | Alterar — registrar nova função `process-lead-funnels` |
-| `src/pages/admin/EmailFunnel.tsx` | Criar — página de gestão do funil |
-| `src/layouts/AdminLayout.tsx` | Alterar — adicionar link "Funil de Email" no menu Comunicação |
-| `src/App.tsx` | Alterar — registrar rota `/admin/funil-email` |
-| `src/components/landing/ContactForm.tsx` | Alterar — enrolar lead no funil ao cadastrar |
-| `src/pages/CapturePage.tsx` | Alterar — enrolar lead no funil ao cadastrar |
-
----
-
-## Detalhes técnicos importantes
-
-### Prevenção de duplicidade
-A tabela `lead_funnel_emails_sent` registra cada email enviado. O cron verifica antes de enviar se aquele step já foi enviado para aquele enrollment.
-
-### Pausa automática
-Quando o status do lead mudar para `converted` ou `archived`, o enrollment é automaticamente marcado como `completed` ou `paused`. Isso evita enviar emails de nutrição para quem já é cliente.
-
-### Step de Dia 0
-O Email 1 (agradecimento) já é enviado pelo fluxo atual (`notify-email` → `lead_submitted`). O funil começa a partir do Dia 1, evitando duplicação.
-
-### Template padrão incluído
-O sistema virá com um funil padrão pré-configurado com 4 steps (Dias 1, 3, 7, 14) usando os templates de boas-vindas + prova social da Linkou, que o admin pode editar livremente.
-
-### Variáveis de personalização
-Os templates dos steps suportam substituição de `{{nome}}`, `{{segmento}}` e `{{objetivo}}` com os dados do lead antes do envio.
+Nenhuma migração de banco necessária — as tabelas já estão criadas e com RLS configurado para admins e account_managers.
