@@ -1,83 +1,106 @@
 
+# Funil de Email Automático para Novos Leads
 
-# Email de Agradecimento ao Lead + Pagina de Obrigado para Capturas
+## O que é e por que é valioso
 
-## Problema 1: Nenhum email de agradecimento e enviado ao lead
+Um funil de email (drip campaign) é uma sequência de emails que são enviados automaticamente em intervalos programados depois que o lead se cadastra. Em vez de um único email de agradecimento, o lead recebe uma série de comunicações estratégicas que o aquece e aumenta a chance de conversão.
 
-Quando um lead preenche o formulario na landing page (`ContactForm.tsx`) ou numa pagina de captura (`CapturePage.tsx`), o sistema salva o lead no banco, dispara CAPI (Meta/TikTok), mas nao envia nenhum email de confirmacao ao lead informando que o contato foi recebido.
+**Exemplo de sequência padrão:**
+```text
+Dia 0  → Email 1: "Recebemos seu contato" (já existe)
+Dia 1  → Email 2: Apresentação da Linkou + prova social
+Dia 3  → Email 3: Conteúdo de valor (diagnóstico gratuito / dor do segmento)
+Dia 7  → Email 4: Case de resultado / depoimento
+Dia 14 → Email 5: Urgência / convite para conversa (CTA direto)
+```
 
-## Problema 2: Paginas de captura mostram mensagem inline ao inves de pagina dedicada
-
-As paginas de captura (`/c/:slug`) atualmente mostram um `<div>` inline com a mensagem de obrigado (`setSubmitted(true)`). Isso impede a metrificacao da conversao via pixel, pois nao ha mudanca de URL para configurar como evento de destino nos gerenciadores de anuncios.
+O funil para quando o lead avança de status (contacted, qualified, etc.) — evitando envio desnecessário.
 
 ---
 
-## Solucao
+## Arquitetura técnica
 
-### 1. Novo template de email: agradecimento ao lead
+### Banco de dados: nova tabela `email_funnels`
 
-Adicionar em `email-templates.ts` uma funcao `leadThankYouEmail(name)` que gera um email profissional agradecendo pelo contato e informando o prazo de retorno (24h uteis).
+Armazena os funis configurados pelo admin:
 
-### 2. Novo event_type no notify-email: `lead_submitted`
+```text
+email_funnels
+  id, name, is_active, description, created_at
 
-Adicionar no `notify-email/index.ts` o handler para `lead_submitted` que:
-- Envia email de agradecimento ao lead (usando o email informado no formulario)
-- Nao precisa buscar ponto focal -- o destinatario e o proprio lead
+email_funnel_steps
+  id, funnel_id, step_number, delay_days, subject, html_body, created_at
 
-### 3. Disparar notify-email no ContactForm.tsx
+lead_funnel_enrollments
+  id, lead_id, funnel_id, enrolled_at, current_step, status (active/paused/completed/converted)
 
-Apos o insert do lead na landing page, chamar `notify-email` com `event_type: "lead_submitted"` passando nome e email do lead.
+lead_funnel_emails_sent
+  id, enrollment_id, step_id, sent_at
+```
 
-### 4. Disparar notify-email no CapturePage.tsx
+### Edge Function: `process-lead-funnels`
 
-Apos o insert do lead nas paginas de captura, chamar `notify-email` com `event_type: "lead_submitted"`.
+Roda via cron diariamente (junto com o `check-task-deadlines`) e:
+1. Busca enrollments ativos
+2. Para cada enrollment, verifica se é hora de enviar o próximo step (baseado em `delay_days`)
+3. Envia o email e registra em `lead_funnel_emails_sent`
+4. Pausa/completa o enrollment se o lead foi convertido/arquivado
 
-### 5. Pagina de obrigado dedicada para capturas
+### Inscrição automática no funil
 
-Criar uma rota `/c/:slug/obrigado` com uma pagina generica de agradecimento que:
-- Busca os dados da pagina de captura pelo slug (cores, logo, mensagem)
-- Exibe a mensagem de agradecimento personalizada (`thank_you_message`)
-- Mantem o visual (cores, logo) da pagina de captura original
-- Permite metrificacao via pixel (URL unica por captura)
+Quando um lead é criado (via `ContactForm.tsx` ou `CapturePage.tsx`), é chamada a edge function `notify-email` — vamos adicionar um evento `lead_funnel_enroll` que matricula o lead no funil padrão (o primeiro funil ativo).
 
-No `CapturePage.tsx`, substituir o `setSubmitted(true)` por `navigate(\`/c/${slug}/obrigado\`)`.
+---
 
-Se a pagina tiver `thank_you_redirect_url` configurado, continua redirecionando para a URL externa (comportamento atual mantido).
+## Interface admin: seção "Funil de Email"
 
-### 6. Registrar a nova rota no App.tsx
+Uma nova página `/admin/funil-email` com:
 
-Adicionar `<Route path="/c/:slug/obrigado">` apontando para o novo componente.
+### Aba 1: Funis
+- Listar funis criados (nome, status ativo/inativo, quantidade de steps, inscritos)
+- Criar / editar / ativar/desativar funis
+
+### Aba 2: Editor de Steps
+- Ao selecionar um funil, exibir os steps em ordem
+- Cada step tem: Dia do envio, Assunto, Corpo HTML (editor simples)
+- Variáveis disponíveis: `{{nome}}`, `{{segmento}}`, `{{objetivo}}`
+- Preview do email
+
+### Aba 3: Leads inscritos
+- Ver leads em cada funil, em qual step estão, status
+- Ação manual: pausar, remover do funil, avançar step
 
 ---
 
 ## Arquivos a criar/alterar
 
-| Arquivo | Acao |
+| Arquivo | Ação |
 |---------|------|
-| `supabase/functions/_shared/email-templates.ts` | Adicionar `leadThankYouEmail()` |
-| `supabase/functions/notify-email/index.ts` | Adicionar handler `lead_submitted` |
-| `src/components/landing/ContactForm.tsx` | Chamar `notify-email` apos insert do lead |
-| `src/pages/CapturePage.tsx` | Chamar `notify-email` + redirecionar para `/c/:slug/obrigado` |
-| `src/pages/CaptureThankYou.tsx` | Criar pagina de obrigado para capturas |
-| `src/App.tsx` | Adicionar rota `/c/:slug/obrigado` |
+| `supabase/migrations/...` | Criar tabelas `email_funnels`, `email_funnel_steps`, `lead_funnel_enrollments`, `lead_funnel_emails_sent` com RLS |
+| `supabase/functions/process-lead-funnels/index.ts` | Criar — edge function de processamento diário |
+| `supabase/functions/notify-email/index.ts` | Alterar — adicionar handler `lead_funnel_enroll` |
+| `supabase/config.toml` | Alterar — registrar nova função `process-lead-funnels` |
+| `src/pages/admin/EmailFunnel.tsx` | Criar — página de gestão do funil |
+| `src/layouts/AdminLayout.tsx` | Alterar — adicionar link "Funil de Email" no menu Comunicação |
+| `src/App.tsx` | Alterar — registrar rota `/admin/funil-email` |
+| `src/components/landing/ContactForm.tsx` | Alterar — enrolar lead no funil ao cadastrar |
+| `src/pages/CapturePage.tsx` | Alterar — enrolar lead no funil ao cadastrar |
 
 ---
 
-## Detalhes tecnicos
+## Detalhes técnicos importantes
 
-### Template `leadThankYouEmail(name: string)`
+### Prevenção de duplicidade
+A tabela `lead_funnel_emails_sent` registra cada email enviado. O cron verifica antes de enviar se aquele step já foi enviado para aquele enrollment.
 
-Conteudo:
-- Assunto: "Recebemos seu contato! -- Linkou"
-- Corpo: agradecimento personalizado, informando que a equipe retornara em ate 24h uteis
-- CTA: link para o site/Instagram
-- Usa o `baseEmailLayout` padrao com branding Linkou
+### Pausa automática
+Quando o status do lead mudar para `converted` ou `archived`, o enrollment é automaticamente marcado como `completed` ou `paused`. Isso evita enviar emails de nutrição para quem já é cliente.
 
-### Pagina `/c/:slug/obrigado`
+### Step de Dia 0
+O Email 1 (agradecimento) já é enviado pelo fluxo atual (`notify-email` → `lead_submitted`). O funil começa a partir do Dia 1, evitando duplicação.
 
-- Busca dados da captura via `get_capture_page_by_slug` (reutiliza a mesma RPC)
-- Aplica `background_color`, `text_color`, `primary_color` e `logo_url` da pagina original
-- Exibe `thank_you_message` como titulo principal
-- Estrutura simples: icone de sucesso + mensagem + botao de voltar
-- URL rastreavel: permite configurar `/c/meu-slug/obrigado` como destino de conversao no Meta/Google Ads
+### Template padrão incluído
+O sistema virá com um funil padrão pré-configurado com 4 steps (Dias 1, 3, 7, 14) usando os templates de boas-vindas + prova social da Linkou, que o admin pode editar livremente.
 
+### Variáveis de personalização
+Os templates dos steps suportam substituição de `{{nome}}`, `{{segmento}}` e `{{objetivo}}` com os dados do lead antes do envio.
