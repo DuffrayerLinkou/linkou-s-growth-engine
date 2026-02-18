@@ -193,14 +193,18 @@ export default {
   					opacity: '0.5'
   				}
   			},
-			shimmer: {
-				'0%': {
-					backgroundPosition: '-200% 0'
-				},
-				'100%': {
-					backgroundPosition: '200% 0'
-				}
+		shimmer: {
+			'0%': {
+				backgroundPosition: '-200% 0'
+			},
+			'100%': {
+				backgroundPosition: '200% 0'
 			}
+		},
+		'pulse-slow': {
+			'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.4)' },
+			'50%': { boxShadow: '0 0 0 12px hsl(var(--primary) / 0)' }
+		}
   		},
 		animation: {
 			'accordion-down': 'accordion-down 0.2s ease-out',
@@ -212,7 +216,8 @@ export default {
 			'scale-in': 'scale-in 0.3s ease-out',
 			float: 'float 3s ease-in-out infinite',
 			pulse: 'pulse 2s ease-in-out infinite',
-			shimmer: 'shimmer 2s linear infinite'
+			shimmer: 'shimmer 2s linear infinite',
+			'pulse-slow': 'pulse-slow 2.5s ease-in-out infinite'
 		}
   	}
   },
