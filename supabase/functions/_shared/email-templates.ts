@@ -2,6 +2,8 @@
 
 const PRIMARY_COLOR = "#7C3AED";
 const BG_COLOR = "#f4f4f7";
+const CONTACT_EMAIL = "contato@agencialinkou.com.br";
+const CONTACT_PHONE = "(41) 98898-8054";
 
 export function baseEmailLayout(content: string): string {
   return `<!DOCTYPE html>
@@ -18,8 +20,10 @@ export function baseEmailLayout(content: string): string {
     ${content}
   </td></tr>
   <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;">
-    <p style="margin:0;color:#9e9eb8;font-size:12px;">Linkou — Marketing de Performance</p>
-    <p style="margin:4px 0 0;"><a href="https://agencialinkou.com.br" style="color:${PRIMARY_COLOR};font-size:12px;text-decoration:none;">agencialinkou.com.br</a></p>
+    <p style="margin:0;color:#9e9eb8;font-size:13px;font-weight:600;">Linkou — Marketing de Performance</p>
+    <p style="margin:8px 0 4px;color:#9e9eb8;font-size:12px;">✉ <a href="mailto:${CONTACT_EMAIL}" style="color:${PRIMARY_COLOR};text-decoration:none;">${CONTACT_EMAIL}</a></p>
+    <p style="margin:0 0 4px;color:#9e9eb8;font-size:12px;">📞 ${CONTACT_PHONE}</p>
+    <p style="margin:0;"><a href="https://agencialinkou.com.br" style="color:${PRIMARY_COLOR};font-size:12px;text-decoration:none;">agencialinkou.com.br</a></p>
   </td></tr>
 </table>
 </td></tr>
