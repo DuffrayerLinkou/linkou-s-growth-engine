@@ -327,8 +327,8 @@ export function LinkouzinhoWidget() {
         <button
           onClick={() => setIsOpen((v) => !v)}
           className={cn(
-            "relative h-16 w-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-primary/30",
-            "bg-primary p-0 overflow-visible",
+          "relative h-16 w-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-yellow-400/40",
+            "bg-yellow-400 p-0 overflow-visible",
             !isOpen && "animate-pulse-slow"
           )}
           aria-label="Abrir chat com Linkouzinho"

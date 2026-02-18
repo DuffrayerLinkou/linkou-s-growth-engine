@@ -202,8 +202,8 @@ export default {
 			}
 		},
 		'pulse-slow': {
-			'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.4)' },
-			'50%': { boxShadow: '0 0 0 12px hsl(var(--primary) / 0)' }
+			'0%, 100%': { boxShadow: '0 0 0 0 rgba(250, 204, 21, 0.6)' },
+			'50%': { boxShadow: '0 0 0 14px rgba(250, 204, 21, 0)' }
 		}
   		},
 		animation: {
