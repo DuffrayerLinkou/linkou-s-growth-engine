@@ -20,6 +20,8 @@ export function baseEmailLayout(content: string): string {
     ${content}
   </td></tr>
   <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0 2px;color:#1a1a2e;font-size:14px;font-weight:700;">Leo Santana</p>
+    <p style="margin:0 0 8px;color:#4a4a68;font-size:12px;font-weight:500;">Diretor Comercial — Linkou</p>
     <p style="margin:0;color:#9e9eb8;font-size:13px;font-weight:600;">Linkou — Marketing de Performance</p>
     <p style="margin:8px 0 4px;color:#9e9eb8;font-size:12px;">✉ <a href="mailto:${CONTACT_EMAIL}" style="color:${PRIMARY_COLOR};text-decoration:none;">${CONTACT_EMAIL}</a></p>
     <p style="margin:0 0 4px;color:#9e9eb8;font-size:12px;">📞 ${CONTACT_PHONE}</p>
