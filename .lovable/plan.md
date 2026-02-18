@@ -1,112 +1,128 @@
 
-# Funil de Email para Leads Adicionados Manualmente + Assinatura Padrão nos Emails
+# Multi-seleção de Leads, Ações em Lote e Métricas por Segmento
+
+## Problemas identificados
+
+A página `/admin/leads` atual tem:
+- Sem checkbox de seleção individual ou "selecionar todos"
+- Nenhuma ação em lote (bulk action)
+- Métricas apenas por status — sem visibilidade por segmento, origem ou investimento
+- Sem filtro por segmento na lista
 
 ## O que será implementado
 
-Dois itens distintos:
+### 1. Multi-seleção com barra de ações em lote
 
-1. **Funil "Cold Lead"** — sequência de emails para leads adicionados manualmente pelo admin, que não conhecem a Linkou, com abordagem de apresentação gradual.
+Na view de lista, cada linha recebe um **checkbox** na primeira coluna. Um checkbox de "selecionar todos" aparece no cabeçalho da tabela.
 
-2. **Assinatura padrão em todos os emails** — rodapé padronizado com contato@agencialinkou.com.br e telefone do site, aplicado a todos os templates existentes via alteração no `baseEmailLayout`.
+Quando ≥1 lead estiver selecionado, uma **barra de ações flutuante** aparece acima da tabela com:
 
----
+- Contador: "X leads selecionados"
+- Botão: **Alterar status** (dropdown com todos os status)
+- Botão: **Inscrever no funil** (dropdown dos funis ativos)
+- Botão: **Arquivar** (atalho rápido)
+- Botão: **Exportar seleção** (gera XLSX só dos selecionados)
+- Botão: **Excluir** (com confirmação)
 
-## Item 1: Funil para leads manuais (Cold Lead)
+### 2. Filtro por segmento
 
-### Lógica do fluxo
+Ao lado dos filtros de status e origem, adicionar um `<Select>` de **segmento** usando `clientSegments` do `segments-config.ts` já existente. Isso permite isolar leads por nicho (Construtora, Imobiliária, E-commerce, etc.).
 
-O admin adiciona o lead manualmente em `/admin/leads`. No momento da inscrição manual no funil (via dialog "Inscrever Lead"), o admin pode escolher o funil "Cold Outbound" — um novo funil pre-populado no banco, específico para quem não conhece a Linkou.
+### 3. Métricas expandidas — painel de breakdown
 
-### Sequência de emails do funil "Cold Outbound"
+Abaixo dos cards de status atuais, adicionar um segundo nível de métricas colapsável:
 
-```text
-Dia 1 (imediato) → "Alguém me indicou você 👋" — apresentação pessoal, sem vender nada
-Dia 3            → "O que fazemos que ninguém mais faz" — diferencial da Linkou com prova social
-Dia 7            → "Um resultado que pode ser seu" — case de cliente real (anon)
-Dia 14           → "Podemos conversar 15 minutos?" — convite direto para call (CTA WhatsApp)
-Dia 21           → "Última mensagem — prometo 😄" — urgência leve, link direto
-```
+- **Por segmento**: barras horizontais mostrando quantidade de leads por nicho, calculadas a partir dos dados já carregados (sem nova query)
+- **Por origem**: distribuição Landing Page vs. Meta Lead Ads vs. Manual
+- **Taxa de conversão**: (converted / total) × 100%
+- **Investimento médio declarado**: quando o campo `investment` está preenchido
 
-Variáveis disponíveis: `{{nome}}`, `{{segmento}}`, `{{objetivo}}`
-
-### Como funciona tecnicamente
-
-- Os templates dos 5 steps são inseridos diretamente na tabela `email_funnel_steps` via migration de seed (dados, não schema — usando o insert tool do Supabase).
-- Um novo funil chamado **"Cold Outbound — Apresentação"** é criado em `email_funnels`.
-- O admin, ao inscrever o lead, seleciona qual funil usar no dialog existente.
-- A Edge Function `process-lead-funnels` já processa automaticamente — nenhuma alteração necessária nela.
-
-### Também: Adicionar lead manual com inscrição direta
-
-Na página `/admin/leads`, será adicionado um botão **"+ Novo Lead"** que abre um dialog para cadastrar um lead manualmente (nome, email, telefone, segmento, objetivo) e oferece a opção de já inscrevê-lo em um funil ao salvar.
-
----
-
-## Item 2: Assinatura padrão em todos os emails
-
-### Alteração no `baseEmailLayout`
-
-O rodapé atual é:
-```
-Linkou — Marketing de Performance
-agencialinkou.com.br
-```
-
-Será expandido para incluir:
-- Email: contato@agencialinkou.com.br
-- Telefone: número usado no site (a ser extraído de `landing_settings.whatsapp_number` ou fixo)
-- Links de redes sociais opcionais
-
-O telefone será lido dinamicamente da tabela `landing_settings` pelo campo `whatsapp_number`, mas como os templates são gerados em Edge Functions (sem acesso direto ao banco), vamos buscar o número na Edge Function `send-email` e passar como header/contexto — **ou, mais simples**, vamos definir o número como constante no arquivo `email-templates.ts` já que é um dado público do site.
-
-### Resultado visual do novo rodapé
-
-```
-Linkou — Marketing de Performance
-────────────────────────────────
-✉ contato@agencialinkou.com.br
-📞 (XX) XXXXX-XXXX
-agencialinkou.com.br
-```
-
----
+Todos calculados client-side a partir do array `leads` já existente no estado.
 
 ## Arquivos a alterar
 
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/_shared/email-templates.ts` | Atualizar `baseEmailLayout` com assinatura completa |
-| `src/pages/admin/Leads.tsx` | Adicionar botão e dialog "Novo Lead" com opção de funil |
-| **Seed de dados** | Inserir funil "Cold Outbound" + 5 steps via insert tool |
+| `src/pages/admin/Leads.tsx` | Adicionar estados de seleção, checkbox na tabela, barra de bulk actions, filtro de segmento, painel de métricas expandido |
 
-### Não será necessário alterar:
-- A Edge Function `process-lead-funnels` (já processa qualquer funil)
-- A Edge Function `notify-email` (enrollment manual não usa o fluxo automático)
-- A página `EmailFunnel.tsx` (o dialog de inscrição já existe)
-- Nenhuma migration de schema (tabelas já existem)
+Nenhuma alteração de banco, edge function ou schema necessária — tudo baseado nos dados já carregados.
 
----
+## Detalhes técnicos
 
-## Detalhes técnicos importantes
+### Estados adicionados
 
-### Telefone no rodapé
-Será adicionado como constante no arquivo de templates. O número será inserido como `(11) 9XXXX-XXXX` — precisamos que o usuário confirme o telefone, mas como não foi especificado, usaremos o campo `whatsapp_number` da `landing_settings` consultado diretamente no banco pela Edge Function `send-email`. Para simplificar sem latência extra, será definido como constante editável no arquivo de templates.
+```typescript
+const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+const [segmentFilter, setSegmentFilter] = useState<string>("all");
+const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false);
+const [isBulkFunnelOpen, setIsBulkFunnelOpen] = useState(false);
+const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+const [isBulkActioning, setIsBulkActioning] = useState(false);
+const [showMetricsBreakdown, setShowMetricsBreakdown] = useState(false);
+```
 
-### Novo lead manual na tela de leads
-O dialog de criação terá os campos:
-- Nome (obrigatório)
-- Email (obrigatório)  
-- Telefone
-- Segmento (select)
-- Objetivo (textarea)
-- Origem: fixo como `"manual"` 
-- Checkbox: "Inscrever em funil de email" com select do funil
+### Lógica de seleção
 
-Ao salvar, a lógica é:
-1. Insert em `leads`
-2. Se funil selecionado → insert em `lead_funnel_enrollments`
+```typescript
+const toggleLead = (id: string) =>
+  setSelectedLeadIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
-### Sem email automático no cadastro manual
-Diferente do fluxo da landing page (que dispara `lead_submitted` + `lead_funnel_enroll`), o lead manual recebe apenas os emails do funil conforme programado. O primeiro email (Dia 1 = imediato) chegará no próximo ciclo do cron diário (12:00).
+const toggleAll = () =>
+  setSelectedLeadIds(
+    selectedLeadIds.size === filteredLeads.length
+      ? new Set()
+      : new Set(filteredLeads.map(l => l.id))
+  );
+```
 
-Se quiser envio imediato no mesmo instante da inscrição, podemos chamar `process-lead-funnels` via invoke — mas isso pode ser feito numa iteração futura para não complicar este PR.
+### Bulk actions
+
+```typescript
+const bulkUpdateStatus = async (newStatus: string) => { ... }
+const bulkEnrollFunnel = async (funnelId: string) => { ... }
+const bulkDelete = async () => { ... }
+const bulkExport = () => { /* XLSX só dos selecionados */ }
+```
+
+### Métricas de breakdown (client-side)
+
+```typescript
+const segmentBreakdown = useMemo(() =>
+  clientSegments.map(seg => ({
+    segment: seg,
+    count: leads.filter(l => l.segment === seg).length,
+  })).filter(s => s.count > 0).sort((a, b) => b.count - a.count),
+[leads]);
+
+const sourceBreakdown = useMemo(() => ({
+  landing_page: leads.filter(l => l.source === 'landing_page').length,
+  meta_instant_form: leads.filter(l => l.source === 'meta_instant_form').length,
+  manual: leads.filter(l => l.source === 'manual').length,
+}), [leads]);
+
+const conversionRate = useMemo(() => {
+  const converted = leads.filter(l => l.status === 'converted').length;
+  return leads.length > 0 ? ((converted / leads.length) * 100).toFixed(1) : '0';
+}, [leads]);
+```
+
+### Filtro de segmento integrado ao `filteredLeads`
+
+O `useMemo` de `filteredLeads` receberá um terceiro critério:
+```typescript
+if (segmentFilter !== "all") {
+  result = result.filter(l => l.segment === segmentFilter);
+}
+```
+
+### Prevenção de conflito de clique
+
+As linhas da tabela já têm `onClick={() => openLeadDetail(lead)}`. O checkbox terá `onClick={(e) => e.stopPropagation()}` para não abrir o detalhe ao clicar no checkbox.
+
+### Limpeza automática da seleção
+
+Ao aplicar qualquer bulk action, a seleção é limpa após sucesso. Ao mudar filtros, a seleção também é zerada.
