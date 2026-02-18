@@ -95,9 +95,10 @@ serve(async (req) => {
       const sentStepIds = new Set((sentRows || []).map((r: any) => r.step_id));
 
       // Find steps that should be sent now and haven't been sent yet
+      // delay_days=1 means "send on day of enrollment (immediately)", so we subtract 1
       for (const step of steps) {
         if (sentStepIds.has(step.id)) continue;
-        if (daysSinceEnroll < step.delay_days) continue;
+        if (daysSinceEnroll < step.delay_days - 1) continue;
 
         // Send email
         const vars = {
