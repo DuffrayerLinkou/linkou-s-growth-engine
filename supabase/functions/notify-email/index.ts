@@ -198,6 +198,52 @@ serve(async (req) => {
         break;
       }
 
+      // ── Lead Funnel Enrollment ──
+      case "lead_funnel_enroll": {
+        const { lead_email } = payload;
+        if (!lead_email) break;
+
+        // Find the lead by email
+        const { data: lead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("email", lead_email)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!lead) {
+          console.warn("[notify-email] lead_funnel_enroll: lead not found for email", lead_email);
+          break;
+        }
+
+        // Find first active funnel
+        const { data: funnel } = await supabase
+          .from("email_funnels")
+          .select("id")
+          .eq("is_active", true)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .single();
+
+        if (!funnel) {
+          console.warn("[notify-email] lead_funnel_enroll: no active funnel found");
+          break;
+        }
+
+        // Enroll lead (ignore duplicate)
+        const { error: enrollError } = await supabase
+          .from("lead_funnel_enrollments")
+          .insert({ lead_id: lead.id, funnel_id: funnel.id });
+
+        if (enrollError && !enrollError.message.includes("duplicate")) {
+          console.error("[notify-email] lead_funnel_enroll error:", enrollError.message);
+        } else {
+          console.log(`[notify-email] Lead ${lead.id} enrolled in funnel ${funnel.id}`);
+        }
+        break;
+      }
+
       default:
         console.warn(`[notify-email] Unknown event type: ${event_type}`);
     }

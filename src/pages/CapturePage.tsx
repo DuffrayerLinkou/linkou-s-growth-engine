@@ -146,6 +146,16 @@ const CapturePage = () => {
         });
       } catch {}
 
+      // Enroll lead in default active funnel
+      try {
+        await supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "lead_funnel_enroll",
+            lead_email: formData.email.trim(),
+          },
+        });
+      } catch {}
+
       if (page?.thank_you_redirect_url) {
         window.location.href = page.thank_you_redirect_url;
       } else {

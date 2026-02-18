@@ -622,6 +622,74 @@ export type Database = {
         }
         Relationships: []
       }
+      email_funnel_steps: {
+        Row: {
+          created_at: string
+          delay_days: number
+          funnel_id: string
+          html_body: string
+          id: string
+          step_number: number
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delay_days?: number
+          funnel_id: string
+          html_body?: string
+          id?: string
+          step_number?: number
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delay_days?: number
+          funnel_id?: string
+          html_body?: string
+          id?: string
+          step_number?: number
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_funnel_steps_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "email_funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_funnels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           category: string | null
@@ -912,6 +980,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lead_follow_ups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_funnel_emails_sent: {
+        Row: {
+          enrollment_id: string
+          id: string
+          sent_at: string
+          step_id: string
+        }
+        Insert: {
+          enrollment_id: string
+          id?: string
+          sent_at?: string
+          step_id: string
+        }
+        Update: {
+          enrollment_id?: string
+          id?: string
+          sent_at?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_funnel_emails_sent_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_funnel_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_funnel_emails_sent_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "email_funnel_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_funnel_enrollments: {
+        Row: {
+          created_at: string
+          enrolled_at: string
+          funnel_id: string
+          id: string
+          lead_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enrolled_at?: string
+          funnel_id: string
+          id?: string
+          lead_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enrolled_at?: string
+          funnel_id?: string
+          id?: string
+          lead_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_funnel_enrollments_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "email_funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_funnel_enrollments_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
