@@ -1,74 +1,108 @@
 
-# Atualização da Identidade do Remetente e Assinatura dos Emails
+# Gerador de Steps de Funil de Email com IA
 
-## O que muda
+## Visão geral
 
-Dois pontos concentram toda a lógica de envio e identidade dos emails:
+Na aba "Editor de Steps" da página `/admin/funil-email`, ao selecionar um funil, o usuário poderá clicar em um botão "Gerar com IA" para descrever em linguagem natural o objetivo do funil. A IA irá gerar automaticamente todos os steps com assunto e corpo HTML prontos para uso, usando as variáveis `{{nome}}`, `{{segmento}}` e `{{objetivo}}`.
 
-1. **`supabase/functions/send-email/index.ts`** — define o campo `from` que aparece na caixa de entrada do destinatário.
-2. **`supabase/functions/_shared/email-templates.ts`** — define o rodapé/assinatura que aparece no corpo HTML de todos os emails.
+## Experiência do usuário
 
-Nenhuma outra edge function precisa ser alterada, pois todas usam `sendNotificationEmail` do `_shared/email-sender.ts`, que por sua vez chama `send-email`, e todos os HTMLs são gerados por funções de `email-templates.ts` que usam `baseEmailLayout` (rodapé centralizado).
+1. Usuário seleciona um funil na aba "Editor de Steps"
+2. Clica no botão **"✨ Gerar Steps com IA"** (ao lado do botão "Adicionar Step")
+3. Um dialog abre com campos de contexto:
+   - Objetivo do funil (ex: "converter leads frios que viram a landing page mas não responderam")
+   - Público-alvo (ex: "e-commerce, academias, clínicas")
+   - Tom de voz (opções: Profissional, Consultivo, Direto/Urgente)
+   - Quantidade de steps (3, 4 ou 5)
+   - Intervalo entre emails (ex: a cada 2 dias, 3 dias, 7 dias)
+4. IA gera todos os steps com assunto + HTML completo usando o template Linkou (cor roxa, assinatura Leo Santana)
+5. Preview dos steps gerados é exibido no dialog antes de salvar
+6. Usuário confirma → steps são salvos em batch no banco
 
-## Alterações
+## Arquitetura técnica
 
-### 1. Nome do remetente — `send-email/index.ts`
+### 1. Nova Edge Function: `generate-funnel-steps`
 
-Linha 71, mudar o `from` padrão de:
-```
-"Linkou <contato@agencialinkou.com.br>"
-```
-para:
-```
-"Leo Santana | Linkou <contato@agencialinkou.com.br>"
-```
+Segue o mesmo padrão de `generate-capture-page`:
+- Autenticação via `Authorization` header
+- Chama Lovable AI Gateway com tool calling estruturado
+- Retorna array de steps com `delay_days`, `subject` e `html_body`
 
-Isso atualiza o nome que aparece no campo **"De:"** em 100% dos emails enviados pela plataforma.
-
-### 2. Assinatura no rodapé — `email-templates.ts`
-
-Linhas 22–26, a função `baseEmailLayout` renderiza o rodapé de todos os emails. Mudar de:
-
-```html
-Linkou — Marketing de Performance
-✉ contato@agencialinkou.com.br
-📞 (41) 98898-8054
-agencialinkou.com.br
-```
-
-para:
-
-```html
-Leo Santana — Diretor Comercial
-Linkou — Marketing de Performance
-✉ contato@agencialinkou.com.br
-📞 (41) 98898-8054
-agencialinkou.com.br
+**Parâmetros de entrada:**
+```typescript
+{
+  objective: string;       // Objetivo do funil
+  audience: string;        // Público-alvo
+  tone: "professional" | "consultive" | "direct";
+  step_count: 3 | 4 | 5;
+  interval_days: number;   // Dias entre emails
+  funnel_name: string;     // Nome do funil (contexto extra)
+}
 ```
 
-O nome e cargo aparecem em destaque (cor mais escura) acima da linha institucional, mantendo o padrão visual roxo já existente.
+**Saída esperada (tool call):**
+```typescript
+{
+  steps: Array<{
+    step_number: number;
+    delay_days: number;
+    subject: string;
+    html_body: string;  // HTML pronto com variáveis {{nome}}, {{segmento}}, {{objetivo}}
+  }>
+}
+```
 
-### 3. Re-deploy das edge functions
+**Prompt de sistema:** Especialista em email marketing consultivo B2B/B2C brasileiro, sempre usando variáveis de personalização, assinatura "Leo Santana — Diretor Comercial — Linkou" em estilo HTML inline compatível com o design system roxo (#7C3AED), e nunca mencionando "tráfego pago" mas sim "consultoria, tráfego e vendas".
 
-Após as alterações de código, será necessário fazer o deploy de:
-- `send-email`
-- (não há re-deploy das outras funções necessário, pois `_shared` é importado em tempo de execução)
+### 2. Alterações em `EmailFunnel.tsx`
 
-## Arquivos alterados
+- Novo estado: `aiDialog: boolean`
+- Novo estado: `generatedSteps: FunnelStep[]` (preview antes de salvar)
+- Novo componente `GenerateStepsDialog` com os campos de contexto
+- Novo componente `GeneratedStepsPreview` dentro do dialog para revisar antes de salvar
+- Botão "✨ Gerar com IA" na aba de steps (visível quando um funil está selecionado)
+- Mutation `saveAllSteps` para inserir os steps gerados em batch
 
-| Arquivo | Linha(s) | Mudança |
-|---------|----------|---------|
-| `supabase/functions/send-email/index.ts` | 71 | Campo `from` com nome do remetente |
-| `supabase/functions/_shared/email-templates.ts` | 22–26 | Rodapé com nome + cargo |
+### 3. Registro em `config.toml`
 
-## Impacto
+```toml
+[functions.generate-funnel-steps]
+verify_jwt = false
+```
 
-Todos os emails do sistema serão afetados automaticamente, incluindo:
-- Boas-vindas (novo cliente)
-- Agradecimento ao lead
-- Notificação de tarefas
-- Aprovação de campanhas
-- Agendamentos
-- Lembretes de prazo
-- Funil Cold Outbound (5 steps)
-- Qualquer outro email futuro gerado via `baseEmailLayout`
+## Fluxo detalhado
+
+```text
+[Usuário clica "Gerar com IA"]
+        ↓
+[Dialog abre com campos de contexto]
+        ↓
+[Usuário preenche e clica "Gerar"]
+        ↓
+[Frontend chama supabase.functions.invoke("generate-funnel-steps")]
+        ↓
+[Edge Function chama Lovable AI Gateway com tool calling]
+        ↓
+[IA retorna array de steps estruturados]
+        ↓
+[Dialog mostra preview dos N steps gerados]
+        ↓
+[Usuário aprova → INSERT em batch em email_funnel_steps]
+        ↓
+[Toast de sucesso + lista de steps atualizada]
+```
+
+## Arquivos alterados / criados
+
+| Arquivo | Ação | O que muda |
+|---|---|---|
+| `supabase/functions/generate-funnel-steps/index.ts` | Criar | Nova edge function com IA |
+| `supabase/config.toml` | Editar | Registrar nova função com `verify_jwt = false` |
+| `src/pages/admin/EmailFunnel.tsx` | Editar | Botão + dialog + preview + mutation de batch save |
+
+## Pontos de cuidado
+
+- Se o funil já tiver steps, o dialog avisa: "Este funil já possui X steps. Os novos serão adicionados ao final."
+- Steps gerados pela IA partem do `delay_days` a partir do último step existente (se houver), evitando conflitos
+- Erros de rate limit (429) e créditos (402) são exibidos via toast com mensagem amigável
+- O HTML gerado seguirá o padrão inline já usado nos steps existentes (sem folhas de estilo externas)
