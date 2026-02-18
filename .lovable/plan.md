@@ -1,128 +1,74 @@
 
-# Multi-seleção de Leads, Ações em Lote e Métricas por Segmento
+# Atualização da Identidade do Remetente e Assinatura dos Emails
 
-## Problemas identificados
+## O que muda
 
-A página `/admin/leads` atual tem:
-- Sem checkbox de seleção individual ou "selecionar todos"
-- Nenhuma ação em lote (bulk action)
-- Métricas apenas por status — sem visibilidade por segmento, origem ou investimento
-- Sem filtro por segmento na lista
+Dois pontos concentram toda a lógica de envio e identidade dos emails:
 
-## O que será implementado
+1. **`supabase/functions/send-email/index.ts`** — define o campo `from` que aparece na caixa de entrada do destinatário.
+2. **`supabase/functions/_shared/email-templates.ts`** — define o rodapé/assinatura que aparece no corpo HTML de todos os emails.
 
-### 1. Multi-seleção com barra de ações em lote
+Nenhuma outra edge function precisa ser alterada, pois todas usam `sendNotificationEmail` do `_shared/email-sender.ts`, que por sua vez chama `send-email`, e todos os HTMLs são gerados por funções de `email-templates.ts` que usam `baseEmailLayout` (rodapé centralizado).
 
-Na view de lista, cada linha recebe um **checkbox** na primeira coluna. Um checkbox de "selecionar todos" aparece no cabeçalho da tabela.
+## Alterações
 
-Quando ≥1 lead estiver selecionado, uma **barra de ações flutuante** aparece acima da tabela com:
+### 1. Nome do remetente — `send-email/index.ts`
 
-- Contador: "X leads selecionados"
-- Botão: **Alterar status** (dropdown com todos os status)
-- Botão: **Inscrever no funil** (dropdown dos funis ativos)
-- Botão: **Arquivar** (atalho rápido)
-- Botão: **Exportar seleção** (gera XLSX só dos selecionados)
-- Botão: **Excluir** (com confirmação)
-
-### 2. Filtro por segmento
-
-Ao lado dos filtros de status e origem, adicionar um `<Select>` de **segmento** usando `clientSegments` do `segments-config.ts` já existente. Isso permite isolar leads por nicho (Construtora, Imobiliária, E-commerce, etc.).
-
-### 3. Métricas expandidas — painel de breakdown
-
-Abaixo dos cards de status atuais, adicionar um segundo nível de métricas colapsável:
-
-- **Por segmento**: barras horizontais mostrando quantidade de leads por nicho, calculadas a partir dos dados já carregados (sem nova query)
-- **Por origem**: distribuição Landing Page vs. Meta Lead Ads vs. Manual
-- **Taxa de conversão**: (converted / total) × 100%
-- **Investimento médio declarado**: quando o campo `investment` está preenchido
-
-Todos calculados client-side a partir do array `leads` já existente no estado.
-
-## Arquivos a alterar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/admin/Leads.tsx` | Adicionar estados de seleção, checkbox na tabela, barra de bulk actions, filtro de segmento, painel de métricas expandido |
-
-Nenhuma alteração de banco, edge function ou schema necessária — tudo baseado nos dados já carregados.
-
-## Detalhes técnicos
-
-### Estados adicionados
-
-```typescript
-const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
-const [segmentFilter, setSegmentFilter] = useState<string>("all");
-const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false);
-const [isBulkFunnelOpen, setIsBulkFunnelOpen] = useState(false);
-const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
-const [isBulkActioning, setIsBulkActioning] = useState(false);
-const [showMetricsBreakdown, setShowMetricsBreakdown] = useState(false);
+Linha 71, mudar o `from` padrão de:
+```
+"Linkou <contato@agencialinkou.com.br>"
+```
+para:
+```
+"Leo Santana | Linkou <contato@agencialinkou.com.br>"
 ```
 
-### Lógica de seleção
+Isso atualiza o nome que aparece no campo **"De:"** em 100% dos emails enviados pela plataforma.
 
-```typescript
-const toggleLead = (id: string) =>
-  setSelectedLeadIds(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
+### 2. Assinatura no rodapé — `email-templates.ts`
 
-const toggleAll = () =>
-  setSelectedLeadIds(
-    selectedLeadIds.size === filteredLeads.length
-      ? new Set()
-      : new Set(filteredLeads.map(l => l.id))
-  );
+Linhas 22–26, a função `baseEmailLayout` renderiza o rodapé de todos os emails. Mudar de:
+
+```html
+Linkou — Marketing de Performance
+✉ contato@agencialinkou.com.br
+📞 (41) 98898-8054
+agencialinkou.com.br
 ```
 
-### Bulk actions
+para:
 
-```typescript
-const bulkUpdateStatus = async (newStatus: string) => { ... }
-const bulkEnrollFunnel = async (funnelId: string) => { ... }
-const bulkDelete = async () => { ... }
-const bulkExport = () => { /* XLSX só dos selecionados */ }
+```html
+Leo Santana — Diretor Comercial
+Linkou — Marketing de Performance
+✉ contato@agencialinkou.com.br
+📞 (41) 98898-8054
+agencialinkou.com.br
 ```
 
-### Métricas de breakdown (client-side)
+O nome e cargo aparecem em destaque (cor mais escura) acima da linha institucional, mantendo o padrão visual roxo já existente.
 
-```typescript
-const segmentBreakdown = useMemo(() =>
-  clientSegments.map(seg => ({
-    segment: seg,
-    count: leads.filter(l => l.segment === seg).length,
-  })).filter(s => s.count > 0).sort((a, b) => b.count - a.count),
-[leads]);
+### 3. Re-deploy das edge functions
 
-const sourceBreakdown = useMemo(() => ({
-  landing_page: leads.filter(l => l.source === 'landing_page').length,
-  meta_instant_form: leads.filter(l => l.source === 'meta_instant_form').length,
-  manual: leads.filter(l => l.source === 'manual').length,
-}), [leads]);
+Após as alterações de código, será necessário fazer o deploy de:
+- `send-email`
+- (não há re-deploy das outras funções necessário, pois `_shared` é importado em tempo de execução)
 
-const conversionRate = useMemo(() => {
-  const converted = leads.filter(l => l.status === 'converted').length;
-  return leads.length > 0 ? ((converted / leads.length) * 100).toFixed(1) : '0';
-}, [leads]);
-```
+## Arquivos alterados
 
-### Filtro de segmento integrado ao `filteredLeads`
+| Arquivo | Linha(s) | Mudança |
+|---------|----------|---------|
+| `supabase/functions/send-email/index.ts` | 71 | Campo `from` com nome do remetente |
+| `supabase/functions/_shared/email-templates.ts` | 22–26 | Rodapé com nome + cargo |
 
-O `useMemo` de `filteredLeads` receberá um terceiro critério:
-```typescript
-if (segmentFilter !== "all") {
-  result = result.filter(l => l.segment === segmentFilter);
-}
-```
+## Impacto
 
-### Prevenção de conflito de clique
-
-As linhas da tabela já têm `onClick={() => openLeadDetail(lead)}`. O checkbox terá `onClick={(e) => e.stopPropagation()}` para não abrir o detalhe ao clicar no checkbox.
-
-### Limpeza automática da seleção
-
-Ao aplicar qualquer bulk action, a seleção é limpa após sucesso. Ao mudar filtros, a seleção também é zerada.
+Todos os emails do sistema serão afetados automaticamente, incluindo:
+- Boas-vindas (novo cliente)
+- Agradecimento ao lead
+- Notificação de tarefas
+- Aprovação de campanhas
+- Agendamentos
+- Lembretes de prazo
+- Funil Cold Outbound (5 steps)
+- Qualquer outro email futuro gerado via `baseEmailLayout`
