@@ -21,6 +21,7 @@ import {
   Building2,
   Archive,
   Trash2,
+  Plus,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,9 +121,35 @@ export default function AdminLeads() {
     name: "",
     segment: "",
   });
+
+  // Novo Lead states
+  const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
+  const [isSavingLead, setIsSavingLead] = useState(false);
+  const [funnels, setFunnels] = useState<{ id: string; name: string }[]>([]);
+  const [newLeadForm, setNewLeadForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    segment: "",
+    objective: "",
+    enrollInFunnel: false,
+    funnelId: "",
+  });
+
   const { toast } = useToast();
 
+  // Fetch funnels for "Novo Lead" dropdown
+  useEffect(() => {
+    supabase
+      .from("email_funnels")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => setFunnels(data || []));
+  }, []);
+
   // Date range state
+
   const [selectedPreset, setSelectedPreset] = useState("last30days");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const preset = presets.find((p) => p.value === "last30days");
@@ -166,6 +196,59 @@ export default function AdminLeads() {
     setViewMode(mode);
     searchParams.set("view", mode);
     setSearchParams(searchParams);
+  };
+
+  const createManualLead = async () => {
+    if (!newLeadForm.name || !newLeadForm.email) return;
+    setIsSavingLead(true);
+    try {
+      const { data: lead, error } = await supabase
+        .from("leads")
+        .insert({
+          name: newLeadForm.name,
+          email: newLeadForm.email,
+          phone: newLeadForm.phone || null,
+          segment: newLeadForm.segment || null,
+          objective: newLeadForm.objective || null,
+          source: "manual",
+          status: "new",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (newLeadForm.enrollInFunnel && newLeadForm.funnelId && lead) {
+        const { error: enrollError } = await supabase
+          .from("lead_funnel_enrollments")
+          .insert({
+            lead_id: lead.id,
+            funnel_id: newLeadForm.funnelId,
+            status: "active",
+          });
+        if (enrollError) throw enrollError;
+      }
+
+      toast({
+        title: "Lead criado com sucesso!",
+        description: newLeadForm.enrollInFunnel
+          ? "Lead adicionado e inscrito no funil de email."
+          : "Lead adicionado manualmente.",
+      });
+
+      setNewLeadForm({ name: "", email: "", phone: "", segment: "", objective: "", enrollInFunnel: false, funnelId: "" });
+      setIsNewLeadOpen(false);
+      fetchLeads();
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar lead",
+        description: "Verifique os dados e tente novamente.",
+      });
+    } finally {
+      setIsSavingLead(false);
+    }
   };
 
   const fetchLeads = async () => {
@@ -395,13 +478,19 @@ export default function AdminLeads() {
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leads</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Gerencie os leads capturados pela landing page.
+            Gerencie os leads capturados e adicionados manualmente.
           </p>
         </div>
-        <Button onClick={fetchLeads} variant="outline" size="sm" className="flex-shrink-0 text-xs sm:text-sm">
-          <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button onClick={() => setIsNewLeadOpen(true)} size="sm" className="text-xs sm:text-sm">
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            Novo Lead
+          </Button>
+          <Button onClick={fetchLeads} variant="outline" size="sm" className="text-xs sm:text-sm">
+            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Controls Row */}
@@ -493,6 +582,7 @@ export default function AdminLeads() {
             <SelectItem value="all">Todas as origens</SelectItem>
             <SelectItem value="landing_page">Landing Page</SelectItem>
             <SelectItem value="meta_instant_form">Meta Lead Ads</SelectItem>
+            <SelectItem value="manual">Adicionado manualmente</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -743,6 +833,122 @@ export default function AdminLeads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Novo Lead Dialog */}
+      <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Lead</DialogTitle>
+            <DialogDescription>
+              Cadastre um lead manualmente e inscreva-o em um funil de email se desejar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 col-span-2">
+                <Label htmlFor="nl-name">Nome *</Label>
+                <Input
+                  id="nl-name"
+                  placeholder="Nome completo"
+                  value={newLeadForm.name}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label htmlFor="nl-email">Email *</Label>
+                <Input
+                  id="nl-email"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={newLeadForm.email}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-phone">Telefone</Label>
+                <Input
+                  id="nl-phone"
+                  placeholder="(41) 99999-9999"
+                  value={newLeadForm.phone}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nl-segment">Segmento</Label>
+                <Select
+                  value={newLeadForm.segment}
+                  onValueChange={(v) => setNewLeadForm({ ...newLeadForm, segment: v })}
+                >
+                  <SelectTrigger id="nl-segment">
+                    <SelectValue placeholder="Selecionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientSegments.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 col-span-2">
+                <Label htmlFor="nl-objective">Objetivo / Observação</Label>
+                <Textarea
+                  id="nl-objective"
+                  placeholder="Descreva o objetivo ou como chegou até o lead..."
+                  className="min-h-[72px] resize-none"
+                  value={newLeadForm.objective}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, objective: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Funnel enrollment */}
+            <div className="border rounded-lg p-3 space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="nl-funnel"
+                  checked={newLeadForm.enrollInFunnel}
+                  onCheckedChange={(checked) =>
+                    setNewLeadForm({ ...newLeadForm, enrollInFunnel: !!checked })
+                  }
+                />
+                <Label htmlFor="nl-funnel" className="cursor-pointer font-normal">
+                  Inscrever em funil de email
+                </Label>
+              </div>
+              {newLeadForm.enrollInFunnel && (
+                <Select
+                  value={newLeadForm.funnelId}
+                  onValueChange={(v) => setNewLeadForm({ ...newLeadForm, funnelId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o funil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {funnels.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewLeadOpen(false)} disabled={isSavingLead}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={createManualLead}
+              disabled={!newLeadForm.name || !newLeadForm.email || isSavingLead || (newLeadForm.enrollInFunnel && !newLeadForm.funnelId)}
+            >
+              {isSavingLead ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
+              ) : (
+                <><Plus className="h-4 w-4 mr-2" />Adicionar Lead</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
