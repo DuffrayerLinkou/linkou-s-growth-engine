@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Mail, Plus, Pencil, Trash2, Eye, ChevronRight, Users, Layers, Play, Pause, CheckCircle2, Clock
+  Mail, Plus, Pencil, Trash2, Eye, ChevronRight, Users, Layers, Play, Pause, CheckCircle2, Clock, Search, UserPlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -66,6 +67,7 @@ export default function EmailFunnel() {
   const [funnelDialog, setFunnelDialog] = useState<{ open: boolean; funnel?: Funnel }>({ open: false });
   const [stepDialog, setStepDialog] = useState<{ open: boolean; step?: FunnelStep }>({ open: false });
   const [previewStep, setPreviewStep] = useState<FunnelStep | null>(null);
+  const [enrollDialog, setEnrollDialog] = useState(false);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: funnels = [], isLoading: loadingFunnels } = useQuery({
@@ -205,6 +207,31 @@ export default function EmailFunnel() {
       qc.invalidateQueries({ queryKey: ["lead_funnel_enrollments_enriched"] });
       toast({ title: "Status atualizado." });
     },
+  });
+
+  const manualEnroll = useMutation({
+    mutationFn: async ({ leadId, funnelId }: { leadId: string; funnelId: string }) => {
+      const { data: existing } = await supabase
+        .from("lead_funnel_enrollments")
+        .select("id, status")
+        .eq("lead_id", leadId)
+        .eq("funnel_id", funnelId)
+        .in("status", ["active", "paused"])
+        .maybeSingle();
+
+      if (existing) throw new Error("Lead já está inscrito neste funil.");
+
+      const { error } = await supabase
+        .from("lead_funnel_enrollments")
+        .insert({ lead_id: leadId, funnel_id: funnelId, status: "active" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lead_funnel_enrollments_enriched"] });
+      setEnrollDialog(false);
+      toast({ title: "Lead inscrito com sucesso!" });
+    },
+    onError: (e: any) => toast({ variant: "destructive", title: "Erro", description: e.message }),
   });
 
   // ── Enrollment counts per funnel ──────────────────────────────────────────
@@ -398,6 +425,11 @@ export default function EmailFunnel() {
 
         {/* ── Tab: Leads ── */}
         <TabsContent value="leads" className="mt-4">
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setEnrollDialog(true)}>
+              <UserPlus className="h-4 w-4 mr-2" /> Inscrever Lead
+            </Button>
+          </div>
           <div className="space-y-3">
             {enrollments.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhum lead inscrito ainda.</p>
@@ -483,6 +515,15 @@ export default function EmailFunnel() {
         onClose={() => setStepDialog({ open: false })}
         onSave={(values) => saveStep.mutate(values)}
         loading={saveStep.isPending}
+      />
+
+      {/* ── Dialog: Enroll Lead Manually ── */}
+      <EnrollLeadDialog
+        open={enrollDialog}
+        funnels={funnels}
+        onClose={() => setEnrollDialog(false)}
+        onEnroll={(leadId, funnelId) => manualEnroll.mutate({ leadId, funnelId })}
+        loading={manualEnroll.isPending}
       />
 
       {/* ── Dialog: Preview Step ── */}
@@ -620,6 +661,137 @@ function StepDialog({ open, step, funnelId, onClose, onSave, loading }: {
             disabled={!subject.trim() || !htmlBody.trim() || loading}
           >
             {loading ? "Salvando..." : "Salvar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── EnrollLeadDialog ────────────────────────────────────────────────────────
+function EnrollLeadDialog({ open, funnels, onClose, onEnroll, loading }: {
+  open: boolean;
+  funnels: Funnel[];
+  onClose: () => void;
+  onEnroll: (leadId: string, funnelId: string) => void;
+  loading: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [selectedLead, setSelectedLead] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>("");
+
+  const { data: leadResults = [], isFetching } = useQuery({
+    queryKey: ["leads_search", search],
+    enabled: search.trim().length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, name, email")
+        .or(`name.ilike.%${search}%,email.ilike.%${search}%`)
+        .limit(50);
+      if (error) throw error;
+      return data as { id: string; name: string; email: string }[];
+    },
+  });
+
+  const activeFunnels = funnels.filter((f) => f.is_active);
+
+  const handleClose = () => {
+    setSearch("");
+    setSelectedLead(null);
+    setSelectedFunnelId("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            Inscrever Lead no Funil
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-2">
+          {/* Lead search */}
+          <div className="space-y-2">
+            <Label>Buscar lead</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Digite nome ou email..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedLead(null);
+                }}
+              />
+            </div>
+
+            {/* Results list */}
+            {search.trim().length >= 2 && (
+              <div className="border rounded-md max-h-48 overflow-y-auto">
+                {isFetching ? (
+                  <p className="text-sm text-muted-foreground p-3">Buscando...</p>
+                ) : leadResults.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3">Nenhum lead encontrado.</p>
+                ) : (
+                  leadResults.map((lead) => (
+                    <button
+                      key={lead.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60 transition-colors border-b last:border-b-0 ${
+                        selectedLead?.id === lead.id ? "bg-primary/10 text-primary font-medium" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedLead(lead);
+                        setSearch(lead.name);
+                      }}
+                    >
+                      <div className="font-medium">{lead.name}</div>
+                      <div className="text-xs text-muted-foreground">{lead.email}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            {selectedLead && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-md text-sm">
+                <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                <span className="font-medium">{selectedLead.name}</span>
+                <span className="text-muted-foreground truncate">{selectedLead.email}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Funnel select */}
+          <div className="space-y-2">
+            <Label>Funil</Label>
+            <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um funil..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activeFunnels.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+          <Button
+            disabled={!selectedLead || !selectedFunnelId || loading}
+            onClick={() => selectedLead && onEnroll(selectedLead.id, selectedFunnelId)}
+          >
+            {loading ? "Inscrevendo..." : "Inscrever"}
           </Button>
         </DialogFooter>
       </DialogContent>
