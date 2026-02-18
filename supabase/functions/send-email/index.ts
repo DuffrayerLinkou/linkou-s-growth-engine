@@ -68,7 +68,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: from || "Linkou <contato@agencialinkou.com.br>",
+        from: from || "Leo Santana | Linkou <contato@agencialinkou.com.br>",
         to: Array.isArray(to) ? to : [to],
         subject,
         html,
