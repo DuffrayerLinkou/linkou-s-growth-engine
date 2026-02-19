@@ -1,132 +1,126 @@
 
-# Linkouzinho — Conversão em 3 Caminhos
+# Confirmação de Reunião do Linkouzinho → Agendamentos
 
-## Visão Geral
+## Problema Identificado
 
-O bot já captura leads com um único caminho: coleta o cadastro e redireciona ao WhatsApp. A melhoria é transformar esse momento de conversão em uma **escolha consciente do lead**, com 3 opções apresentadas de forma simpática e natural, cada uma com seu fluxo completo de backend.
-
----
-
-## Os 3 Caminhos de Conversão
-
-### Caminho 1 — Falar com alguém agora (WhatsApp)
-O lead quer contato imediato. Coleta nome + telefone, registra no CRM e abre o WhatsApp com contexto da conversa já na mensagem.
-
-### Caminho 2 — Agendar uma reunião
-O lead quer uma conversa mais estruturada. Coleta nome, e-mail, telefone e uma data/hora sugerida. **Cria o agendamento no sistema** (tabela `appointments`, status `pending`) e dispara e-mail de aviso para os admins via `notify-email` com `event_type: appointment_created`.
-
-### Caminho 3 — Só deixar o contato (Cadastro)
-O lead ainda não quer compromisso. Coleta nome + e-mail, registra no CRM e inscreve automaticamente no funil de e-mail via `notify-email` com `event_type: lead_funnel_enroll`.
+O fluxo atual pára no meio:
+1. Lead solicita reunião via Linkouzinho ✅
+2. Lead é cadastrado no CRM com `source: "bot_linkouzinho"` ✅
+3. Admin recebe e-mail de notificação ✅
+4. Admin vê banner na página de Leads ✅
+5. **Admin confirma a reunião → gera agendamento real → notifica o lead por e-mail** ❌ — FALTANDO
 
 ---
 
-## Como Aparece no Chat
+## Solução: "Confirmar Reunião" em 3 partes
 
-Quando a IA aciona `<CAPTURE_MODE>`, em vez de exibir diretamente o formulário de captura, o bot exibe **primeiro uma tela de escolha** com 3 botões simpaticamente apresentados:
+### Parte 1 — Botão de confirmação na página de Leads
 
-```
-💬 Falar agora no WhatsApp
-📅 Agendar uma reunião
-📝 Deixar meu contato
-```
+No banner de solicitações pendentes e no detalhe do lead (LeadDetailDialog), aparece um botão **"Confirmar Reunião"** para leads com `source === "bot_linkouzinho"` e `objective?.includes("Reunião")`.
 
-Ao clicar em um, o formulário correto aparece.
+Ao clicar, abre um dialog de confirmação com:
+- **Data e hora** (pré-preenchida com a data sugerida pelo lead extraída do campo `objective`)
+- **Local / Link** (ex: link do Google Meet)
+- **Cliente** a associar (select dos clientes cadastrados, para poder criar o `appointment` com `client_id`)
+- **Duração** (30/60/90 min)
+- Botão "Confirmar e Notificar"
+
+### Parte 2 — Ação de confirmação no backend
+
+Ao confirmar:
+1. **Cria o agendamento** na tabela `appointments` com status `confirmed` e o `client_id` selecionado
+2. **Atualiza o status do lead** para `contacted` (ou mantém conforme fluxo)
+3. **Registra atividade** no lead: "Reunião confirmada"
+4. **Envia e-mail para o lead** via `notify-email` com `event_type: "appointment_confirmed_to_lead"` — novo evento com template específico informando data/hora/local confirmados
+
+### Parte 3 — Novo template de e-mail para o lead
+
+Cria `appointmentConfirmedToLeadEmail(leadName, date, location)` em `_shared/email-templates.ts`:
+- Assunto: `✅ Sua reunião foi confirmada — Linkou`
+- Corpo: data/hora confirmada + local/link + orientações de preparo
+- CTA: botão "Adicionar à agenda" (link Google Calendar)
 
 ---
 
-## Mudanças Técnicas Detalhadas
+## Detalhes Técnicos
 
-### `src/components/landing/LinkouzinhoWidget.tsx`
+### Mudança 1 — `src/pages/admin/Leads.tsx`
 
-#### Novos estados
-- `conversionPath: "whatsapp" | "appointment" | "register" | null` — qual caminho o lead escolheu
-- `captureStep: "choose" | "form" | "done"` — etapa do fluxo de conversão
+Adicionar estado `confirmingLead: Lead | null` e dialog de confirmação:
 
-#### Novos componentes internos
-
-**`ConversionPathChooser`** — tela de escolha dos 3 caminhos, aparece quando `captureMode === true` e `captureStep === "choose"`:
 ```tsx
-<div className="space-y-2 mt-2">
-  <p className="text-sm font-medium">Como prefere continuar? 😊</p>
-  <Button onClick={() => setPath("whatsapp")}>💬 Falar agora no WhatsApp</Button>
-  <Button onClick={() => setPath("appointment")}>📅 Agendar uma reunião</Button>
-  <Button onClick={() => setPath("register")}>📝 Só deixar meu contato</Button>
-</div>
+const [confirmingLead, setConfirmingLead] = useState<Lead | null>(null);
+const [confirmForm, setConfirmForm] = useState({
+  client_id: "",
+  confirmed_date: "",    // extraído do objective ou manual
+  confirmed_time: "",
+  location: "",
+  duration_minutes: "60",
+});
 ```
 
-**`WhatsAppCaptureForm`** — nome + telefone (telefone obrigatório aqui):
-- Ao submeter: insere lead no CRM com `source: "bot_linkouzinho"`, dispara CAPI, abre WhatsApp com contexto
+O dialog extrai a data sugerida do campo `objective` do lead usando regex sobre o texto "data sugerida: DD/MM/YYYY HH:mm".
 
-**`AppointmentForm`** — nome + e-mail + telefone + data/hora sugerida:
-- Ao submeter:
-  1. Insere lead no CRM com `source: "bot_linkouzinho"`
-  2. Busca `client_id` nulo (agendamento público não tem client_id) — **solução**: insere na tabela `leads` e cria `appointments` com `client_id = null` e um campo `lead_id` — mas a tabela `appointments` exige `client_id`. **Alternativa**: salvar apenas no CRM (`leads`) com o campo `objective` contendo a data/hora sugerida + enviar e-mail aos admins via `notify-email` com evento customizado `bot_appointment_request`
-  3. Dispara `notify-email` com `event_type: "bot_appointment_request"` → e-mail para admins com nome, e-mail, telefone e data/hora sugerida
+Botão "Confirmar Reunião" aparece:
+1. Em cada item do **banner** de solicitações pendentes (ao lado do nome)
+2. Na **tabela de leads**, coluna de ações, quando o lead é do bot com solicitação de reunião
 
-**`RegisterForm`** — nome + e-mail (formulário mais simples, menos atrito):
-- Ao submeter: insere lead no CRM, inscreve no funil de e-mail via `notify-email` com `lead_funnel_enroll`, envia e-mail de obrigado ao lead
+**Handler `handleConfirmAppointment`:**
+```tsx
+// 1. Insert na tabela appointments
+await supabase.from("appointments").insert({
+  title: `Reunião com ${confirmingLead.name}`,
+  client_id: confirmForm.client_id,
+  appointment_date: combinedDateTime,
+  duration_minutes: parseInt(confirmForm.duration_minutes),
+  location: confirmForm.location || null,
+  status: "confirmed",
+  type: "meeting",
+  created_by: user.id,
+  description: `Solicitação via Linkouzinho. Lead: ${confirmingLead.email} / ${confirmingLead.phone}`,
+});
 
-#### Mudanças no `localStorage`
-Adicionar: `linkouzinho_conversion_path` e `linkouzinho_capture_step` para persistência do estado entre aberturas/fechamentos do chat dentro do TTL de 24h.
+// 2. Atualiza lead para contacted
+await supabase.from("leads").update({ status: "contacted" }).eq("id", confirmingLead.id);
 
----
+// 3. Loga atividade
+await logLeadActivity(confirmingLead.id, "note", "Reunião confirmada e agendada");
 
-### `supabase/functions/notify-email/index.ts`
+// 4. Envia e-mail ao lead
+await supabase.functions.invoke("notify-email", {
+  body: {
+    event_type: "appointment_confirmed_to_lead",
+    lead_name: confirmingLead.name,
+    lead_email: confirmingLead.email,
+    confirmed_date: formattedDate,
+    location: confirmForm.location,
+  }
+});
+```
 
-Adicionar novo `case "bot_appointment_request"`:
+### Mudança 2 — `supabase/functions/notify-email/index.ts`
+
+Adicionar case `appointment_confirmed_to_lead`:
 ```typescript
-case "bot_appointment_request": {
-  const { lead_name, lead_email, lead_phone, suggested_date } = payload;
-  const adminEmails = await getAdminEmails(supabase);
-  if (adminEmails.length > 0) {
-    const { subject, html } = botAppointmentRequestEmail(lead_name, lead_email, lead_phone, suggested_date);
-    await sendNotificationEmail(adminEmails, subject, html);
+case "appointment_confirmed_to_lead": {
+  const { lead_name, lead_email, confirmed_date, location } = payload;
+  if (lead_email) {
+    const { subject, html } = appointmentConfirmedToLeadEmail(lead_name, confirmed_date, location || "");
+    await sendNotificationEmail(lead_email, subject, html);
   }
   break;
 }
 ```
 
----
+### Mudança 3 — `supabase/functions/_shared/email-templates.ts`
 
-### `supabase/functions/_shared/email-templates.ts`
-
-Adicionar `botAppointmentRequestEmail(name, email, phone, suggested_date)`:
-- **Assunto**: `🗓️ Nova solicitação de reunião via Linkouzinho — ${name}`
-- **Corpo**: Card informativo com dados do lead e data/hora sugerida, com botão "Confirmar reunião" que abre o CRM
-
----
-
-## Fluxo Completo por Caminho
-
-### WhatsApp
-```
-IA aciona CAPTURE_MODE → Escolha de caminho → Clica "WhatsApp"
-→ Form (nome + telefone) → Submete
-→ [CRM: insere lead] + [CAPI: Lead event]
-→ Abre WhatsApp com mensagem contextualizada
-→ Mensagem de confirmação no chat
-```
-
-### Agendamento
-```
-IA aciona CAPTURE_MODE → Escolha de caminho → Clica "Reunião"
-→ Form (nome + e-mail + telefone + data/hora) → Submete
-→ [CRM: insere lead com objetivo = "Reunião via Linkouzinho - data sugerida: ..."]
-→ [notify-email: bot_appointment_request → e-mail para admins]
-→ [CAPI: Lead event]
-→ Mensagem de confirmação: "Perfeito! Solicitação enviada. Nossa equipe confirmará o horário com você por e-mail ou WhatsApp 😊"
-```
-
-### Só o contato
-```
-IA aciona CAPTURE_MODE → Escolha de caminho → Clica "Deixar contato"
-→ Form (nome + e-mail, sem telefone obrigatório) → Submete
-→ [CRM: insere lead]
-→ [notify-email: lead_submitted → e-mail de obrigado ao lead]
-→ [notify-email: lead_funnel_enroll → inscreve no funil]
-→ [CAPI: Lead event]
-→ Mensagem de confirmação: "Anotado! Em breve entraremos em contato 🎯"
-```
+Adicionar `appointmentConfirmedToLeadEmail(name, date, location)`:
+- **Assunto:** `✅ Sua reunião foi confirmada! — Linkou`
+- **Corpo:** 
+  - Saudação personalizada com o nome do lead
+  - Box informativo: data/hora confirmada + local/link de acesso
+  - CTA: "Adicionar à Agenda" (Google Calendar deep link gerado dinamicamente)
+  - Dica: "Separe suas principais dúvidas sobre [objetivo] para aproveitarmos ao máximo"
 
 ---
 
@@ -134,21 +128,32 @@ IA aciona CAPTURE_MODE → Escolha de caminho → Clica "Deixar contato"
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/landing/LinkouzinhoWidget.tsx` | Refatorar CaptureForm → 3 componentes + tela de escolha |
-| `supabase/functions/notify-email/index.ts` | Adicionar `case "bot_appointment_request"` |
-| `supabase/functions/_shared/email-templates.ts` | Adicionar `botAppointmentRequestEmail` |
+| `src/pages/admin/Leads.tsx` | Adicionar dialog de confirmação + handler completo |
+| `supabase/functions/notify-email/index.ts` | Adicionar `case "appointment_confirmed_to_lead"` |
+| `supabase/functions/_shared/email-templates.ts` | Adicionar `appointmentConfirmedToLeadEmail` |
 
-**Sem migrações de banco de dados.** Os agendamentos do bot são salvos como leads com objetivo descritivo + e-mail para o admin — evita problema de `client_id` obrigatório na tabela `appointments`.
+**Sem migrações de banco.** O agendamento é criado na tabela `appointments` existente — o admin seleciona o `client_id` no formulário de confirmação, resolvendo a restrição NOT NULL da tabela.
 
 ---
 
-## Decisão de Arquitetura: Por que NÃO criar appointment direto no banco?
+## Fluxo Completo após a implementação
 
-A tabela `appointments` requer `client_id` (não nullable), e o lead do Linkouzinho ainda não tem um `client_id` (ele não é cliente ainda). Forçar um `client_id = null` quebraria as RLS policies.
-
-A solução correta é:
-1. Salvar como `lead` no CRM com nota da data sugerida no campo `objective`
-2. Notificar os admins por e-mail com todos os dados
-3. O admin confirma manualmente e cria o agendamento no painel se necessário
-
-Isso mantém a integridade do banco e não cria dados orphaned.
+```
+Lead solicita reunião via Linkouzinho
+        ↓
+Lead registrado no CRM + e-mail para admins (já funciona)
+        ↓
+Admin vê banner/lista na página Leads
+        ↓
+Admin clica "Confirmar Reunião" → abre dialog
+        ↓
+Admin define: cliente, data/hora real, local/link, duração
+        ↓
+[appointments] criado com status "confirmed"
+[lead] status → "contacted"
+[lead_activities] nota "Reunião confirmada"
+[notify-email] → e-mail ao lead com data/hora/local confirmados
+        ↓
+Lead recebe: "✅ Sua reunião foi confirmada — Linkou"
+Admin vê reunião em /admin/agendamentos
+```
