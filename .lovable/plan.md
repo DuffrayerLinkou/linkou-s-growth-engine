@@ -1,117 +1,98 @@
 
-# Persistência da Conversa do Linkouzinho via localStorage
+# Varredura e Limpeza de Código Órfão
 
-## Causa raiz
+## Resultado da auditoria completa
 
-Todo o estado do chat é armazenado apenas em memória React (`useState`). No mobile, o navegador descarrega a página ao minimizar o app e a recarrega ao voltar — zerando completamente a conversa.
+Foram identificados **5 itens** para limpeza, distribuídos em 4 categorias. Nenhuma remoção afeta funcionalidade ativa.
 
-```text
-Reload da página
-      |
-      v
-useState inicializa com WELCOME_MESSAGE
-      |
-      v
-Conversa perdida ❌
+---
+
+## Item 1 — Arquivo órfão: `MobileWhatsAppCTA.tsx`
+
+**Arquivo:** `src/components/landing/MobileWhatsAppCTA.tsx`
+
+O componente foi substituído pelo `LinkouzinhoWidget` durante a implementação do bot. Nenhum arquivo do projeto importa ou referencia `MobileWhatsAppCTA` — confirmado por busca completa no diretório `src/`. O arquivo existe no disco mas está completamente desconectado da aplicação.
+
+**Ação:** Deletar o arquivo.
+
+---
+
+## Item 2 — Arquivo órfão: `Deliverables.tsx`
+
+**Arquivo:** `src/components/landing/Deliverables.tsx`
+
+O componente existe mas nenhum arquivo do projeto o importa — confirmado por busca em `import.*Deliverables` sem resultados. Não está em uso na landing page (`Index.tsx`) nem em qualquer outro ponto de entrada.
+
+**Ação:** Deletar o arquivo.
+
+---
+
+## Item 3 — Campo fantasma no tipo `Message`
+
+**Arquivo:** `src/components/landing/LinkouzinhoWidget.tsx`, linha 51
+
+```typescript
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  captureMode?: boolean; // ← nunca usado
+};
 ```
 
-## Solução: persistência com localStorage
+O campo `captureMode` foi definido no tipo `Message` mas nunca é atribuído nem lido em nenhuma mensagem. O controle de captura é feito via estado separado (`useState<boolean>` chamado `captureMode`). O campo no tipo é um resíduo de uma versão anterior da lógica.
 
-Salvar e restaurar os estados relevantes usando `localStorage`. Na inicialização, o componente lê os dados salvos em vez de começar do zero.
+**Ação:** Remover a propriedade `captureMode?: boolean` do tipo `Message`.
 
-### Estados que serão persistidos
+---
 
-| Estado | Chave no localStorage | Motivo |
+## Item 4 — `console.log` de debug em produção
+
+**Arquivo:** `src/components/landing/ContactForm.tsx`, linhas 120 e 141
+
+```typescript
+console.log('Meta CAPI event sent successfully');   // linha 120
+console.log('TikTok Events API event sent successfully'); // linha 141
+```
+
+Logs de debug que ficaram no código de produção após integração com CAPI. Os `console.warn` logo abaixo (em caso de erro) podem ser mantidos — são úteis para diagnóstico silencioso. Apenas os `.log` de sucesso serão removidos.
+
+**Ação:** Remover as 2 linhas de `console.log`.
+
+---
+
+## Item 5 — Animações sem uso no `tailwind.config.ts`
+
+**Arquivo:** `tailwind.config.ts`
+
+Busca por uso das classes de animação em todo o `src/` revelou:
+
+| Keyframe / Animação | Classe Tailwind | Em uso? |
 |---|---|---|
-| `messages` | `linkouzinho_messages` | Histórico da conversa |
-| `captureMode` | `linkouzinho_capture_mode` | Exibir form novamente se necessário |
-| `captureSubmitted` | `linkouzinho_submitted` | Não pedir dados novamente |
-| `whatsappUrl` | `linkouzinho_wa_url` | Exibir botão do WhatsApp após reload |
-| `isOpen` | `linkouzinho_open` | Manter chat aberto se o usuário recarregar |
+| `accordion-down` / `accordion-up` | — | ✅ Sim (via Radix/shadcn) |
+| `fade-in` | `animate-fade-in` | ✅ Sim (2 arquivos) |
+| `fade-in-up` | `animate-fade-in-up` | ❌ Nenhum uso |
+| `slide-in-left` | `animate-slide-in-left` | ❌ Nenhum uso |
+| `slide-in-right` | `animate-slide-in-right` | ❌ Nenhum uso |
+| `scale-in` | `animate-scale-in` | ❌ Nenhum uso |
+| `float` | `animate-float` | ❌ Nenhum uso |
+| `pulse` | `animate-pulse` | ✅ Sim (múltiplos arquivos) |
+| `shimmer` | `animate-shimmer` | ❌ Nenhum uso |
+| `pulse-slow` | `animate-pulse-slow` | ✅ Sim (Linkouzinho) |
 
-### Estados que NÃO serão persistidos (correto assim)
+**Animações a remover:** `fade-in-up`, `slide-in-left`, `slide-in-right`, `scale-in`, `float`, `shimmer` — tanto os keyframes quanto as entradas no bloco `animation`.
 
-- `isStreaming` — sempre `false` após reload (stream interrompido)
-- `input` — texto digitado não precisa persistir
-- `captureLoading` — estado temporário de carregamento
-- `hasUnread` — reseta para `false` se já havia conversa
+**Ação:** Remover 6 keyframes + 6 entradas de `animation` sem uso.
 
-### Padrão de implementação
+---
 
-**Inicialização com lazy initializer do useState:**
-```typescript
-// Leitura do localStorage só na montagem (lazy init — não re-executa em cada render)
-const [messages, setMessages] = useState<Message[]>(() => {
-  try {
-    const saved = localStorage.getItem("linkouzinho_messages");
-    return saved ? JSON.parse(saved) : [WELCOME_MESSAGE];
-  } catch {
-    return [WELCOME_MESSAGE];
-  }
-});
-```
+## Resumo das ações
 
-**Sincronização com useEffect:**
-```typescript
-// Toda vez que messages mudar, persistir
-useEffect(() => {
-  try {
-    localStorage.setItem("linkouzinho_messages", JSON.stringify(messages));
-  } catch {} // localStorage pode estar bloqueado em modo privado
-}, [messages]);
-```
+| # | Arquivo | Ação | Impacto |
+|---|---|---|---|
+| 1 | `MobileWhatsAppCTA.tsx` | Deletar | Zero — não importado |
+| 2 | `Deliverables.tsx` | Deletar | Zero — não importado |
+| 3 | `LinkouzinhoWidget.tsx` | Remover campo `captureMode?` do tipo `Message` | Zero — campo nunca utilizado |
+| 4 | `ContactForm.tsx` | Remover 2x `console.log` | Zero — apenas limpeza de debug |
+| 5 | `tailwind.config.ts` | Remover 6 keyframes + 6 animations sem uso | Zero — Tailwind só gera CSS para classes usadas |
 
-**Lógica de `hasUnread`:**
-Se existir conversa salva com mais de 1 mensagem, o badge de "não lido" começa como `false` (usuário já viu a conversa antes).
-
-**Limpeza da sessão:**
-Após `captureSubmitted = true` E o usuário clicar no botão do WhatsApp, a conversa pode ser limpa opcionalmente. Mas por padrão, mantemos o histórico. Para permitir uma nova conversa, adicionamos um botão discreto "Nova conversa" no header do chat que limpa o `localStorage` e reinicia o estado.
-
-### Expiração automática (TTL)
-
-Para evitar que uma conversa de 7 dias atrás apareça como se fosse de hoje, salvaremos também um timestamp. Se a conversa tiver mais de **24 horas**, ela é descartada e o bot recomeça do zero.
-
-```typescript
-const CHAT_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
-
-const [messages, setMessages] = useState<Message[]>(() => {
-  try {
-    const saved = localStorage.getItem("linkouzinho_messages");
-    const ts = localStorage.getItem("linkouzinho_ts");
-    if (saved && ts && Date.now() - Number(ts) < CHAT_TTL_MS) {
-      return JSON.parse(saved);
-    }
-  } catch {}
-  return [WELCOME_MESSAGE];
-});
-```
-
-## Arquivo alterado
-
-| Arquivo | Mudança |
-|---|---|
-| `src/components/landing/LinkouzinhoWidget.tsx` | Lazy initializers + useEffects de sincronização + TTL de 24h + botão "Nova conversa" |
-
-Nenhuma edge function precisa ser alterada — o contexto da conversa já é enviado no corpo de cada requisição ao chat.
-
-## Fluxo após a correção
-
-```text
-Usuário conversa com Linkouzinho
-      |
-      v
-Cada mensagem é salva no localStorage automaticamente
-      |
-      v
-Usuário recarrega a página / troca de app no celular
-      |
-      v
-Widget lê localStorage na inicialização
-      |
-      v
-Conversa restaurada integralmente ✅
-      |
-(se conversa > 24h)
-      v
-Nova sessão limpa automaticamente ✅
-```
+**Nenhuma funcionalidade é afetada.**
