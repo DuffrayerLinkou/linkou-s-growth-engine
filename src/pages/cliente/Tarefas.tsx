@@ -701,23 +701,35 @@ export default function ClienteTarefas() {
         </Card>
       )}
 
-      {/* Confirmation Dialog */}
+      {/* Celebration Dialog */}
       <AlertDialog open={!!taskToComplete} onOpenChange={() => setTaskToComplete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-sm text-center">
           <AlertDialogHeader>
-            <AlertDialogTitle>Marcar tarefa como concluída?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está marcando a tarefa "{taskToComplete?.title}" como concluída. 
-              Esta ação notificará a equipe sobre a conclusão.
+            <div className="flex justify-center mb-2">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                className="text-6xl"
+              >
+                🎉
+              </motion.div>
+            </div>
+            <AlertDialogTitle className="text-xl text-center">Parabéns!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              Você concluiu <span className="font-semibold text-foreground">"{taskToComplete?.title}"</span>.
+              <br />
+              <span className="text-sm text-muted-foreground mt-1 block">A equipe será notificada sobre o progresso.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
             <AlertDialogAction
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
               onClick={() => taskToComplete && completeTaskMutation.mutate(taskToComplete.id)}
               disabled={completeTaskMutation.isPending}
             >
-              {completeTaskMutation.isPending ? "Concluindo..." : "Confirmar Conclusão"}
+              {completeTaskMutation.isPending ? "Concluindo..." : "✓ Confirmar Conclusão"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
