@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, ChevronDown } from "lucide-react";
+import { X, Send, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,6 +12,38 @@ import { cn } from "@/lib/utils";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const CHAT_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const val = localStorage.getItem(key);
+    return val !== null ? JSON.parse(val) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+function clearChatStorage() {
+  ["linkouzinho_messages", "linkouzinho_capture_mode", "linkouzinho_submitted",
+   "linkouzinho_wa_url", "linkouzinho_open", "linkouzinho_ts"].forEach((k) =>
+    localStorage.removeItem(k)
+  );
+}
+
+function isChatFresh(): boolean {
+  try {
+    const ts = localStorage.getItem("linkouzinho_ts");
+    return !!ts && Date.now() - Number(ts) < CHAT_TTL_MS;
+  } catch {
+    return false;
+  }
+}
 
 type Message = {
   role: "user" | "assistant";
@@ -121,15 +153,29 @@ function CaptureForm({
 }
 
 export function LinkouzinhoWidget() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const [isOpen, setIsOpen] = useState<boolean>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_open", false) : false
+  );
+  const [messages, setMessages] = useState<Message[]>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_messages", [WELCOME_MESSAGE]) : [WELCOME_MESSAGE]
+  );
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
-  const [captureMode, setCaptureMode] = useState(false);
-  const [captureSubmitted, setCaptureSubmitted] = useState(false);
+  const [hasUnread, setHasUnread] = useState<boolean>(() => {
+    if (!isChatFresh()) return true;
+    const saved = loadFromStorage<Message[]>("linkouzinho_messages", []);
+    return saved.length <= 1;
+  });
+  const [captureMode, setCaptureMode] = useState<boolean>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_capture_mode", false) : false
+  );
+  const [captureSubmitted, setCaptureSubmitted] = useState<boolean>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_submitted", false) : false
+  );
   const [captureLoading, setCaptureLoading] = useState(false);
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_wa_url", null) : null
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -149,6 +195,13 @@ export function LinkouzinhoWidget() {
       setHasUnread(false);
     }
   }, [isOpen]);
+
+  // Persist state to localStorage
+  useEffect(() => { saveToStorage("linkouzinho_messages", messages); saveToStorage("linkouzinho_ts", Date.now()); }, [messages]);
+  useEffect(() => { saveToStorage("linkouzinho_capture_mode", captureMode); }, [captureMode]);
+  useEffect(() => { saveToStorage("linkouzinho_submitted", captureSubmitted); }, [captureSubmitted]);
+  useEffect(() => { saveToStorage("linkouzinho_wa_url", whatsappUrl); }, [whatsappUrl]);
+  useEffect(() => { saveToStorage("linkouzinho_open", isOpen); }, [isOpen]);
 
   const streamChat = useCallback(async (userMessage: string) => {
     const userMsg: Message = { role: "user", content: userMessage };
@@ -311,6 +364,16 @@ export function LinkouzinhoWidget() {
     }
   };
 
+  const handleNewConversation = () => {
+    clearChatStorage();
+    setMessages([WELCOME_MESSAGE]);
+    setCaptureMode(false);
+    setCaptureSubmitted(false);
+    setWhatsappUrl(null);
+    setHasUnread(false);
+    setInput("");
+  };
+
   const showSuggestions = messages.length === 1 && !isStreaming;
 
   return (
@@ -365,6 +428,16 @@ export function LinkouzinhoWidget() {
               <p className="font-semibold text-sm leading-tight">Linkouzinho</p>
               <p className="text-primary-foreground/70 text-xs">Agência Linkou · Online agora</p>
             </div>
+            {messages.length > 1 && (
+              <button
+                onClick={handleNewConversation}
+                className="h-8 w-8 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors"
+                aria-label="Nova conversa"
+                title="Nova conversa"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               onClick={() => setIsOpen(false)}
               className="h-8 w-8 rounded-full hover:bg-primary-foreground/20 flex items-center justify-center transition-colors"
