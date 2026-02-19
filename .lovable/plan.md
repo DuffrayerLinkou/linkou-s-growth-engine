@@ -1,74 +1,117 @@
 
-# Linkouzinho — Botão Amarelo + Diálogo Humanizado
+# Persistência da Conversa do Linkouzinho via localStorage
 
-## Problema atual
+## Causa raiz
 
-- O botão flutuante usa `bg-primary` (roxo) no círculo de fundo do avatar — precisa mudar para amarelo
-- O system prompt instrui respostas de "máximo 3-4 parágrafos", o que gera blocos de texto longos, impessoais e nada conversacionais
-- O bot entrega todas as informações de uma vez, sem deixar o usuário respirar e interagir
+Todo o estado do chat é armazenado apenas em memória React (`useState`). No mobile, o navegador descarrega a página ao minimizar o app e a recarrega ao voltar — zerando completamente a conversa.
 
----
-
-## O que será alterado
-
-### 1. `LinkouzinhoWidget.tsx` — Botão amarelo
-
-O botão flutuante tem `bg-primary` como classe de fundo. Será substituído por `bg-yellow-400` com anel de foco também amarelo. A animação `pulse-slow` será ajustada para usar amarelo.
-
-Trecho atual:
-```tsx
-"bg-primary p-0 overflow-visible",
-"focus:ring-4 focus:ring-primary/30"
+```text
+Reload da página
+      |
+      v
+useState inicializa com WELCOME_MESSAGE
+      |
+      v
+Conversa perdida ❌
 ```
 
-Trecho novo:
-```tsx
-"bg-yellow-400 p-0 overflow-visible",
-"focus:ring-4 focus:ring-yellow-400/40"
+## Solução: persistência com localStorage
+
+Salvar e restaurar os estados relevantes usando `localStorage`. Na inicialização, o componente lê os dados salvos em vez de começar do zero.
+
+### Estados que serão persistidos
+
+| Estado | Chave no localStorage | Motivo |
+|---|---|---|
+| `messages` | `linkouzinho_messages` | Histórico da conversa |
+| `captureMode` | `linkouzinho_capture_mode` | Exibir form novamente se necessário |
+| `captureSubmitted` | `linkouzinho_submitted` | Não pedir dados novamente |
+| `whatsappUrl` | `linkouzinho_wa_url` | Exibir botão do WhatsApp após reload |
+| `isOpen` | `linkouzinho_open` | Manter chat aberto se o usuário recarregar |
+
+### Estados que NÃO serão persistidos (correto assim)
+
+- `isStreaming` — sempre `false` após reload (stream interrompido)
+- `input` — texto digitado não precisa persistir
+- `captureLoading` — estado temporário de carregamento
+- `hasUnread` — reseta para `false` se já havia conversa
+
+### Padrão de implementação
+
+**Inicialização com lazy initializer do useState:**
+```typescript
+// Leitura do localStorage só na montagem (lazy init — não re-executa em cada render)
+const [messages, setMessages] = useState<Message[]>(() => {
+  try {
+    const saved = localStorage.getItem("linkouzinho_messages");
+    return saved ? JSON.parse(saved) : [WELCOME_MESSAGE];
+  } catch {
+    return [WELCOME_MESSAGE];
+  }
+});
 ```
 
-A animação `pulse-slow` no `tailwind.config.ts` também será ajustada para usar `yellow-400` em vez de `primary`, garantindo que o glow de pulso seja amarelo.
-
----
-
-### 2. `linkouzinho-chat/index.ts` — System prompt humanizado
-
-O prompt atual permite respostas longas e estruturadas (listas, múltiplos parágrafos). O novo prompt vai forçar o bot a se comportar como uma conversa de WhatsApp:
-
-**Regras novas no prompt:**
-- Máximo **2 frases curtas por mensagem** — sem paredes de texto
-- **Nunca liste tudo de uma vez** — apresente um serviço por vez, pergunte se quer saber mais
-- **Faça perguntas** ao final de cada resposta para manter o diálogo vivo
-- **Tom de WhatsApp** — informal, quente, sem formatação excessiva de markdown
-- Use markdown **só quando o usuário pedir uma lista explicitamente**
-- Em vez de despejar o portfólio completo, **descubra o contexto do usuário primeiro** (segmento, dor, objetivo)
-- Reaja ao que o usuário disse antes de dar informação nova
-
-**Exemplo de comportamento atual (problema):**
-```
-Usuário: "O que vocês fazem?"
-Bot: [3 parágrafos + 4 serviços listados + metodologia de 4 fases]
+**Sincronização com useEffect:**
+```typescript
+// Toda vez que messages mudar, persistir
+useEffect(() => {
+  try {
+    localStorage.setItem("linkouzinho_messages", JSON.stringify(messages));
+  } catch {} // localStorage pode estar bloqueado em modo privado
+}, [messages]);
 ```
 
-**Exemplo do novo comportamento (objetivo):**
-```
-Usuário: "O que vocês fazem?"
-Bot: "A gente ajuda negócios a vender mais usando consultoria, tráfego e vendas de forma integrada 🚀
-     Você tem algum negócio específico em mente ou está pesquisando ainda?"
+**Lógica de `hasUnread`:**
+Se existir conversa salva com mais de 1 mensagem, o badge de "não lido" começa como `false` (usuário já viu a conversa antes).
+
+**Limpeza da sessão:**
+Após `captureSubmitted = true` E o usuário clicar no botão do WhatsApp, a conversa pode ser limpa opcionalmente. Mas por padrão, mantemos o histórico. Para permitir uma nova conversa, adicionamos um botão discreto "Nova conversa" no header do chat que limpa o `localStorage` e reinicia o estado.
+
+### Expiração automática (TTL)
+
+Para evitar que uma conversa de 7 dias atrás apareça como se fosse de hoje, salvaremos também um timestamp. Se a conversa tiver mais de **24 horas**, ela é descartada e o bot recomeça do zero.
+
+```typescript
+const CHAT_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+const [messages, setMessages] = useState<Message[]>(() => {
+  try {
+    const saved = localStorage.getItem("linkouzinho_messages");
+    const ts = localStorage.getItem("linkouzinho_ts");
+    if (saved && ts && Date.now() - Number(ts) < CHAT_TTL_MS) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+  return [WELCOME_MESSAGE];
+});
 ```
 
----
-
-## Arquivos alterados
+## Arquivo alterado
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/landing/LinkouzinhoWidget.tsx` | `bg-primary` → `bg-yellow-400` + `ring-primary` → `ring-yellow-400` |
-| `tailwind.config.ts` | Keyframe `pulse-slow` com cor amarela |
-| `supabase/functions/linkouzinho-chat/index.ts` | System prompt reescrito para conversa curta e humanizada |
+| `src/components/landing/LinkouzinhoWidget.tsx` | Lazy initializers + useEffects de sincronização + TTL de 24h + botão "Nova conversa" |
 
----
+Nenhuma edge function precisa ser alterada — o contexto da conversa já é enviado no corpo de cada requisição ao chat.
 
-## Deploy
+## Fluxo após a correção
 
-A edge function `linkouzinho-chat` precisará ser re-deployada após a mudança no system prompt.
+```text
+Usuário conversa com Linkouzinho
+      |
+      v
+Cada mensagem é salva no localStorage automaticamente
+      |
+      v
+Usuário recarrega a página / troca de app no celular
+      |
+      v
+Widget lê localStorage na inicialização
+      |
+      v
+Conversa restaurada integralmente ✅
+      |
+(se conversa > 24h)
+      v
+Nova sessão limpa automaticamente ✅
+```
