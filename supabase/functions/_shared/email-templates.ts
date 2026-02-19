@@ -296,6 +296,36 @@ export function paymentDueReminderEmail(clientName: string, amount: string, desc
 
 // ── Category 8: Lead Thank You ──
 
+export function botAppointmentRequestEmail(
+  name: string,
+  email: string,
+  phone: string,
+  suggestedDate: string,
+): { subject: string; html: string } {
+  const CRM_URL = "https://linkou-ecosystem-builder.lovable.app/admin/leads";
+  return {
+    subject: `🗓️ Nova solicitação de reunião via Linkouzinho — ${name}`,
+    html: baseEmailLayout(`
+      <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">🗓️ Nova solicitação de reunião</h2>
+      <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Um lead solicitou uma reunião via <strong>Linkouzinho</strong>. Confirme o horário com ele por e-mail ou WhatsApp.</p>
+      ${infoBox(`
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">Nome</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;">${name}</p>
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">E-mail</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;"><a href="mailto:${email}" style="color:${PRIMARY_COLOR};text-decoration:none;">${email}</a></p>
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">WhatsApp</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;">${phone}</p>
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">Data e hora sugerida</p>
+        <p style="margin:0;color:${PRIMARY_COLOR};font-size:16px;font-weight:700;">${suggestedDate}</p>
+      `)}
+      ${ctaButton("Ver no CRM", CRM_URL)}
+      <p style="margin:16px 0 0;color:#4a4a68;font-size:13px;line-height:1.5;">Este lead foi registrado automaticamente no CRM com origem <strong>bot_linkouzinho</strong>.</p>
+    `),
+  };
+}
+
+// ── Category 9: Lead Thank You ──
+
 export function leadThankYouEmail(name: string): { subject: string; html: string } {
   const displayName = name || "Olá";
   return {

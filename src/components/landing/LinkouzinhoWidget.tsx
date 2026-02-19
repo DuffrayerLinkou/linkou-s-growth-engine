@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, RotateCcw } from "lucide-react";
+import { X, Send, RotateCcw, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,10 +31,11 @@ function saveToStorage(key: string, value: unknown) {
 }
 
 function clearChatStorage() {
-  ["linkouzinho_messages", "linkouzinho_capture_mode", "linkouzinho_submitted",
-   "linkouzinho_wa_url", "linkouzinho_open", "linkouzinho_ts"].forEach((k) =>
-    localStorage.removeItem(k)
-  );
+  [
+    "linkouzinho_messages", "linkouzinho_capture_mode", "linkouzinho_submitted",
+    "linkouzinho_wa_url", "linkouzinho_open", "linkouzinho_ts",
+    "linkouzinho_conversion_path", "linkouzinho_capture_step",
+  ].forEach((k) => localStorage.removeItem(k));
 }
 
 function isChatFresh(): boolean {
@@ -49,6 +51,9 @@ type Message = {
   role: "user" | "assistant";
   content: string;
 };
+
+type ConversionPath = "whatsapp" | "appointment" | "register" | null;
+type CaptureStep = "choose" | "form" | "done";
 
 const QUICK_SUGGESTIONS = [
   "O que vocês fazem?",
@@ -97,55 +102,215 @@ function TypingIndicator() {
   );
 }
 
-function CaptureForm({
+// ── Path Chooser ──
+function ConversionPathChooser({ onChoose }: { onChoose: (path: ConversionPath) => void }) {
+  return (
+    <div className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-3 mt-2">
+      <p className="text-sm font-medium text-foreground">Como prefere continuar? 😊</p>
+      <Button
+        variant="outline"
+        className="w-full justify-start gap-3 h-auto py-3 text-sm font-medium"
+        onClick={() => onChoose("whatsapp")}
+      >
+        <span className="text-lg">💬</span>
+        <div className="text-left">
+          <div className="font-semibold">Falar agora no WhatsApp</div>
+          <div className="text-xs text-muted-foreground font-normal">Conecte-se com nosso time imediatamente</div>
+        </div>
+      </Button>
+      <Button
+        variant="outline"
+        className="w-full justify-start gap-3 h-auto py-3 text-sm font-medium"
+        onClick={() => onChoose("appointment")}
+      >
+        <span className="text-lg">📅</span>
+        <div className="text-left">
+          <div className="font-semibold">Agendar uma reunião</div>
+          <div className="text-xs text-muted-foreground font-normal">Escolha um horário para conversar com calma</div>
+        </div>
+      </Button>
+      <Button
+        variant="outline"
+        className="w-full justify-start gap-3 h-auto py-3 text-sm font-medium"
+        onClick={() => onChoose("register")}
+      >
+        <span className="text-lg">📝</span>
+        <div className="text-left">
+          <div className="font-semibold">Só deixar meu contato</div>
+          <div className="text-xs text-muted-foreground font-normal">Entramos em contato quando você preferir</div>
+        </div>
+      </Button>
+    </div>
+  );
+}
+
+// ── WhatsApp Form ──
+function WhatsAppCaptureForm({
   onSubmit,
+  onBack,
   isLoading,
 }: {
   onSubmit: (name: string, email: string, phone: string) => Promise<void>;
+  onBack: () => void;
+  isLoading: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) return;
+    onSubmit(name.trim(), "", phone.trim());
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-3 mt-2">
+      <div className="flex items-center gap-2 mb-1">
+        <button type="button" onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <p className="text-sm font-medium text-foreground">💬 Falar no WhatsApp</p>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Seu nome *</Label>
+        <Input
+          placeholder="Como podemos te chamar?"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className="h-9 text-sm"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">WhatsApp *</Label>
+        <Input
+          placeholder="(00) 00000-0000"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+          className="h-9 text-sm"
+        />
+      </div>
+      <Button
+        type="submit"
+        className="w-full h-9 text-sm font-semibold"
+        disabled={isLoading || !name.trim() || !phone.trim()}
+      >
+        {isLoading ? "Enviando..." : "Ir para o WhatsApp →"}
+      </Button>
+    </form>
+  );
+}
+
+// ── Appointment Form ──
+function AppointmentForm({
+  onSubmit,
+  onBack,
+  isLoading,
+}: {
+  onSubmit: (name: string, email: string, phone: string, suggestedDate: string) => Promise<void>;
+  onBack: () => void;
   isLoading: boolean;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [suggestedDate, setSuggestedDate] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !phone.trim() || !suggestedDate) return;
+    onSubmit(name.trim(), email.trim(), phone.trim(), suggestedDate);
+  };
+
+  // Min date = today
+  const minDate = new Date();
+  minDate.setMinutes(minDate.getMinutes() - minDate.getTimezoneOffset());
+  const minDateStr = minDate.toISOString().slice(0, 16);
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-3 mt-2">
+      <div className="flex items-center gap-2 mb-1">
+        <button type="button" onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <p className="text-sm font-medium text-foreground">📅 Agendar reunião</p>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Seu nome *</Label>
+        <Input placeholder="Como podemos te chamar?" value={name} onChange={(e) => setName(e.target.value)} required className="h-9 text-sm" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">E-mail *</Label>
+        <Input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-9 text-sm" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">WhatsApp *</Label>
+        <Input placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} required className="h-9 text-sm" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Data e hora sugerida *</Label>
+        <Input
+          type="datetime-local"
+          value={suggestedDate}
+          onChange={(e) => setSuggestedDate(e.target.value)}
+          min={minDateStr}
+          required
+          className="h-9 text-sm"
+        />
+      </div>
+      <Button
+        type="submit"
+        className="w-full h-9 text-sm font-semibold"
+        disabled={isLoading || !name.trim() || !email.trim() || !phone.trim() || !suggestedDate}
+      >
+        {isLoading ? "Enviando..." : "Solicitar reunião →"}
+      </Button>
+    </form>
+  );
+}
+
+// ── Register Form ──
+function RegisterForm({
+  onSubmit,
+  onBack,
+  isLoading,
+}: {
+  onSubmit: (name: string, email: string, phone: string) => Promise<void>;
+  onBack: () => void;
+  isLoading: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) return;
-    onSubmit(name.trim(), email.trim(), phone.trim());
+    onSubmit(name.trim(), email.trim(), "");
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-3 mt-2">
-      <p className="text-sm font-medium text-foreground">
-        Preencha para continuar com nosso time 😊
-      </p>
-      <Input
-        placeholder="Seu nome *"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-        className="h-9 text-sm"
-      />
-      <Input
-        type="email"
-        placeholder="Seu e-mail *"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className="h-9 text-sm"
-      />
-      <Input
-        placeholder="WhatsApp (opcional)"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        className="h-9 text-sm"
-      />
+      <div className="flex items-center gap-2 mb-1">
+        <button type="button" onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <p className="text-sm font-medium text-foreground">📝 Deixar meu contato</p>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Seu nome *</Label>
+        <Input placeholder="Como podemos te chamar?" value={name} onChange={(e) => setName(e.target.value)} required className="h-9 text-sm" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">E-mail *</Label>
+        <Input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-9 text-sm" />
+      </div>
       <Button
         type="submit"
         className="w-full h-9 text-sm font-semibold"
         disabled={isLoading || !name.trim() || !email.trim()}
       >
-        {isLoading ? "Enviando..." : "Enviar e continuar no WhatsApp →"}
+        {isLoading ? "Enviando..." : "Enviar contato →"}
       </Button>
     </form>
   );
@@ -168,6 +333,12 @@ export function LinkouzinhoWidget() {
   const [captureMode, setCaptureMode] = useState<boolean>(() =>
     isChatFresh() ? loadFromStorage("linkouzinho_capture_mode", false) : false
   );
+  const [captureStep, setCaptureStep] = useState<CaptureStep>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_capture_step", "choose") : "choose"
+  );
+  const [conversionPath, setConversionPath] = useState<ConversionPath>(() =>
+    isChatFresh() ? loadFromStorage("linkouzinho_conversion_path", null) : null
+  );
   const [captureSubmitted, setCaptureSubmitted] = useState<boolean>(() =>
     isChatFresh() ? loadFromStorage("linkouzinho_submitted", false) : false
   );
@@ -185,7 +356,7 @@ export function LinkouzinhoWidget() {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [messages, isStreaming, captureMode]);
+  }, [messages, isStreaming, captureMode, captureStep]);
 
   // Focus input when opened
   useEffect(() => {
@@ -198,6 +369,8 @@ export function LinkouzinhoWidget() {
   // Persist state to localStorage
   useEffect(() => { saveToStorage("linkouzinho_messages", messages); saveToStorage("linkouzinho_ts", Date.now()); }, [messages]);
   useEffect(() => { saveToStorage("linkouzinho_capture_mode", captureMode); }, [captureMode]);
+  useEffect(() => { saveToStorage("linkouzinho_capture_step", captureStep); }, [captureStep]);
+  useEffect(() => { saveToStorage("linkouzinho_conversion_path", conversionPath); }, [conversionPath]);
   useEffect(() => { saveToStorage("linkouzinho_submitted", captureSubmitted); }, [captureSubmitted]);
   useEffect(() => { saveToStorage("linkouzinho_wa_url", whatsappUrl); }, [whatsappUrl]);
   useEffect(() => { saveToStorage("linkouzinho_open", isOpen); }, [isOpen]);
@@ -261,7 +434,6 @@ export function LinkouzinhoWidget() {
             const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (delta) {
               fullContent += delta;
-              // Check for capture tag
               if (fullContent.includes("<CAPTURE_MODE>")) {
                 hasCaptureTag = true;
                 fullContent = fullContent.replace("<CAPTURE_MODE>", "").trim();
@@ -280,9 +452,10 @@ export function LinkouzinhoWidget() {
         }
       }
 
-      // Final flush
       if (hasCaptureTag) {
         setCaptureMode(true);
+        setCaptureStep("choose");
+        setConversionPath(null);
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
@@ -314,31 +487,43 @@ export function LinkouzinhoWidget() {
     streamChat(suggestion);
   };
 
-  const handleCapture = async (name: string, email: string, phone: string) => {
+  const handlePathChoose = (path: ConversionPath) => {
+    setConversionPath(path);
+    setCaptureStep("form");
+  };
+
+  const handleBackToChoose = () => {
+    setConversionPath(null);
+    setCaptureStep("choose");
+  };
+
+  // Build conversation summary for CRM
+  const buildSummary = () =>
+    messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join("; ")
+      .slice(0, 300);
+
+  // ── WhatsApp path handler ──
+  const handleWhatsAppSubmit = async (name: string, _email: string, phone: string) => {
     setCaptureLoading(true);
     try {
-      // Build conversation summary
-      const summary = messages
-        .filter((m) => m.role === "user")
-        .map((m) => m.content)
-        .join("; ")
-        .slice(0, 300);
-
+      const summary = buildSummary();
       await supabase.from("leads").insert({
         name,
-        email,
+        email: `${phone.replace(/\D/g, "")}@bot.linkouzinho`,
         phone: phone || null,
         source: "bot_linkouzinho",
         status: "new",
-        objective: summary || "Contato via bot Linkouzinho",
+        objective: summary || "Contato via bot Linkouzinho — WhatsApp",
       });
 
-      // Fire CAPI events (fire and forget)
       supabase.functions.invoke("meta-capi-event", {
-        body: { email, phone, name, source_url: window.location.origin, event_name: "Lead" },
+        body: { phone, name, source_url: window.location.origin, event_name: "Lead" },
       }).catch(() => {});
       supabase.functions.invoke("tiktok-capi-event", {
-        body: { email, phone, name, source_url: window.location.origin, event_name: "SubmitForm" },
+        body: { phone, name, source_url: window.location.origin, event_name: "SubmitForm" },
       }).catch(() => {});
 
       const waMsg = encodeURIComponent(
@@ -353,11 +538,112 @@ export function LinkouzinhoWidget() {
         ...prev,
         {
           role: "assistant",
-          content: `Perfeito, **${name}**! 🎉 Seus dados foram enviados com sucesso. Nosso time vai entrar em contato em breve. Pode clicar no botão abaixo para continuar a conversa no WhatsApp!`,
+          content: `Perfeito, **${name}**! 🎉 Clique no botão abaixo para continuar a conversa com nossa equipe no WhatsApp!`,
+        },
+      ]);
+
+      // Open WhatsApp immediately
+      window.open(url, "_blank");
+    } catch (err) {
+      console.error("WhatsApp capture error:", err);
+    } finally {
+      setCaptureLoading(false);
+    }
+  };
+
+  // ── Appointment path handler ──
+  const handleAppointmentSubmit = async (name: string, email: string, phone: string, suggestedDate: string) => {
+    setCaptureLoading(true);
+    try {
+      const formattedDate = new Date(suggestedDate).toLocaleString("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+      const objective = `Reunião via Linkouzinho — data sugerida: ${formattedDate}`;
+
+      await supabase.from("leads").insert({
+        name,
+        email,
+        phone: phone || null,
+        source: "bot_linkouzinho",
+        status: "new",
+        objective,
+      });
+
+      await supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "bot_appointment_request",
+          lead_name: name,
+          lead_email: email,
+          lead_phone: phone,
+          suggested_date: formattedDate,
+        },
+      });
+
+      supabase.functions.invoke("meta-capi-event", {
+        body: { email, phone, name, source_url: window.location.origin, event_name: "Lead" },
+      }).catch(() => {});
+      supabase.functions.invoke("tiktok-capi-event", {
+        body: { email, phone, name, source_url: window.location.origin, event_name: "SubmitForm" },
+      }).catch(() => {});
+
+      setCaptureSubmitted(true);
+      setCaptureMode(false);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Perfeito, **${name}**! 🗓️ Sua solicitação de reunião para **${formattedDate}** foi enviada. Nossa equipe confirmará o horário com você por e-mail ou WhatsApp em breve 😊`,
         },
       ]);
     } catch (err) {
-      console.error("Capture error:", err);
+      console.error("Appointment capture error:", err);
+    } finally {
+      setCaptureLoading(false);
+    }
+  };
+
+  // ── Register path handler ──
+  const handleRegisterSubmit = async (name: string, email: string, _phone: string) => {
+    setCaptureLoading(true);
+    try {
+      const summary = buildSummary();
+
+      await supabase.from("leads").insert({
+        name,
+        email,
+        source: "bot_linkouzinho",
+        status: "new",
+        objective: summary || "Contato via bot Linkouzinho — cadastro",
+      });
+
+      await supabase.functions.invoke("notify-email", {
+        body: { event_type: "lead_submitted", lead_name: name, lead_email: email },
+      });
+      await supabase.functions.invoke("notify-email", {
+        body: { event_type: "lead_funnel_enroll", lead_email: email },
+      });
+
+      supabase.functions.invoke("meta-capi-event", {
+        body: { email, name, source_url: window.location.origin, event_name: "Lead" },
+      }).catch(() => {});
+      supabase.functions.invoke("tiktok-capi-event", {
+        body: { email, name, source_url: window.location.origin, event_name: "SubmitForm" },
+      }).catch(() => {});
+
+      setCaptureSubmitted(true);
+      setCaptureMode(false);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Anotado, **${name}**! 🎯 Em breve entraremos em contato. Também enviamos um e-mail para **${email}** com mais informações!`,
+        },
+      ]);
+    } catch (err) {
+      console.error("Register capture error:", err);
     } finally {
       setCaptureLoading(false);
     }
@@ -367,6 +653,8 @@ export function LinkouzinhoWidget() {
     clearChatStorage();
     setMessages([WELCOME_MESSAGE]);
     setCaptureMode(false);
+    setCaptureStep("choose");
+    setConversionPath(null);
     setCaptureSubmitted(false);
     setWhatsappUrl(null);
     setHasUnread(false);
@@ -379,7 +667,6 @@ export function LinkouzinhoWidget() {
     <>
       {/* Floating avatar button */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {/* Tooltip hint (shown when closed and unread) */}
         {!isOpen && hasUnread && (
           <div className="bg-popover text-popover-foreground text-sm rounded-xl rounded-br-none shadow-lg px-4 py-2 border border-border animate-fade-in max-w-[200px] text-right">
             Oi! Posso te ajudar? 👋
@@ -389,17 +676,13 @@ export function LinkouzinhoWidget() {
         <button
           onClick={() => setIsOpen((v) => !v)}
           className={cn(
-          "relative h-16 w-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-yellow-400/40",
+            "relative h-16 w-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-yellow-400/40",
             "bg-yellow-400 p-0 overflow-visible",
             !isOpen && "animate-pulse-slow"
           )}
           aria-label="Abrir chat com Linkouzinho"
         >
-          <img
-            src={linkouzinhoImg}
-            alt="Linkouzinho"
-            className="h-16 w-16 rounded-full object-cover"
-          />
+          <img src={linkouzinhoImg} alt="Linkouzinho" className="h-16 w-16 rounded-full object-cover" />
           {hasUnread && !isOpen && (
             <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow">
               1
@@ -499,16 +782,28 @@ export function LinkouzinhoWidget() {
                 </div>
               )}
 
-              {/* Capture form */}
-              {captureMode && !captureSubmitted && (
-                <CaptureForm onSubmit={handleCapture} isLoading={captureLoading} />
+              {/* Conversion flow */}
+              {captureMode && !captureSubmitted && captureStep === "choose" && (
+                <ConversionPathChooser onChoose={handlePathChoose} />
               )}
 
-              {/* WhatsApp CTA after capture */}
+              {captureMode && !captureSubmitted && captureStep === "form" && conversionPath === "whatsapp" && (
+                <WhatsAppCaptureForm onSubmit={handleWhatsAppSubmit} onBack={handleBackToChoose} isLoading={captureLoading} />
+              )}
+
+              {captureMode && !captureSubmitted && captureStep === "form" && conversionPath === "appointment" && (
+                <AppointmentForm onSubmit={handleAppointmentSubmit} onBack={handleBackToChoose} isLoading={captureLoading} />
+              )}
+
+              {captureMode && !captureSubmitted && captureStep === "form" && conversionPath === "register" && (
+                <RegisterForm onSubmit={handleRegisterSubmit} onBack={handleBackToChoose} isLoading={captureLoading} />
+              )}
+
+              {/* WhatsApp CTA after WhatsApp path */}
               {captureSubmitted && whatsappUrl && (
                 <div className="mt-3">
                   <Button
-                    className="w-full bg-[hsl(142,71%,35%)] hover:bg-[hsl(142,71%,30%)] text-white text-sm font-semibold h-10"
+                    className="w-full text-sm font-semibold h-10 bg-green-700 hover:bg-green-800 text-white"
                     onClick={() => window.open(whatsappUrl, "_blank")}
                   >
                     💬 Continuar no WhatsApp
