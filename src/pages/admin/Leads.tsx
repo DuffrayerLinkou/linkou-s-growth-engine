@@ -29,6 +29,8 @@ import {
   CheckSquare,
   X,
   BarChart2,
+  CalendarClock,
+  Bot,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -608,8 +610,19 @@ export default function AdminLeads() {
     landing_page: leads.filter((l) => l.source === "landing_page").length,
     meta_instant_form: leads.filter((l) => l.source === "meta_instant_form").length,
     manual: leads.filter((l) => l.source === "manual").length,
-    other: leads.filter((l) => !["landing_page", "meta_instant_form", "manual"].includes(l.source || "")).length,
+    other: leads.filter((l) => !["landing_page", "meta_instant_form", "manual", "bot_linkouzinho"].includes(l.source || "")).length,
   }), [leads]);
+
+  // Appointment requests from bot that are still pending
+  const pendingAppointmentRequests = useMemo(() =>
+    leads.filter(
+      (l) =>
+        l.source === "bot_linkouzinho" &&
+        l.objective?.includes("Reunião") &&
+        l.status !== "converted" &&
+        l.status !== "archived"
+    ),
+  [leads]);
 
   const conversionRate = useMemo(() => {
     const converted = leads.filter((l) => l.status === "converted").length;
@@ -646,6 +659,49 @@ export default function AdminLeads() {
           </Button>
         </div>
       </div>
+
+      {/* Appointment requests banner */}
+      {pendingAppointmentRequests.length > 0 && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-primary/15 text-primary shrink-0">
+              <CalendarClock className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-primary">
+                {pendingAppointmentRequests.length} solicitação{pendingAppointmentRequests.length > 1 ? "ões" : ""} de reunião via Linkouzinho
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {pendingAppointmentRequests.slice(0, 3).map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => openLeadDetail(lead)}
+                  >
+                    <Bot className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="font-medium text-foreground">{lead.name}</span>
+                    <span>·</span>
+                    <span className="truncate">{lead.objective?.replace("Reunião via Linkouzinho — ", "")}</span>
+                  </div>
+                ))}
+                {pendingAppointmentRequests.length > 3 && (
+                  <p className="text-xs text-muted-foreground">
+                    + {pendingAppointmentRequests.length - 3} outras solicitações
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 text-xs border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() => handleSourceFilterChange("bot_linkouzinho")}
+            >
+              Ver todas
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Controls Row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
@@ -842,6 +898,7 @@ export default function AdminLeads() {
             <SelectItem value="all">Todas as origens</SelectItem>
             <SelectItem value="landing_page">Landing Page</SelectItem>
             <SelectItem value="meta_instant_form">Meta Lead Ads</SelectItem>
+            <SelectItem value="bot_linkouzinho">🤖 Linkouzinho Bot</SelectItem>
             <SelectItem value="manual">Adicionado manualmente</SelectItem>
           </SelectContent>
         </Select>
@@ -1029,7 +1086,21 @@ export default function AdminLeads() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{lead.name}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {lead.name}
+                          {lead.source === "bot_linkouzinho" && lead.objective?.includes("Reunião") && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary bg-primary/5 gap-1 hidden sm:flex">
+                              <CalendarClock className="h-2.5 w-2.5" />
+                              Reunião
+                            </Badge>
+                          )}
+                          {lead.source === "bot_linkouzinho" && !lead.objective?.includes("Reunião") && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-muted-foreground/30 text-muted-foreground gap-1 hidden sm:flex">
+                              <Bot className="h-2.5 w-2.5" />
+                              Bot
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-sm text-muted-foreground md:hidden">
                           {lead.email}
                         </div>
