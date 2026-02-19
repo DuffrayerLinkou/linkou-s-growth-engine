@@ -12,6 +12,7 @@ import {
   paymentRegisteredEmail,
   passwordChangedEmail,
   leadThankYouEmail,
+  botAppointmentRequestEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -194,6 +195,17 @@ serve(async (req) => {
         if (lead_email) {
           const { subject, html } = leadThankYouEmail(lead_name || "");
           await sendNotificationEmail(lead_email, subject, html);
+        }
+        break;
+      }
+
+      // ── Bot Appointment Request ──
+      case "bot_appointment_request": {
+        const { lead_name, lead_email, lead_phone, suggested_date } = payload;
+        const adminEmails = await getAdminEmails(supabase);
+        if (adminEmails.length > 0) {
+          const { subject, html } = botAppointmentRequestEmail(lead_name || "", lead_email || "", lead_phone || "", suggested_date || "");
+          await sendNotificationEmail(adminEmails, subject, html);
         }
         break;
       }
