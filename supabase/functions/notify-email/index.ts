@@ -13,6 +13,7 @@ import {
   passwordChangedEmail,
   leadThankYouEmail,
   botAppointmentRequestEmail,
+  appointmentConfirmedToLeadEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -206,6 +207,16 @@ serve(async (req) => {
         if (adminEmails.length > 0) {
           const { subject, html } = botAppointmentRequestEmail(lead_name || "", lead_email || "", lead_phone || "", suggested_date || "");
           await sendNotificationEmail(adminEmails, subject, html);
+        }
+        break;
+      }
+
+      // ── Appointment Confirmed to Lead ──
+      case "appointment_confirmed_to_lead": {
+        const { lead_name, lead_email, confirmed_date, location } = payload;
+        if (lead_email) {
+          const { subject, html } = appointmentConfirmedToLeadEmail(lead_name || "", confirmed_date || "", location || "");
+          await sendNotificationEmail(lead_email, subject, html);
         }
         break;
       }

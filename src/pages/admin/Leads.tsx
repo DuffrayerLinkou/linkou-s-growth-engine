@@ -31,6 +31,8 @@ import {
   BarChart2,
   CalendarClock,
   Bot,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -157,6 +159,18 @@ export default function AdminLeads() {
     funnelId: "",
   });
 
+  // Confirm Appointment states
+  const [confirmingLead, setConfirmingLead] = useState<Lead | null>(null);
+  const [isConfirmingAppointment, setIsConfirmingAppointment] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [confirmForm, setConfirmForm] = useState({
+    client_id: "",
+    confirmed_date: "",
+    confirmed_time: "",
+    location: "",
+    duration_minutes: "60",
+  });
+
   const { toast } = useToast();
 
   // Fetch funnels for "Novo Lead" dropdown and bulk enroll
@@ -167,6 +181,13 @@ export default function AdminLeads() {
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => setFunnels(data || []));
+
+    // Fetch clients for appointment confirmation
+    supabase
+      .from("clients")
+      .select("id, name")
+      .order("name")
+      .then(({ data }) => setClients(data || []));
   }, []);
 
   // Date range state
@@ -545,6 +566,84 @@ export default function AdminLeads() {
     setIsConvertDialogOpen(true);
   };
 
+  const openConfirmAppointmentDialog = (lead: Lead) => {
+    // Try to extract date from objective field: "data sugerida: DD/MM/YYYY HH:mm"
+    const match = lead.objective?.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/);
+    let prefillDate = "";
+    let prefillTime = "";
+    if (match) {
+      const [_, datePart, timePart] = match;
+      const [day, month, year] = datePart.split("/");
+      prefillDate = `${year}-${month}-${day}`;
+      prefillTime = timePart;
+    }
+    setConfirmForm({
+      client_id: "",
+      confirmed_date: prefillDate,
+      confirmed_time: prefillTime,
+      location: "",
+      duration_minutes: "60",
+    });
+    setConfirmingLead(lead);
+    setIsDetailOpen(false);
+  };
+
+  const handleConfirmAppointment = async () => {
+    if (!confirmingLead || !confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time) return;
+    setIsConfirmingAppointment(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const combinedDateTime = new Date(`${confirmForm.confirmed_date}T${confirmForm.confirmed_time}:00`).toISOString();
+      const formattedDate = format(new Date(combinedDateTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
+      // 1. Create appointment
+      const { error: appointmentError } = await supabase.from("appointments").insert({
+        title: `Reunião com ${confirmingLead.name}`,
+        client_id: confirmForm.client_id,
+        appointment_date: combinedDateTime,
+        duration_minutes: parseInt(confirmForm.duration_minutes),
+        location: confirmForm.location || null,
+        status: "confirmed",
+        type: "meeting",
+        created_by: user?.id || null,
+        description: `Solicitação via Linkouzinho. Lead: ${confirmingLead.email}${confirmingLead.phone ? ` / ${confirmingLead.phone}` : ""}`,
+      });
+      if (appointmentError) throw appointmentError;
+
+      // 2. Update lead status
+      await supabase.from("leads").update({ status: "contacted" }).eq("id", confirmingLead.id);
+
+      // 3. Log activity
+      await logLeadActivity(confirmingLead.id, "note", `Reunião confirmada para ${formattedDate}`);
+
+      // 4. Send confirmation email to lead
+      await supabase.functions.invoke("notify-email", {
+        body: {
+          event_type: "appointment_confirmed_to_lead",
+          lead_name: confirmingLead.name,
+          lead_email: confirmingLead.email,
+          confirmed_date: formattedDate,
+          location: confirmForm.location,
+        },
+      });
+
+      setLeads((prev) =>
+        prev.map((l) => l.id === confirmingLead.id ? { ...l, status: "contacted" } : l)
+      );
+
+      toast({
+        title: "Reunião confirmada!",
+        description: `Agendamento criado e e-mail enviado para ${confirmingLead.email}.`,
+      });
+      setConfirmingLead(null);
+    } catch (error) {
+      console.error("Error confirming appointment:", error);
+      toast({ variant: "destructive", title: "Erro ao confirmar reunião", description: "Tente novamente." });
+    } finally {
+      setIsConfirmingAppointment(false);
+    }
+  };
+
   const convertToClient = async () => {
     if (!selectedLead) return;
     setIsConverting(true);
@@ -675,13 +774,26 @@ export default function AdminLeads() {
                 {pendingAppointmentRequests.slice(0, 3).map((lead) => (
                   <div
                     key={lead.id}
-                    className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-                    onClick={() => openLeadDetail(lead)}
+                    className="flex items-center gap-2 text-sm text-muted-foreground"
                   >
                     <Bot className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="font-medium text-foreground">{lead.name}</span>
+                    <span
+                      className="font-medium text-foreground cursor-pointer hover:underline"
+                      onClick={() => openLeadDetail(lead)}
+                    >
+                      {lead.name}
+                    </span>
                     <span>·</span>
-                    <span className="truncate">{lead.objective?.replace("Reunião via Linkouzinho — ", "")}</span>
+                    <span className="truncate flex-1">{lead.objective?.replace("Reunião via Linkouzinho — ", "")}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[11px] px-2 border-primary/40 text-primary hover:bg-primary/10 shrink-0"
+                      onClick={() => openConfirmAppointmentDialog(lead)}
+                    >
+                      <CalendarClock className="h-3 w-3 mr-1" />
+                      Confirmar
+                    </Button>
                   </div>
                 ))}
                 {pendingAppointmentRequests.length > 3 && (
@@ -1161,6 +1273,18 @@ export default function AdminLeads() {
                               <UserPlus className="h-4 w-4 mr-2" />
                               Qualificar lead
                             </DropdownMenuItem>
+                            {lead.source === "bot_linkouzinho" && lead.objective?.includes("Reunião") && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => openConfirmAppointmentDialog(lead)}
+                                  className="text-primary focus:text-primary"
+                                >
+                                  <CalendarClock className="h-4 w-4 mr-2" />
+                                  Confirmar Reunião
+                                </DropdownMenuItem>
+                              </>
+                            )}
                             <DropdownMenuItem
                               onClick={() => updateLeadStatus(lead.id, "archived")}
                             >
@@ -1444,6 +1568,117 @@ export default function AdminLeads() {
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
               ) : (
                 <><Plus className="h-4 w-4 mr-2" />Adicionar Lead</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Appointment Dialog */}
+      <Dialog open={!!confirmingLead} onOpenChange={(open) => !open && setConfirmingLead(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-primary" />
+              Confirmar Reunião
+            </DialogTitle>
+            <DialogDescription>
+              Defina os detalhes da reunião com <strong>{confirmingLead?.name}</strong>. Um e-mail de confirmação será enviado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Client */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ca-client">Cliente a associar *</Label>
+              <Select
+                value={confirmForm.client_id}
+                onValueChange={(v) => setConfirmForm({ ...confirmForm, client_id: v })}
+              >
+                <SelectTrigger id="ca-client">
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date and Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="ca-date">Data *</Label>
+                <Input
+                  id="ca-date"
+                  type="date"
+                  value={confirmForm.confirmed_date}
+                  onChange={(e) => setConfirmForm({ ...confirmForm, confirmed_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ca-time">Hora *</Label>
+                <Input
+                  id="ca-time"
+                  type="time"
+                  value={confirmForm.confirmed_time}
+                  onChange={(e) => setConfirmForm({ ...confirmForm, confirmed_time: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ca-duration">Duração</Label>
+              <Select
+                value={confirmForm.duration_minutes}
+                onValueChange={(v) => setConfirmForm({ ...confirmForm, duration_minutes: v })}
+              >
+                <SelectTrigger id="ca-duration">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 minutos</SelectItem>
+                  <SelectItem value="60">1 hora</SelectItem>
+                  <SelectItem value="90">1h30</SelectItem>
+                  <SelectItem value="120">2 horas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ca-location">Local / Link (Google Meet, Zoom...)</Label>
+              <Input
+                id="ca-location"
+                placeholder="https://meet.google.com/..."
+                value={confirmForm.location}
+                onChange={(e) => setConfirmForm({ ...confirmForm, location: e.target.value })}
+              />
+            </div>
+
+            {/* Lead summary */}
+            {confirmingLead && (
+              <div className="p-3 bg-muted rounded-lg text-xs space-y-1">
+                <p className="font-medium text-muted-foreground">Dados do lead:</p>
+                <p>{confirmingLead.email}</p>
+                {confirmingLead.phone && <p>{confirmingLead.phone}</p>}
+                {confirmingLead.objective && <p className="text-muted-foreground">{confirmingLead.objective}</p>}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmingLead(null)} disabled={isConfirmingAppointment}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmAppointment}
+              disabled={!confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time || isConfirmingAppointment}
+            >
+              {isConfirmingAppointment ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirmando...</>
+              ) : (
+                <><CalendarClock className="h-4 w-4 mr-2" />Confirmar e Notificar</>
               )}
             </Button>
           </DialogFooter>

@@ -324,7 +324,37 @@ export function botAppointmentRequestEmail(
   };
 }
 
-// ── Category 9: Lead Thank You ──
+// ── Category 9: Appointment Confirmed to Lead ──
+
+export function appointmentConfirmedToLeadEmail(
+  name: string,
+  confirmedDate: string,
+  location: string,
+): { subject: string; html: string } {
+  const gcalBase = "https://calendar.google.com/calendar/r/eventedit";
+  const gcalTitle = encodeURIComponent("Reunião com Linkou");
+  const gcalDetails = encodeURIComponent("Reunião agendada pela equipe Linkou");
+  const gcalLocation = encodeURIComponent(location || "");
+  const gcalUrl = `${gcalBase}?text=${gcalTitle}&details=${gcalDetails}&location=${gcalLocation}`;
+
+  return {
+    subject: "✅ Sua reunião foi confirmada! — Linkou",
+    html: baseEmailLayout(`
+      <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">Olá, ${name || "Olá"}! 🎉</h2>
+      <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Sua reunião com a equipe da <strong>Linkou</strong> foi confirmada! Estamos ansiosos para conversar com você.</p>
+      ${infoBox(`
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">📅 Data e Hora Confirmada</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:16px;font-weight:700;">${confirmedDate}</p>
+        ${location ? `<p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">📍 Local / Link de Acesso</p><p style="margin:0;color:${PRIMARY_COLOR};font-size:15px;font-weight:600;"><a href="${location}" style="color:${PRIMARY_COLOR};text-decoration:none;">${location}</a></p>` : ""}
+      `)}
+      ${ctaButton("📆 Adicionar à Agenda", gcalUrl)}
+      <p style="margin:24px 0 0;padding:16px;background:#f0fdf4;border-radius:8px;color:#166534;font-size:13px;line-height:1.5;">💡 <strong>Dica:</strong> Separe suas principais dúvidas e objetivos antes da reunião para aproveitarmos ao máximo o nosso tempo juntos.</p>
+      <p style="margin:16px 0 0;color:#4a4a68;font-size:13px;line-height:1.5;">Caso precise reagendar, responda este e-mail ou entre em contato pelo WhatsApp.</p>
+    `),
+  };
+}
+
+// ── Category 10: Lead Thank You ──
 
 export function leadThankYouEmail(name: string): { subject: string; html: string } {
   const displayName = name || "Olá";
