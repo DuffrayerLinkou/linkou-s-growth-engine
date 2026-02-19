@@ -1,159 +1,144 @@
 
-# Confirmação de Reunião do Linkouzinho → Agendamentos
+# Corrigir Dialog de Confirmação de Reunião — Equipe Linkou
 
-## Problema Identificado
+## Problema Atual
 
-O fluxo atual pára no meio:
-1. Lead solicita reunião via Linkouzinho ✅
-2. Lead é cadastrado no CRM com `source: "bot_linkouzinho"` ✅
-3. Admin recebe e-mail de notificação ✅
-4. Admin vê banner na página de Leads ✅
-5. **Admin confirma a reunião → gera agendamento real → notifica o lead por e-mail** ❌ — FALTANDO
+O dialog pede "Cliente a associar" e lista os **clientes da agência** (empresas como "Empresa X", "Loja Y"). Isso está conceitualmente errado para o admin:
 
----
+- O campo `client_id` na tabela `appointments` serve para organização interna do sistema (qual cliente a reunião pertence)
+- O admin quer escolher **quem da equipe Linkou** vai participar e ser notificado
+- Atualmente, ninguém da equipe interna recebe aviso quando a reunião é confirmada
 
-## Solução: "Confirmar Reunião" em 3 partes
+## Solução em 3 partes
 
-### Parte 1 — Botão de confirmação na página de Leads
+### Parte 1 — Adicionar campo `internal_attendees` na tabela appointments (migration)
 
-No banner de solicitações pendentes e no detalhe do lead (LeadDetailDialog), aparece um botão **"Confirmar Reunião"** para leads com `source === "bot_linkouzinho"` e `objective?.includes("Reunião")`.
+Adicionar coluna `internal_attendees` do tipo `uuid[]` (array de UUIDs) à tabela `appointments`. Isso armazena os membros da equipe Linkou que participarão da reunião, sem quebrar nada existente (nullable com default `{}`).
 
-Ao clicar, abre um dialog de confirmação com:
-- **Data e hora** (pré-preenchida com a data sugerida pelo lead extraída do campo `objective`)
-- **Local / Link** (ex: link do Google Meet)
-- **Cliente** a associar (select dos clientes cadastrados, para poder criar o `appointment` com `client_id`)
-- **Duração** (30/60/90 min)
-- Botão "Confirmar e Notificar"
+### Parte 2 — Reformular o dialog de confirmação
 
-### Parte 2 — Ação de confirmação no backend
+O dialog passa a ter:
 
-Ao confirmar:
-1. **Cria o agendamento** na tabela `appointments` com status `confirmed` e o `client_id` selecionado
-2. **Atualiza o status do lead** para `contacted` (ou mantém conforme fluxo)
-3. **Registra atividade** no lead: "Reunião confirmada"
-4. **Envia e-mail para o lead** via `notify-email` com `event_type: "appointment_confirmed_to_lead"` — novo evento com template específico informando data/hora/local confirmados
+**Seção "Equipe Linkou"** (novo — principal mudança visual):
+- Lista com checkboxes dos membros da equipe interna (admins + account_managers), exibindo nome e role
+- Pelo menos 1 membro deve ser selecionado (responsável pela reunião)
+- E-mail de aviso será enviado a todos os selecionados
 
-### Parte 3 — Novo template de e-mail para o lead
+**Seção "Associar ao cliente"** (existente — renomeada e simplificada):
+- Campo de seleção do cliente do CRM com label mais claro: "Associar a um cliente existente (opcional)"
+- Tornado **opcional** — quando não selecionado, usa um `client_id` padrão (o primeiro cliente da lista ou lida com isso de outra forma)
+- **Problema real**: `client_id` é NOT NULL na tabela. A solução é: se não for selecionado nenhum cliente, o agendamento pode ser vinculado a um cliente "placeholder" ou, melhor ainda, criar o lead como cliente de forma automática. Porém isso complica demais.
 
-Cria `appointmentConfirmedToLeadEmail(leadName, date, location)` em `_shared/email-templates.ts`:
-- Assunto: `✅ Sua reunião foi confirmada — Linkou`
-- Corpo: data/hora confirmada + local/link + orientações de preparo
-- CTA: botão "Adicionar à agenda" (link Google Calendar)
+**Decisão de arquitetura**: manter `client_id` obrigatório (restrição do banco), mas mudar o label para "Vincular a cliente do CRM" e deixar claro que é para organização interna. O foco visual fica nos membros da equipe.
 
----
+### Parte 3 — Notificação para a equipe interna
 
-## Detalhes Técnicos
-
-### Mudança 1 — `src/pages/admin/Leads.tsx`
-
-Adicionar estado `confirmingLead: Lead | null` e dialog de confirmação:
-
-```tsx
-const [confirmingLead, setConfirmingLead] = useState<Lead | null>(null);
-const [confirmForm, setConfirmForm] = useState({
-  client_id: "",
-  confirmed_date: "",    // extraído do objective ou manual
-  confirmed_time: "",
-  location: "",
-  duration_minutes: "60",
-});
-```
-
-O dialog extrai a data sugerida do campo `objective` do lead usando regex sobre o texto "data sugerida: DD/MM/YYYY HH:mm".
-
-Botão "Confirmar Reunião" aparece:
-1. Em cada item do **banner** de solicitações pendentes (ao lado do nome)
-2. Na **tabela de leads**, coluna de ações, quando o lead é do bot com solicitação de reunião
-
-**Handler `handleConfirmAppointment`:**
-```tsx
-// 1. Insert na tabela appointments
-await supabase.from("appointments").insert({
-  title: `Reunião com ${confirmingLead.name}`,
-  client_id: confirmForm.client_id,
-  appointment_date: combinedDateTime,
-  duration_minutes: parseInt(confirmForm.duration_minutes),
-  location: confirmForm.location || null,
-  status: "confirmed",
-  type: "meeting",
-  created_by: user.id,
-  description: `Solicitação via Linkouzinho. Lead: ${confirmingLead.email} / ${confirmingLead.phone}`,
-});
-
-// 2. Atualiza lead para contacted
-await supabase.from("leads").update({ status: "contacted" }).eq("id", confirmingLead.id);
-
-// 3. Loga atividade
-await logLeadActivity(confirmingLead.id, "note", "Reunião confirmada e agendada");
-
-// 4. Envia e-mail ao lead
-await supabase.functions.invoke("notify-email", {
-  body: {
-    event_type: "appointment_confirmed_to_lead",
-    lead_name: confirmingLead.name,
-    lead_email: confirmingLead.email,
-    confirmed_date: formattedDate,
-    location: confirmForm.location,
-  }
-});
-```
-
-### Mudança 2 — `supabase/functions/notify-email/index.ts`
-
-Adicionar case `appointment_confirmed_to_lead`:
-```typescript
-case "appointment_confirmed_to_lead": {
-  const { lead_name, lead_email, confirmed_date, location } = payload;
-  if (lead_email) {
-    const { subject, html } = appointmentConfirmedToLeadEmail(lead_name, confirmed_date, location || "");
-    await sendNotificationEmail(lead_email, subject, html);
-  }
-  break;
-}
-```
-
-### Mudança 3 — `supabase/functions/_shared/email-templates.ts`
-
-Adicionar `appointmentConfirmedToLeadEmail(name, date, location)`:
-- **Assunto:** `✅ Sua reunião foi confirmada! — Linkou`
-- **Corpo:** 
-  - Saudação personalizada com o nome do lead
-  - Box informativo: data/hora confirmada + local/link de acesso
-  - CTA: "Adicionar à Agenda" (Google Calendar deep link gerado dinamicamente)
-  - Dica: "Separe suas principais dúvidas sobre [objetivo] para aproveitarmos ao máximo"
-
----
+Adicionar `event_type: "appointment_team_notify"` no `notify-email`:
+- Busca os profiles dos `internal_attendees` selecionados
+- Envia e-mail a cada um com: nome do lead, data/hora, local/link, dados de contato do lead
 
 ## Arquivos a Modificar
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/admin/Leads.tsx` | Adicionar dialog de confirmação + handler completo |
-| `supabase/functions/notify-email/index.ts` | Adicionar `case "appointment_confirmed_to_lead"` |
-| `supabase/functions/_shared/email-templates.ts` | Adicionar `appointmentConfirmedToLeadEmail` |
-
-**Sem migrações de banco.** O agendamento é criado na tabela `appointments` existente — o admin seleciona o `client_id` no formulário de confirmação, resolvendo a restrição NOT NULL da tabela.
-
----
+| `supabase/migrations/` | Adicionar coluna `internal_attendees uuid[] DEFAULT '{}'` em `appointments` |
+| `src/pages/admin/Leads.tsx` | Reformular dialog: buscar equipe interna, multi-seleção com checkboxes, novo handler |
+| `supabase/functions/notify-email/index.ts` | Adicionar case `appointment_team_notify` |
+| `supabase/functions/_shared/email-templates.ts` | Adicionar `appointmentTeamNotifyEmail` |
 
 ## Fluxo Completo após a implementação
 
 ```
-Lead solicita reunião via Linkouzinho
+Admin clica "Confirmar Reunião"
         ↓
-Lead registrado no CRM + e-mail para admins (já funciona)
+Dialog abre com:
+  [✓] Leo Santana - Chef Comercial (admin)
+  [ ] Lucas (admin)
+  [ ] Mauro (admin)
+  
+  Data: 25/02/2026  Hora: 14:00
+  Duração: 1 hora
+  Local: https://meet.google.com/...
+  
+  Vincular a cliente: [Selecione...]  ← obrigatório (restrição do banco)
         ↓
-Admin vê banner/lista na página Leads
+Admin seleciona quem da equipe participa + cliente + data/hora
         ↓
-Admin clica "Confirmar Reunião" → abre dialog
+[appointments] criado com client_id + internal_attendees = [uuid1, uuid2]
+[leads] status → "contacted"
+[notify-email: appointment_confirmed_to_lead] → e-mail ao lead
+[notify-email: appointment_team_notify] → e-mail p/ cada membro selecionado da equipe
         ↓
-Admin define: cliente, data/hora real, local/link, duração
-        ↓
-[appointments] criado com status "confirmed"
-[lead] status → "contacted"
-[lead_activities] nota "Reunião confirmada"
-[notify-email] → e-mail ao lead com data/hora/local confirmados
-        ↓
-Lead recebe: "✅ Sua reunião foi confirmada — Linkou"
+Lead recebe: "✅ Sua reunião foi confirmada"
+Equipe recebe: "📅 Nova reunião confirmada — [Nome do Lead] em DD/MM às HH:mm"
 Admin vê reunião em /admin/agendamentos
 ```
+
+## Detalhes Técnicos
+
+### Migration
+
+```sql
+ALTER TABLE public.appointments 
+ADD COLUMN IF NOT EXISTS internal_attendees uuid[] DEFAULT '{}';
+```
+
+### Fetch da equipe interna no frontend
+
+```tsx
+// Busca via manage-users edge function
+const { data } = await supabase.functions.invoke("manage-users", {
+  body: { action: "list-users" }
+});
+// Filtra apenas admin e account_manager
+const teamMembers = data.users.filter(u => 
+  u.roles.includes("admin") || u.roles.includes("account_manager")
+);
+```
+
+### Novo estado no dialog
+
+```tsx
+const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+
+// Confirmação — incluir attendees no insert
+await supabase.from("appointments").insert({
+  ...existing fields,
+  internal_attendees: selectedAttendees,
+});
+
+// Notificar equipe selecionada
+if (selectedAttendees.length > 0) {
+  await supabase.functions.invoke("notify-email", {
+    body: {
+      event_type: "appointment_team_notify",
+      attendee_ids: selectedAttendees,
+      lead_name: confirmingLead.name,
+      lead_email: confirmingLead.email,
+      lead_phone: confirmingLead.phone,
+      confirmed_date: formattedDate,
+      location: confirmForm.location,
+    }
+  });
+}
+```
+
+### Template de e-mail para a equipe
+
+**Assunto**: `📅 Nova reunião confirmada — {Lead Name}`
+
+**Corpo**:
+- "Você foi adicionado como participante de uma reunião com um prospect via Linkouzinho"
+- Card com: Nome, e-mail, telefone do lead
+- Data/hora e local/link
+- Botão "Ver no CRM" → link para `/admin/leads`
+
+### Mudança visual no dialog
+
+O campo "Equipe participante" aparece **primeiro** e com destaque, com checkboxes e avatares. "Vincular a cliente" fica abaixo, com label explicativo de que é para organização interna do sistema.
+
+### Validação
+
+- Pelo menos **1 membro da equipe** selecionado (obrigatório)
+- `client_id` continua obrigatório (restrição do banco)
+- Data/hora obrigatórios como antes
