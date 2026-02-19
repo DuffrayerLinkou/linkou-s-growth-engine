@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { BookOpen, Target, BarChart3, Facebook, Search, Lightbulb, ExternalLink, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -403,6 +404,22 @@ const getLevelColor = (level: string) => {
 };
 
 export default function BaseConhecimento() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Flatten all guides for search
+  const allGuides = Object.entries(knowledgeBase).flatMap(([key, category]) =>
+    category.guides.map((guide) => ({ ...guide, categoryKey: key, categoryLabel: category.label, categoryIcon: category.icon }))
+  );
+
+  const filteredGuides = searchQuery.trim()
+    ? allGuides.filter(
+        (guide) =>
+          guide.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          guide.content.some((item) => item.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          guide.categoryLabel.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -422,78 +439,151 @@ export default function BaseConhecimento() {
             </p>
           </div>
         </div>
+
+        {/* Search Bar */}
+        <div className="relative mt-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar guias, métricas, dicas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </motion.div>
 
-      {/* Main Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Tabs defaultValue="otimizacao" className="w-full">
-          <TabsList className="w-full h-auto gap-1 bg-muted/50 p-1 overflow-x-auto flex-nowrap scrollbar-hide">
-            {Object.entries(knowledgeBase).map(([key, category]) => {
-              const Icon = category.icon;
-              return (
-                <TabsTrigger
-                  key={key}
-                  value={key}
-                  className="flex items-center gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background flex-shrink-0 px-2 sm:px-3"
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span className="whitespace-nowrap">{category.label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          {Object.entries(knowledgeBase).map(([key, category]) => (
-            <TabsContent key={key} value={key} className="mt-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <category.icon className="h-5 w-5 text-primary" />
-                    {category.label}
-                  </CardTitle>
-                  <CardDescription>{category.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                    {category.guides.map((guide, index) => (
-                      <AccordionItem key={index} value={`item-${index}`}>
-                        <AccordionTrigger className="hover:no-underline py-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
-                            <span className="font-medium text-sm sm:text-base break-words">{guide.title}</span>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs w-fit flex-shrink-0 ${getLevelColor(guide.level)}`}
-                            >
-                              {guide.level}
-                            </Badge>
+      {/* Search Results */}
+      {filteredGuides !== null && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+          {filteredGuides.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">Nenhum resultado para "{searchQuery}"</p>
+                <p className="text-sm mt-1">Tente palavras diferentes ou navegue pelas categorias abaixo.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Search className="h-4 w-4 text-primary" />
+                  {filteredGuides.length} resultado{filteredGuides.length !== 1 ? "s" : ""} para "{searchQuery}"
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {filteredGuides.map((guide, index) => (
+                    <AccordionItem key={index} value={`search-${index}`}>
+                      <AccordionTrigger className="hover:no-underline py-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
+                          <span className="font-medium text-sm sm:text-base break-words">{guide.title}</span>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-xs w-fit flex-shrink-0">{guide.categoryLabel}</Badge>
+                            <Badge variant="outline" className={`text-xs w-fit flex-shrink-0 ${getLevelColor(guide.level)}`}>{guide.level}</Badge>
                           </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <ul className="space-y-2 pl-1">
-                            {guide.content.map((item, itemIndex) => (
-                              <li
-                                key={itemIndex}
-                                className="flex items-start gap-2 text-sm text-muted-foreground"
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <ul className="space-y-2 pl-1">
+                          {guide.content.map((item, itemIndex) => (
+                            <li key={itemIndex} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      )}
+
+      {/* Main Content — hidden when searching */}
+      {filteredGuides === null && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <Tabs defaultValue="otimizacao" className="w-full">
+            <TabsList className="w-full h-auto gap-1 bg-muted/50 p-1 overflow-x-auto flex-nowrap scrollbar-hide">
+              {Object.entries(knowledgeBase).map(([key, category]) => {
+                const Icon = category.icon;
+                return (
+                  <TabsTrigger
+                    key={key}
+                    value={key}
+                    className="flex items-center gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background flex-shrink-0 px-2 sm:px-3"
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{category.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            {Object.entries(knowledgeBase).map(([key, category]) => (
+              <TabsContent key={key} value={key} className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <category.icon className="h-5 w-5 text-primary" />
+                      {category.label}
+                    </CardTitle>
+                    <CardDescription>{category.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {category.guides.map((guide, index) => (
+                        <AccordionItem key={index} value={`item-${index}`}>
+                          <AccordionTrigger className="hover:no-underline py-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
+                              <span className="font-medium text-sm sm:text-base break-words">{guide.title}</span>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs w-fit flex-shrink-0 ${getLevelColor(guide.level)}`}
                               >
-                                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </motion.div>
+                                {guide.level}
+                              </Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <ul className="space-y-2 pl-1">
+                              {guide.content.map((item, itemIndex) => (
+                                <li
+                                  key={itemIndex}
+                                  className="flex items-start gap-2 text-sm text-muted-foreground"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </motion.div>
+      )}
 
       {/* External Resources */}
       <motion.div

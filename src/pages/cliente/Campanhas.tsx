@@ -164,6 +164,8 @@ export default function ClienteCampanhas() {
     );
   }
 
+  const pendingApprovalCampaigns = campaigns.filter((c) => c.status === "pending_approval" && !c.approved_by_ponto_focal);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -176,6 +178,49 @@ export default function ClienteCampanhas() {
         </div>
         {canRequestCampaigns && <RequestCampaignDialog />}
       </div>
+
+      {/* Urgent Approval Banner */}
+      {pendingApprovalCampaigns.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border-2 border-amber-500/60 bg-gradient-to-r from-amber-500/15 via-amber-500/8 to-transparent p-4 shadow-md"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="p-2 rounded-lg bg-amber-500/20 shrink-0">
+                <Target className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-amber-700 dark:text-amber-400">
+                    {pendingApprovalCampaigns.length === 1
+                      ? "1 campanha aguarda sua aprovação"
+                      : `${pendingApprovalCampaigns.length} campanhas aguardam sua aprovação`}
+                  </p>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white animate-pulse">
+                    Ação necessária
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  {pendingApprovalCampaigns.map((c) => c.name).join(", ")}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+              onClick={() => {
+                setStatusFilter("pending_approval");
+                document.getElementById("campaigns-list")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              <ChevronDown className="h-4 w-4 mr-1" />
+              Ver campanhas
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -252,7 +297,7 @@ export default function ClienteCampanhas() {
       </div>
 
       {/* Campaigns List */}
-      <div className="space-y-4">
+      <div id="campaigns-list" className="space-y-4">
         {filteredCampaigns.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">

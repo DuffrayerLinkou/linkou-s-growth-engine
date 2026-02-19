@@ -331,6 +331,13 @@ export default function ClienteDashboard() {
   const taskProgress = tasksSummary ? Math.round((tasksSummary.completed / tasksSummary.total) * 100) || 0 : 0;
   const pendingApprovalsCount = pendingCampaigns?.length || 0;
 
+  // Detect "new client" — no tasks and no campaigns yet
+  const isNewClient =
+    !loadingTasksSummary &&
+    !loadingActiveCampaigns &&
+    (tasksSummary?.total || 0) === 0 &&
+    (activeCampaignsCount || 0) === 0;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -351,6 +358,45 @@ export default function ClienteDashboard() {
           Acompanhe seu progresso, tarefas e resultados.
         </motion.p>
       </div>
+
+      {/* Welcome Banner for New Clients */}
+      {isNewClient && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5"
+        >
+          <div className="flex items-start gap-4">
+            <div className="text-4xl">🚀</div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-bold text-lg mb-1">Bem-vindo(a) à sua área de cliente!</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Sua jornada está começando. Aqui estão os próximos passos para você aproveitar ao máximo a plataforma:
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  { emoji: "📋", label: "Acompanhe sua jornada", link: "/cliente/minha-jornada", desc: "Veja as fases do seu projeto" },
+                  { emoji: "✅", label: "Veja suas tarefas", link: "/cliente/tarefas", desc: "Tarefas que dependem de você" },
+                  { emoji: "📁", label: "Acesse seus arquivos", link: "/cliente/arquivos", desc: "Documentos compartilhados" },
+                  { emoji: "📚", label: "Explore a base de conhecimento", link: "/cliente/base-conhecimento", desc: "Guias e dicas de marketing" },
+                ].map((step) => (
+                  <Link key={step.link} to={step.link}>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
+                      <span className="text-xl">{step.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{step.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{step.desc}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
