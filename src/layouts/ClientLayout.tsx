@@ -142,9 +142,11 @@ export function ClientLayout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {filteredNavItems.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = item.href === "/cliente"
+                ? location.pathname === "/cliente"
+                : location.pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
