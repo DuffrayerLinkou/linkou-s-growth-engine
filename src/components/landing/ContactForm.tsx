@@ -117,7 +117,7 @@ export function ContactForm() {
             event_name: 'Lead',
           }
         });
-        console.log('Meta CAPI event sent successfully');
+        
       } catch (capiError) {
         // Log silently - don't affect user experience
         console.warn('Meta CAPI event failed:', capiError);
@@ -138,7 +138,7 @@ export function ContactForm() {
             event_name: 'SubmitForm',
           }
         });
-        console.log('TikTok Events API event sent successfully');
+        
       } catch (tiktokError) {
         // Log silently - don't affect user experience
         console.warn('TikTok Events API event failed:', tiktokError);

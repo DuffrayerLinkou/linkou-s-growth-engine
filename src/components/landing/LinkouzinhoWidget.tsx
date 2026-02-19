@@ -48,7 +48,6 @@ function isChatFresh(): boolean {
 type Message = {
   role: "user" | "assistant";
   content: string;
-  captureMode?: boolean;
 };
 
 const QUICK_SUGGESTIONS = [
