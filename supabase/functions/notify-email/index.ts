@@ -14,6 +14,7 @@ import {
   leadThankYouEmail,
   botAppointmentRequestEmail,
   appointmentConfirmedToLeadEmail,
+  appointmentTeamNotifyEmail,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -217,6 +218,34 @@ serve(async (req) => {
         if (lead_email) {
           const { subject, html } = appointmentConfirmedToLeadEmail(lead_name || "", confirmed_date || "", location || "");
           await sendNotificationEmail(lead_email, subject, html);
+        }
+        break;
+      }
+
+      // ── Appointment Team Notify ──
+      case "appointment_team_notify": {
+        const { attendee_ids, lead_name, lead_email, lead_phone, confirmed_date, location } = payload;
+        if (!attendee_ids || attendee_ids.length === 0) break;
+
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", attendee_ids);
+
+        if (profiles && profiles.length > 0) {
+          for (const profile of profiles) {
+            if (profile.email) {
+              const { subject, html } = appointmentTeamNotifyEmail(
+                profile.full_name || "Equipe",
+                lead_name || "",
+                lead_email || "",
+                lead_phone || "",
+                confirmed_date || "",
+                location || "",
+              );
+              await sendNotificationEmail(profile.email, subject, html);
+            }
+          }
         }
         break;
       }

@@ -163,6 +163,9 @@ export default function AdminLeads() {
   const [confirmingLead, setConfirmingLead] = useState<Lead | null>(null);
   const [isConfirmingAppointment, setIsConfirmingAppointment] = useState(false);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+  const [isLoadingTeam, setIsLoadingTeam] = useState(false);
   const [confirmForm, setConfirmForm] = useState({
     client_id: "",
     confirmed_date: "",
@@ -566,7 +569,7 @@ export default function AdminLeads() {
     setIsConvertDialogOpen(true);
   };
 
-  const openConfirmAppointmentDialog = (lead: Lead) => {
+  const openConfirmAppointmentDialog = async (lead: Lead) => {
     // Try to extract date from objective field: "data sugerida: DD/MM/YYYY HH:mm"
     const match = lead.objective?.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})/);
     let prefillDate = "";
@@ -584,19 +587,42 @@ export default function AdminLeads() {
       location: "",
       duration_minutes: "60",
     });
+    setSelectedAttendees([]);
     setConfirmingLead(lead);
     setIsDetailOpen(false);
+
+    // Fetch team members
+    setIsLoadingTeam(true);
+    try {
+      const { data } = await supabase.functions.invoke("manage-users", {
+        body: { action: "list-users" },
+      });
+      if (data?.users) {
+        const team = data.users
+          .filter((u: any) => u.roles?.includes("admin") || u.roles?.includes("account_manager"))
+          .map((u: any) => ({
+            id: u.id,
+            name: u.full_name || u.email,
+            role: u.roles?.includes("admin") ? "Admin" : "Account Manager",
+          }));
+        setTeamMembers(team);
+      }
+    } catch (err) {
+      console.error("Error fetching team:", err);
+    } finally {
+      setIsLoadingTeam(false);
+    }
   };
 
   const handleConfirmAppointment = async () => {
-    if (!confirmingLead || !confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time) return;
+    if (!confirmingLead || !confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time || selectedAttendees.length === 0) return;
     setIsConfirmingAppointment(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const combinedDateTime = new Date(`${confirmForm.confirmed_date}T${confirmForm.confirmed_time}:00`).toISOString();
       const formattedDate = format(new Date(combinedDateTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-      // 1. Create appointment
+      // 1. Create appointment with internal_attendees
       const { error: appointmentError } = await supabase.from("appointments").insert({
         title: `Reunião com ${confirmingLead.name}`,
         client_id: confirmForm.client_id,
@@ -607,7 +633,8 @@ export default function AdminLeads() {
         type: "meeting",
         created_by: user?.id || null,
         description: `Solicitação via Linkouzinho. Lead: ${confirmingLead.email}${confirmingLead.phone ? ` / ${confirmingLead.phone}` : ""}`,
-      });
+        internal_attendees: selectedAttendees,
+      } as any);
       if (appointmentError) throw appointmentError;
 
       // 2. Update lead status
@@ -627,13 +654,28 @@ export default function AdminLeads() {
         },
       });
 
+      // 5. Notify selected team members
+      if (selectedAttendees.length > 0) {
+        await supabase.functions.invoke("notify-email", {
+          body: {
+            event_type: "appointment_team_notify",
+            attendee_ids: selectedAttendees,
+            lead_name: confirmingLead.name,
+            lead_email: confirmingLead.email,
+            lead_phone: confirmingLead.phone || "",
+            confirmed_date: formattedDate,
+            location: confirmForm.location,
+          },
+        });
+      }
+
       setLeads((prev) =>
         prev.map((l) => l.id === confirmingLead.id ? { ...l, status: "contacted" } : l)
       );
 
       toast({
         title: "Reunião confirmada!",
-        description: `Agendamento criado e e-mail enviado para ${confirmingLead.email}.`,
+        description: `Agendamento criado e e-mails enviados para ${confirmingLead.email} e ${selectedAttendees.length} membro(s) da equipe.`,
       });
       setConfirmingLead(null);
     } catch (error) {
@@ -1586,23 +1628,52 @@ export default function AdminLeads() {
               Defina os detalhes da reunião com <strong>{confirmingLead?.name}</strong>. Um e-mail de confirmação será enviado automaticamente.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Client */}
-            <div className="space-y-1.5">
-              <Label htmlFor="ca-client">Cliente a associar *</Label>
-              <Select
-                value={confirmForm.client_id}
-                onValueChange={(v) => setConfirmForm({ ...confirmForm, client_id: v })}
-              >
-                <SelectTrigger id="ca-client">
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
+            {/* Team Members Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Equipe Linkou participante *</Label>
+              <p className="text-xs text-muted-foreground">Selecione quem da equipe vai participar e ser notificado por e-mail.</p>
+              {isLoadingTeam ? (
+                <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando equipe...
+                </div>
+              ) : (
+                <div className="space-y-1.5 rounded-lg border p-3">
+                  {teamMembers.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedAttendees.includes(member.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedAttendees((prev) =>
+                            checked
+                              ? [...prev, member.id]
+                              : prev.filter((id) => id !== member.id)
+                          );
+                        }}
+                      />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{member.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{member.role}</p>
+                        </div>
+                      </div>
+                    </label>
                   ))}
-                </SelectContent>
-              </Select>
+                  {teamMembers.length === 0 && !isLoadingTeam && (
+                    <p className="text-xs text-muted-foreground py-2">Nenhum membro da equipe encontrado.</p>
+                  )}
+                </div>
+              )}
+              {selectedAttendees.length === 0 && teamMembers.length > 0 && (
+                <p className="text-xs text-destructive">Selecione pelo menos 1 membro da equipe.</p>
+              )}
             </div>
 
             {/* Date and Time */}
@@ -1657,6 +1728,25 @@ export default function AdminLeads() {
               />
             </div>
 
+            {/* Client (CRM link) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ca-client">Vincular a cliente do CRM *</Label>
+              <p className="text-[11px] text-muted-foreground">Para organização interna do sistema.</p>
+              <Select
+                value={confirmForm.client_id}
+                onValueChange={(v) => setConfirmForm({ ...confirmForm, client_id: v })}
+              >
+                <SelectTrigger id="ca-client">
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Lead summary */}
             {confirmingLead && (
               <div className="p-3 bg-muted rounded-lg text-xs space-y-1">
@@ -1673,7 +1763,7 @@ export default function AdminLeads() {
             </Button>
             <Button
               onClick={handleConfirmAppointment}
-              disabled={!confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time || isConfirmingAppointment}
+              disabled={!confirmForm.client_id || !confirmForm.confirmed_date || !confirmForm.confirmed_time || selectedAttendees.length === 0 || isConfirmingAppointment}
             >
               {isConfirmingAppointment ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirmando...</>
