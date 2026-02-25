@@ -1,17 +1,22 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, AlertCircle, MessageCircle, LogOut } from "lucide-react";
+import { ArrowLeft, AlertCircle, MessageCircle, LogOut, Download, Share } from "lucide-react";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { useAuth } from "@/hooks/useAuth";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export default function Auth() {
   const { user, roles, profile, isLoading, rolesLoaded, signOut } = useAuth();
+  const { canInstall, showIOSPrompt, promptInstall, dismiss } = usePWAInstall();
+  const [iosDialogOpen, setIosDialogOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const showInstallButton = canInstall || showIOSPrompt;
   
   // Capturar mensagem de erro passada via state
   const errorMessage = (location.state as { error?: string })?.error;
@@ -118,13 +123,30 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="p-4">
+      <header className="p-4 flex items-center justify-between">
         <Link to="/">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Voltar ao site
           </Button>
         </Link>
+        {showInstallButton && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={async () => {
+              if (canInstall) {
+                await promptInstall();
+              } else {
+                setIosDialogOpen(true);
+              }
+            }}
+          >
+            <Download className="h-4 w-4" />
+            Instalar App
+          </Button>
+        )}
       </header>
 
       {/* Main Content */}
@@ -157,6 +179,35 @@ export default function Auth() {
       <footer className="p-4 text-center text-sm text-muted-foreground">
         © {new Date().getFullYear()} Linkou. Todos os direitos reservados.
       </footer>
+
+      {/* iOS install instructions dialog */}
+      <Dialog open={iosDialogOpen} onOpenChange={setIosDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Instalar no iPhone/iPad</DialogTitle>
+            <DialogDescription>
+              Siga os passos abaixo para adicionar o app à sua tela de início:
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="space-y-4 py-2 text-sm text-foreground">
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">1</span>
+              <span>Toque no ícone <Share className="inline h-4 w-4 text-primary -mt-0.5" /> <strong>Compartilhar</strong> na barra do Safari</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">2</span>
+              <span>Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong></span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">3</span>
+              <span>Confirme tocando em <strong>"Adicionar"</strong></span>
+            </li>
+          </ol>
+          <Button onClick={() => { dismiss(); setIosDialogOpen(false); }} variant="secondary" className="w-full">
+            Entendi
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
