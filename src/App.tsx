@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SplashScreen } from "@/components/SplashScreen";
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
@@ -89,6 +90,7 @@ const App = () => (
       <AuthProvider>
         <ThemeProvider>
           <TooltipProvider>
+            <SplashScreen>
             <Toaster />
             <Sonner />
             <Routes>
@@ -151,6 +153,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </SplashScreen>
           </TooltipProvider>
         </ThemeProvider>
       </AuthProvider>
