@@ -6,7 +6,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = "linkou-pwa-dismiss";
-const DISMISS_DAYS = 7;
+const DISMISS_DAYS = 1;
 
 function isDismissed(): boolean {
   const raw = localStorage.getItem(DISMISS_KEY);

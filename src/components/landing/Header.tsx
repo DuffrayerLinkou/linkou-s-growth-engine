@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Download, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 
@@ -18,7 +26,18 @@ const navLinks = [
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [iosDialogOpen, setIosDialogOpen] = useState(false);
   const { theme } = useTheme();
+  const { canInstall, showIOSPrompt, isInstalled, promptInstall } = usePWAInstall();
+  const showInstallButton = (canInstall || showIOSPrompt) && !isInstalled;
+
+  const handleInstall = async () => {
+    if (canInstall) {
+      await promptInstall();
+    } else if (showIOSPrompt) {
+      setIosDialogOpen(true);
+    }
+  };
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -56,6 +75,12 @@ export function Header() {
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
+            {showInstallButton && (
+              <Button variant="outline" size="sm" onClick={handleInstall} className="gap-1.5">
+                <Download className="h-4 w-4" />
+                Instalar App
+              </Button>
+            )}
             <ThemeToggle />
             <Link to="/auth">
               <Button variant="ghost" size="sm">
@@ -106,6 +131,12 @@ export function Header() {
                 </button>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t">
+                {showInstallButton && (
+                  <Button variant="outline" onClick={handleInstall} className="w-full gap-1.5">
+                    <Download className="h-4 w-4" />
+                    Instalar App
+                  </Button>
+                )}
                 <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full">
                     Login
@@ -122,6 +153,37 @@ export function Header() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* iOS instructions dialog */}
+      <Dialog open={iosDialogOpen} onOpenChange={setIosDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Instalar no iPhone/iPad</DialogTitle>
+            <DialogDescription>
+              Siga os passos abaixo para adicionar o app à sua tela de início:
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="space-y-4 py-2 text-sm text-foreground">
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">1</span>
+              <span>
+                Toque no ícone <Share className="inline h-4 w-4 text-primary -mt-0.5" /> <strong>Compartilhar</strong> na barra do Safari
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">2</span>
+              <span>Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong></span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs">3</span>
+              <span>Confirme tocando em <strong>"Adicionar"</strong></span>
+            </li>
+          </ol>
+          <Button onClick={() => setIosDialogOpen(false)} variant="secondary" className="w-full">
+            Entendi
+          </Button>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
