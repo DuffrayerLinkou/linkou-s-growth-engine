@@ -11,6 +11,7 @@ import { FAQ } from "@/components/landing/FAQ";
 import { ContactForm } from "@/components/landing/ContactForm";
 import { Footer } from "@/components/landing/Footer";
 import { LinkouzinhoWidget } from "@/components/landing/LinkouzinhoWidget";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -63,6 +64,7 @@ const Index = () => {
       </main>
       <Footer />
       <LinkouzinhoWidget />
+      <PWAInstallPrompt />
     </div>
   );
 };
