@@ -1,26 +1,43 @@
 
 
-# Corrigir Icones PWA para usar a Logo Linkou
+# Corrigir: Banner de instalação PWA não reaparece após fechar
 
 ## Problema
 
-Os icones PWA atuais (`icon-192x192.png` e `icon-512x512.png`) mostram um "L" generico em fundo roxo. O `favicon.png` ja contem a logo correta da Linkou (o simbolo de coracao/link roxo). Quando o usuario instala o PWA, o icone que aparece e o "L" em vez da logo real.
+Quando o usuário fecha o banner "Instale o app Linkou", o hook `usePWAInstall` salva um timestamp no `localStorage` com a chave `linkou-pwa-dismiss`. Isso faz o banner sumir por **7 dias**. No iPhone do usuário, o banner já foi dispensado e não volta mais.
 
-## Solucao
+## Solução
 
-Copiar o `favicon.png` (que ja tem a logo correta) para substituir os dois icones PWA:
+Duas melhorias:
 
-- `public/icons/icon-192x192.png` — substituir pelo `favicon.png`
-- `public/icons/icon-512x512.png` — substituir pelo `favicon.png`
+### 1. Reduzir o tempo de dismiss de 7 dias para 1 dia
+Assim, se o usuário fechar sem querer, o banner volta no dia seguinte.
 
-O `favicon.png` ja esta em alta resolucao (1080x1080) e contem o simbolo correto da Linkou com fundo branco, compativel com maskable.
+### 2. Adicionar botão "Instalar App" fixo no menu/header
+Independente do banner ter sido fechado, o usuário sempre terá acesso a um botão para instalar. Isso resolve o problema de forma permanente — o banner é apenas um lembrete, mas o botão no layout está sempre disponível.
 
 ## Arquivos Alterados
 
-| Arquivo | Acao |
+| Arquivo | Alteração |
 |---|---|
-| `public/icons/icon-192x192.png` | Substituir pelo conteudo de `favicon.png` |
-| `public/icons/icon-512x512.png` | Substituir pelo conteudo de `favicon.png` |
+| `src/hooks/usePWAInstall.ts` | Reduzir `DISMISS_DAYS` de 7 para 1 |
+| `src/components/landing/Header.tsx` | Adicionar botão "Instalar App" visível no header quando `showIOSPrompt` ou `canInstall` for true |
 
-O `manifest.webmanifest` permanece inalterado pois ja referencia os caminhos corretos.
+## Solução Imediata (para o iPhone do usuário agora)
+
+Para resolver **agora** no iPhone onde já foi dispensado: basta abrir o site no Safari, ir em **Ajustes do Safari → Limpar Dados de Sites** (ou abrir em aba anônima) e o banner reaparecerá. Mas com a mudança acima, bastará esperar 1 dia.
+
+## Detalhes Técnicos
+
+**`usePWAInstall.ts`** — linha 9:
+```ts
+const DISMISS_DAYS = 1; // era 7
+```
+
+**`Header.tsx`** — adicionar um item de menu discreto:
+```tsx
+import { usePWAInstall } from "@/hooks/usePWAInstall";
+// No componente, renderizar um botão "Instalar App" com ícone Download
+// quando canInstall || showIOSPrompt for true
+```
 
