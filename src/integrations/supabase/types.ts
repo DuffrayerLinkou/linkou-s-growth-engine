@@ -65,6 +65,7 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           id: string
+          internal_attendees: string[] | null
           location: string | null
           project_id: string | null
           status: string | null
@@ -80,6 +81,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          internal_attendees?: string[] | null
           location?: string | null
           project_id?: string | null
           status?: string | null
@@ -95,6 +97,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          internal_attendees?: string[] | null
           location?: string | null
           project_id?: string | null
           status?: string | null

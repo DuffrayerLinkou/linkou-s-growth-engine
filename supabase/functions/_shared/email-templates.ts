@@ -354,7 +354,38 @@ export function appointmentConfirmedToLeadEmail(
   };
 }
 
-// ── Category 10: Lead Thank You ──
+// ── Category 10: Appointment Team Notify ──
+
+export function appointmentTeamNotifyEmail(
+  memberName: string,
+  leadName: string,
+  leadEmail: string,
+  leadPhone: string,
+  confirmedDate: string,
+  location: string,
+): { subject: string; html: string } {
+  const CRM_URL = "https://linkou-ecosystem-builder.lovable.app/admin/leads";
+  return {
+    subject: `📅 Nova reunião confirmada — ${leadName}`,
+    html: baseEmailLayout(`
+      <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">Olá, ${memberName || "Equipe"}! 📅</h2>
+      <p style="margin:0 0 20px;color:#4a4a68;font-size:15px;line-height:1.6;">Você foi adicionado como participante de uma reunião com um prospect via <strong>Linkouzinho</strong>.</p>
+      ${infoBox(`
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">Nome do Lead</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;">${leadName}</p>
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">E-mail</p>
+        <p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;"><a href="mailto:${leadEmail}" style="color:${PRIMARY_COLOR};text-decoration:none;">${leadEmail}</a></p>
+        ${leadPhone ? `<p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">WhatsApp</p><p style="margin:0 0 16px;color:#1a1a2e;font-size:15px;font-weight:600;">${leadPhone}</p>` : ""}
+        <p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">📅 Data e Hora</p>
+        <p style="margin:0 0 16px;color:${PRIMARY_COLOR};font-size:16px;font-weight:700;">${confirmedDate}</p>
+        ${location ? `<p style="margin:0 0 8px;color:#6b6b8d;font-size:13px;">📍 Local / Link</p><p style="margin:0;color:${PRIMARY_COLOR};font-size:15px;font-weight:600;"><a href="${location}" style="color:${PRIMARY_COLOR};text-decoration:none;">${location}</a></p>` : ""}
+      `)}
+      ${ctaButton("Ver no CRM", CRM_URL)}
+    `),
+  };
+}
+
+// ── Category 11: Lead Thank You ──
 
 export function leadThankYouEmail(name: string): { subject: string; html: string } {
   const displayName = name || "Olá";
