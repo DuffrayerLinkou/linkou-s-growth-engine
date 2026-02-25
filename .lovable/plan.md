@@ -1,44 +1,44 @@
 
 
-# Splash Screen PWA + Redirecionar para Login
+# Corrigir Instalação PWA no iPhone
 
-## O que muda
+## Problema Identificado
 
-### 1. Página inicial do PWA = Login
-Alterar o `start_url` no `manifest.webmanifest` de `"/"` para `"/auth"`. Assim, ao abrir o app instalado, o usuário cai direto na tela de login.
+No iPhone, o Safari **não suporta** o evento `beforeinstallprompt` (isso é exclusivo do Chrome/Android). A única forma de "instalar" um PWA no iOS é manualmente pelo Safari: **Compartilhar → Adicionar à Tela de Início**.
 
-### 2. Splash Screen animada na abertura do app
-Criar um componente `SplashScreen` que exibe a logo da Linkou com animação (fade in + scale + pulse) por ~2 segundos antes de mostrar o conteúdo. Essa splash aparece apenas quando o app é aberto em modo standalone (PWA instalado), simulando a experiência de um app nativo.
+O botão "Instalar App" e o banner de instalação existem no `Header.tsx` (landing page), mas o usuário está na rota `/auth` onde esses componentes **não aparecem**. Além disso, se o banner já foi dispensado, o botão fica oculto.
+
+Há também um problema técnico no `manifest.webmanifest`: os ícones usam `"purpose": "any maskable"` em uma única entrada. A spec recomenda separar em duas entradas distintas para evitar problemas de compatibilidade.
+
+## Solução
+
+### 1. Separar ícones no manifest (corrigir compatibilidade iOS)
+Dividir cada ícone em duas entradas: uma com `"purpose": "any"` e outra com `"purpose": "maskable"`.
+
+### 2. Adicionar botão "Instalar App" na página de Login
+Colocar um botão discreto na página `/auth` para que usuários iOS possam ver as instruções de instalação mesmo sem passar pela landing page.
 
 ## Arquivos Alterados
 
 | Arquivo | Alteração |
 |---|---|
-| `public/manifest.webmanifest` | Mudar `start_url` de `"/"` para `"/auth"` |
-| `src/components/SplashScreen.tsx` | **Novo** — Componente com logo animada (fade in, scale up, pulse sutil) com fundo escuro (#0A0A0F) e a logo `logo-linkou-roxo.png` centralizada |
-| `src/App.tsx` | Envolver as rotas com o `SplashScreen` que aparece apenas em modo standalone (PWA) por ~2s na primeira abertura |
+| `public/manifest.webmanifest` | Separar ícones em entradas `any` e `maskable` distintas |
+| `src/pages/Auth.tsx` | Adicionar botão "Instalar App" com dialog de instruções iOS, visível apenas em dispositivos compatíveis |
 
 ## Detalhes Técnicos
 
-### SplashScreen
-- Detecta se está em modo standalone (`display-mode: standalone` ou `navigator.standalone`)
-- Se sim, mostra a logo com animação por 2 segundos usando framer-motion:
-  - Logo entra com `opacity: 0 → 1`, `scale: 0.8 → 1`
-  - Pulse sutil na logo
-  - Fade out da splash inteira antes de mostrar o app
-- Se não está em standalone (navegador normal), não mostra splash — vai direto para o conteúdo
-- Usa `useState` com timer para controlar a transição
-
-### Manifest
+### manifest.webmanifest
 ```json
-"start_url": "/auth"
+"icons": [
+  { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+  { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+  { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+]
 ```
 
-### Fluxo
-```text
-Usuário abre PWA
-  → Splash (2s, logo animada)
-  → Tela de Login (/auth)
-  → Após login, redireciona para /admin ou /cliente conforme role
-```
+### Auth.tsx
+- Importar `usePWAInstall` e adicionar um botão "Instalar App" no header da página de login
+- Incluir o dialog com instruções de instalação para iOS (Share → Adicionar à Tela de Início)
+- O botão só aparece quando `canInstall || showIOSPrompt` for verdadeiro
 
