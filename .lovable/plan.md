@@ -1,144 +1,138 @@
 
-# Corrigir Dialog de Confirmação de Reunião — Equipe Linkou
 
-## Problema Atual
+# PWA Completa para Agência Linkou
 
-O dialog pede "Cliente a associar" e lista os **clientes da agência** (empresas como "Empresa X", "Loja Y"). Isso está conceitualmente errado para o admin:
+## Resumo
 
-- O campo `client_id` na tabela `appointments` serve para organização interna do sistema (qual cliente a reunião pertence)
-- O admin quer escolher **quem da equipe Linkou** vai participar e ser notificado
-- Atualmente, ninguém da equipe interna recebe aviso quando a reunião é confirmada
+Transformar a SPA existente em uma Progressive Web App instalavel, com suporte offline, cache inteligente e fluxo de instalacao nativo + iOS.
 
-## Solução em 3 partes
+---
 
-### Parte 1 — Adicionar campo `internal_attendees` na tabela appointments (migration)
+## Arquivos a Criar
 
-Adicionar coluna `internal_attendees` do tipo `uuid[]` (array de UUIDs) à tabela `appointments`. Isso armazena os membros da equipe Linkou que participarão da reunião, sem quebrar nada existente (nullable com default `{}`).
+### 1. `public/manifest.webmanifest`
+Web App Manifest com nome, cores da marca (roxo primary `#7C3AED`), icons 192 e 512, display standalone, start_url `/`.
 
-### Parte 2 — Reformular o dialog de confirmação
+### 2. `public/sw.js`
+Service Worker manual (sem dependencia de plugin Vite) com:
+- **Estrategia stale-while-revalidate** para assets estaticos (JS, CSS, imagens, fontes)
+- **Network-first** para navegacao (HTML) e requests de API (Supabase)
+- **Fallback offline** — quando offline e sem cache, serve `/offline.html`
+- Pre-cache do app shell no evento `install`
+- Ignora requests de tracking (google-analytics, googleads, facebook, tiktok) para nao interferir
 
-O dialog passa a ter:
+### 3. `public/offline.html`
+Pagina HTML simples e estilizada com a marca Linkou informando que o usuario esta offline, com botao "Tentar novamente".
 
-**Seção "Equipe Linkou"** (novo — principal mudança visual):
-- Lista com checkboxes dos membros da equipe interna (admins + account_managers), exibindo nome e role
-- Pelo menos 1 membro deve ser selecionado (responsável pela reunião)
-- E-mail de aviso será enviado a todos os selecionados
+### 4. `public/icons/icon-192x192.png` e `public/icons/icon-512x512.png`
+Icons PWA gerados a partir do logo existente (`favicon.png`). Como nao posso gerar PNGs binarios, vou usar SVG inline como fallback e documentar a geracao dos PNGs reais.
 
-**Seção "Associar ao cliente"** (existente — renomeada e simplificada):
-- Campo de seleção do cliente do CRM com label mais claro: "Associar a um cliente existente (opcional)"
-- Tornado **opcional** — quando não selecionado, usa um `client_id` padrão (o primeiro cliente da lista ou lida com isso de outra forma)
-- **Problema real**: `client_id` é NOT NULL na tabela. A solução é: se não for selecionado nenhum cliente, o agendamento pode ser vinculado a um cliente "placeholder" ou, melhor ainda, criar o lead como cliente de forma automática. Porém isso complica demais.
+### 5. `src/hooks/usePWAInstall.ts`
+Hook React que:
+- Captura o evento `beforeinstallprompt` (Chrome/Edge/Android)
+- Detecta iOS (Safari) e exibe instrucoes "Adicionar a Tela de Inicio"
+- Detecta se ja esta instalado (`display-mode: standalone`)
+- Expoe `{ canInstall, isInstalled, isIOS, promptInstall }`
 
-**Decisão de arquitetura**: manter `client_id` obrigatório (restrição do banco), mas mudar o label para "Vincular a cliente do CRM" e deixar claro que é para organização interna. O foco visual fica nos membros da equipe.
+### 6. `src/components/PWAInstallPrompt.tsx`
+Componente visual com:
+- Banner/toast discreto na landing page: "Instale o app Linkou"
+- Botao que chama `promptInstall()` no Android/desktop
+- Modal com instrucoes visuais para iOS (icone Share → "Adicionar a Tela de Inicio")
+- Desaparece apos instalacao ou dismiss (salva no localStorage)
 
-### Parte 3 — Notificação para a equipe interna
+---
 
-Adicionar `event_type: "appointment_team_notify"` no `notify-email`:
-- Busca os profiles dos `internal_attendees` selecionados
-- Envia e-mail a cada um com: nome do lead, data/hora, local/link, dados de contato do lead
+## Arquivos a Alterar
 
-## Arquivos a Modificar
+### 7. `index.html`
+- Adicionar `<link rel="manifest" href="/manifest.webmanifest">`
+- Adicionar `<meta name="theme-color" content="#7C3AED">`
+- Adicionar `<meta name="apple-mobile-web-app-capable" content="yes">`
+- Adicionar `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`
+- Adicionar `<link rel="apple-touch-icon" href="/icons/icon-192x192.png">`
 
-| Arquivo | Mudança |
-|---|---|
-| `supabase/migrations/` | Adicionar coluna `internal_attendees uuid[] DEFAULT '{}'` em `appointments` |
-| `src/pages/admin/Leads.tsx` | Reformular dialog: buscar equipe interna, multi-seleção com checkboxes, novo handler |
-| `supabase/functions/notify-email/index.ts` | Adicionar case `appointment_team_notify` |
-| `supabase/functions/_shared/email-templates.ts` | Adicionar `appointmentTeamNotifyEmail` |
-
-## Fluxo Completo após a implementação
-
-```
-Admin clica "Confirmar Reunião"
-        ↓
-Dialog abre com:
-  [✓] Leo Santana - Chef Comercial (admin)
-  [ ] Lucas (admin)
-  [ ] Mauro (admin)
-  
-  Data: 25/02/2026  Hora: 14:00
-  Duração: 1 hora
-  Local: https://meet.google.com/...
-  
-  Vincular a cliente: [Selecione...]  ← obrigatório (restrição do banco)
-        ↓
-Admin seleciona quem da equipe participa + cliente + data/hora
-        ↓
-[appointments] criado com client_id + internal_attendees = [uuid1, uuid2]
-[leads] status → "contacted"
-[notify-email: appointment_confirmed_to_lead] → e-mail ao lead
-[notify-email: appointment_team_notify] → e-mail p/ cada membro selecionado da equipe
-        ↓
-Lead recebe: "✅ Sua reunião foi confirmada"
-Equipe recebe: "📅 Nova reunião confirmada — [Nome do Lead] em DD/MM às HH:mm"
-Admin vê reunião em /admin/agendamentos
-```
-
-## Detalhes Técnicos
-
-### Migration
-
-```sql
-ALTER TABLE public.appointments 
-ADD COLUMN IF NOT EXISTS internal_attendees uuid[] DEFAULT '{}';
-```
-
-### Fetch da equipe interna no frontend
-
+### 8. `src/main.tsx`
+- Registrar o Service Worker **apenas em producao**:
 ```tsx
-// Busca via manage-users edge function
-const { data } = await supabase.functions.invoke("manage-users", {
-  body: { action: "list-users" }
-});
-// Filtra apenas admin e account_manager
-const teamMembers = data.users.filter(u => 
-  u.roles.includes("admin") || u.roles.includes("account_manager")
-);
-```
-
-### Novo estado no dialog
-
-```tsx
-const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
-
-// Confirmação — incluir attendees no insert
-await supabase.from("appointments").insert({
-  ...existing fields,
-  internal_attendees: selectedAttendees,
-});
-
-// Notificar equipe selecionada
-if (selectedAttendees.length > 0) {
-  await supabase.functions.invoke("notify-email", {
-    body: {
-      event_type: "appointment_team_notify",
-      attendee_ids: selectedAttendees,
-      lead_name: confirmingLead.name,
-      lead_email: confirmingLead.email,
-      lead_phone: confirmingLead.phone,
-      confirmed_date: formattedDate,
-      location: confirmForm.location,
-    }
-  });
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('/sw.js');
 }
 ```
 
-### Template de e-mail para a equipe
+### 9. `src/pages/Index.tsx`
+- Importar e renderizar `<PWAInstallPrompt />` na landing page
 
-**Assunto**: `📅 Nova reunião confirmada — {Lead Name}`
+---
 
-**Corpo**:
-- "Você foi adicionado como participante de uma reunião com um prospect via Linkouzinho"
-- Card com: Nome, e-mail, telefone do lead
-- Data/hora e local/link
-- Botão "Ver no CRM" → link para `/admin/leads`
+## Detalhes Tecnicos
 
-### Mudança visual no dialog
+### Service Worker — Estrategia de Cache
 
-O campo "Equipe participante" aparece **primeiro** e com destaque, com checkboxes e avatares. "Vincular a cliente" fica abaixo, com label explicativo de que é para organização interna do sistema.
+```text
+Request Type        | Strategy                | Cache Name
+--------------------|-------------------------|------------------
+JS/CSS/fonts/images | Stale-while-revalidate  | linkou-assets-v1
+HTML/navigation     | Network-first           | linkou-pages-v1
+Supabase API        | Network-only            | (sem cache)
+Tracking scripts    | Network-only (passthru) | (sem cache)
+```
 
-### Validação
+O SW nao faz cache de requests para `supabase.co`, `google-analytics`, `googletagmanager`, `facebook`, `tiktok` — garantindo que tracking e dados em tempo real nao sejam afetados.
 
-- Pelo menos **1 membro da equipe** selecionado (obrigatório)
-- `client_id` continua obrigatório (restrição do banco)
-- Data/hora obrigatórios como antes
+### Manifest
+
+```json
+{
+  "name": "Agência Linkou",
+  "short_name": "Linkou",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#7C3AED",
+  "icons": [
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
+```
+
+### Icons PWA
+
+Como nao e possivel gerar binarios PNG diretamente, vou criar os icons usando SVG convertido via canvas no build, ou usar o `favicon.png` existente redimensionado. Na pratica, criarei um script simples ou usarei o favicon como placeholder nos tamanhos corretos.
+
+### Hook `usePWAInstall`
+
+```tsx
+// Captura beforeinstallprompt
+// Detecta iOS via userAgent
+// Detecta standalone via matchMedia('(display-mode: standalone)')
+// Persiste dismiss no localStorage por 7 dias
+```
+
+### Checklist PWA
+
+| Requisito | Status |
+|---|---|
+| HTTPS | Lovable serve em HTTPS |
+| Manifest linkado | Sera adicionado ao `index.html` |
+| Service Worker registrado | Sera adicionado ao `main.tsx` |
+| Icons 192 + 512 | Serao criados em `/public/icons/` |
+| theme-color no HTML | Sera adicionado |
+| Responde 200 offline | SW serve cache ou `offline.html` |
+| SPA routing (refresh 200) | Ja funciona (Lovable/hosting SPA) |
+| Tracking preservado | SW ignora domains de tracking |
+
+---
+
+## Ordem de Implementacao
+
+1. Criar icons placeholder e manifest
+2. Criar `offline.html`
+3. Criar `sw.js` com estrategias de cache
+4. Atualizar `index.html` com meta tags PWA
+5. Atualizar `main.tsx` com registro do SW
+6. Criar `usePWAInstall` hook
+7. Criar `PWAInstallPrompt` componente
+8. Adicionar prompt na `Index.tsx`
+
