@@ -1,17 +1,17 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const ASSETS_CACHE = `linkou-assets-${CACHE_VERSION}`;
 const PAGES_CACHE = `linkou-pages-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
-// Pre-cache on install
+// Pre-cache on install — align with start_url
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(PAGES_CACHE).then((cache) => cache.addAll([OFFLINE_URL, '/']))
+    caches.open(PAGES_CACHE).then((cache) => cache.addAll([OFFLINE_URL, '/auth']))
   );
   self.skipWaiting();
 });
 
-// Cleanup old caches on activate
+// Cleanup ALL old caches on activate
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>

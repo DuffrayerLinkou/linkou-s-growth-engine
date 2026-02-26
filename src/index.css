@@ -259,3 +259,48 @@
     display: none;
   }
 }
+
+/* ── PWA Splash Screen ── */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0A0A0F;
+  opacity: 0;
+  animation: splash-in 300ms ease-out forwards;
+}
+
+.splash-overlay[data-phase="out"] {
+  animation: splash-out 300ms ease-in forwards;
+}
+
+.splash-logo {
+  width: 7rem;
+  height: 7rem;
+  object-fit: contain;
+  transform: scale(0.85);
+  animation: splash-logo-in 300ms ease-out forwards;
+}
+
+@keyframes splash-in {
+  to { opacity: 1; }
+}
+
+@keyframes splash-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes splash-logo-in {
+  to { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-overlay,
+  .splash-logo {
+    animation-duration: 0ms !important;
+  }
+}
