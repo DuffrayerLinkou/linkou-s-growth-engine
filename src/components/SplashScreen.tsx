@@ -19,8 +19,8 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     if (!visible) return;
 
     const reduced = prefersReducedMotion();
-    const holdDelay = reduced ? 50 : 500;
-    const outDelay = reduced ? 100 : 800;
+    const holdDelay = reduced ? 50 : 900;
+    const outDelay = reduced ? 100 : 1300;
 
     const t1 = setTimeout(() => setPhase("out"), holdDelay);
     const t2 = setTimeout(() => setVisible(false), outDelay);
