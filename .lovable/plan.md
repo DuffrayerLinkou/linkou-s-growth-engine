@@ -1,146 +1,68 @@
 
 
-# Correção Completa PWA: Instalação, Segurança e Splash Screen
+# Corrigir Logo do PWA e Melhorar Splash Screen
 
-## Diagnóstico dos Problemas Atuais
+## Problema Identificado
 
-1. **Android "aviso de risco"**: O manifest não tem `id` nem `scope`, o que pode confundir o Chrome. O SW pre-cacheia `/` mas o `start_url` é `/auth` — inconsistência que pode causar falha na verificação de installability.
-2. **"Instalou mas não aparece"**: Sem `scope` explícito e sem `id` no manifest, o Chrome pode criar instalações "fantasma". O SW não pre-cacheia `/auth`, então o `start_url` pode não retornar 200 offline.
-3. **iOS não instala corretamente**: Falta `apple-mobile-web-app-title` e o `apple-touch-icon` aponta para 192px (deveria ser 180px dedicado). O comportamento de "Adicionar à Tela de Início" depende dessas tags.
-4. **Splash Screen atual**: Usa `framer-motion` (pesado), dura 2.4s (lento), e depende de JS carregar para exibir — pode causar flash branco. Precisa ser mais leve e rápida.
+A logo errada no ícone do PWA provavelmente vem de duas causas:
 
----
+1. **React duplicado no bundle** — O stack-overflow hint indica que múltiplas instâncias de React podem causar assets renderizados incorretamente. O `vite.config.ts` já tem `dedupe: ["react", "react-dom"]` mas falta `"react/jsx-runtime"`.
 
-## Plano de Alterações
+2. **Ícones do manifest podem estar com a imagem errada** — Os arquivos `public/icons/icon-192x192.png` e `icon-512x512.png` podem não ser a logo correta da marca (logo-linkou-roxo). Precisam ser verificados/substituídos.
 
-### 1. `public/manifest.webmanifest` — Manifest completo e correto
-
-- Adicionar `"id": "/auth"` (identidade estável para evitar instalação duplicada)
-- Adicionar `"scope": "/"`
-- Manter `start_url: "/auth?source=pwa"`
-- Manter `display: "standalone"`
-- Cores consistentes (`theme_color: #7C3AED`, `background_color: #0A0A0F`)
-- Ícones separados `any` e `maskable` (já feito)
-
-### 2. `public/icons/apple-touch-icon-180x180.png` — Novo ícone iOS
-
-- Copiar a logo do usuário como ícone 180x180 dedicado para iOS (será o mesmo asset da logo já enviada, referenciado no `<head>`)
-
-### 3. `index.html` — Tags iOS completas e meta segurança
-
-Adicionar/corrigir:
-- `<meta name="apple-mobile-web-app-title" content="Linkou">`
-- `<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180x180.png">`
-- `<meta http-equiv="X-Content-Type-Options" content="nosniff">`
-- `<meta name="referrer" content="strict-origin-when-cross-origin">`
-
-### 4. `public/sw.js` — Service Worker mais seguro
-
-- Incrementar `CACHE_VERSION` para `v2` (forçar atualização)
-- Pre-cachear `/auth` em vez de `/` (alinhar com `start_url`)
-- Adicionar limpeza mais agressiva de caches antigos
-- Manter network-first para navegação e stale-while-revalidate para assets
-
-### 5. `src/components/SplashScreen.tsx` — Splash leve com CSS puro
-
-Reescrever completamente:
-- **Remover dependência de `framer-motion`** — usar CSS animations puras
-- Duração total: ~800ms (fade-in 300ms + hold 200ms + fade-out 300ms)
-- Respeitar `prefers-reduced-motion` (sem animação, apenas flash rápido)
-- Logo centralizada com fade + scale suave
-- Detectar standalone da mesma forma (matchMedia + navigator.standalone)
-- Children são renderizados imediatamente (splash é overlay)
-
-### 6. `src/main.tsx` — Registro de SW melhorado
-
-- Adicionar tratamento de atualização do SW (quando nova versão disponível, recarregar)
-
-### 7. Rota `/auth` — Sem alteração funcional
-
-A rota `/auth` já existe e retorna 200 (SPA com client-side routing). O Auth.tsx já tem o botão de instalação iOS.
+3. **Splash Screen** — A animação atual é funcional mas a transição (fade-in 300ms + hold 200ms + fade-out 300ms) pode parecer abrupta. Melhorar para uma transição mais suave e visualmente agradável.
 
 ---
 
-## Detalhes Técnicos
+## Alterações
 
-### Manifest final
-```json
-{
-  "name": "Agência Linkou",
-  "short_name": "Linkou",
-  "description": "Ecossistemas de tráfego e vendas que aprendem e evoluem.",
-  "id": "/auth",
-  "start_url": "/auth?source=pwa",
-  "scope": "/",
-  "display": "standalone",
-  "background_color": "#0A0A0F",
-  "theme_color": "#7C3AED",
-  "orientation": "portrait-primary",
-  "icons": [...]
-}
-```
+### 1. `vite.config.ts` — Deduplicar React completamente
 
-### SplashScreen CSS-only (sem framer-motion)
-```text
-Abertura do PWA:
-  → Overlay escuro (#0A0A0F) com logo
-  → CSS: opacity 0→1 + scale 0.85→1 em 300ms
-  → Segura 200ms
-  → CSS: opacity 1→0 em 300ms
-  → Remove overlay, mostra /auth
-  Total: ~800ms
+Adicionar `"react/jsx-runtime"` ao array `dedupe` para evitar instâncias duplicadas que causam problemas de contexto e assets incorretos.
 
-prefers-reduced-motion:
-  → Mostra overlay 100ms sem animação
-  → Remove
-```
+### 2. `src/components/SplashScreen.tsx` — Melhorar a transição
 
-### SW v2 pre-cache
-```text
-install → cache: ['/offline.html', '/auth']
-activate → limpa caches que não são v2
-fetch → navigation: network-first → cache → offline.html
-fetch → assets: stale-while-revalidate
-```
+- Aumentar o hold para 600ms (total ~900ms) para uma transição mais premium
+- Garantir que a logo `logo-linkou-roxo.png` está sendo importada corretamente via `@/assets/`
 
-### Tags `<head>` iOS
-```html
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Linkou">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180x180.png">
-```
+### 3. `src/index.css` — Animação mais suave
+
+- Aumentar duração do fade-in para 400ms
+- Adicionar animação de scale mais pronunciada na logo
+- Fade-out mais suave (400ms)
+
+### 4. Verificar/corrigir ícones do PWA
+
+Os ícones em `public/icons/` precisam corresponder à logo da marca (`logo-linkou-roxo.png`). Se estiverem errados, copiar a logo correta para os ícones do manifest.
 
 ---
 
 ## Arquivos Alterados
 
-| Arquivo | Ação |
+| Arquivo | Alteração |
 |---|---|
-| `public/manifest.webmanifest` | Adicionar `id`, `scope`, ajustar `start_url` |
-| `public/icons/apple-touch-icon-180x180.png` | Criar (copiar logo da marca) |
-| `index.html` | Tags iOS completas + headers de segurança |
-| `public/sw.js` | v2, pre-cache `/auth`, limpeza melhorada |
-| `src/components/SplashScreen.tsx` | Reescrever com CSS puro, 800ms, respeitar reduced-motion |
-| `src/main.tsx` | SW update handling |
+| `vite.config.ts` | Adicionar `"react/jsx-runtime"` ao `dedupe` |
+| `src/components/SplashScreen.tsx` | Ajustar timings para transição mais suave (~900ms total) |
+| `src/index.css` | Melhorar keyframes da splash (400ms fade, scale mais suave) |
+| `public/icons/icon-192x192.png` | Copiar logo correta da marca |
+| `public/icons/icon-512x512.png` | Copiar logo correta da marca |
+| `public/icons/apple-touch-icon-180x180.png` | Copiar logo correta da marca |
 
----
+## Detalhes Técnicos
 
-## Checklist Final
-
-```text
-[ ] GET /manifest.webmanifest → 200 (com id, scope, start_url corretos)
-[ ] GET /icons/icon-192x192.png → 200
-[ ] GET /icons/icon-512x512.png → 200
-[ ] GET /icons/apple-touch-icon-180x180.png → 200
-[ ] Ícones maskable com safe padding
-[ ] Android: instala sem aviso de risco
-[ ] Android: após instalar, aparece no launcher
-[ ] iOS: "Adicionar à Tela de Início" funciona com ícone correto
-[ ] Abrir pelo ícone: splash 800ms → /auth
-[ ] prefers-reduced-motion respeitado
-[ ] SW network-first para navegação (sem tela branca)
-[ ] Sem mixed content (tudo HTTPS)
-[ ] Sem dependência de framer-motion no splash
+### vite.config.ts
+```typescript
+dedupe: ["react", "react-dom", "react/jsx-runtime"],
 ```
+
+### SplashScreen timings
+```text
+fade-in: 400ms (opacity 0→1, scale 0.85→1)
+hold: 500ms
+fade-out: 400ms (opacity 1→0)
+Total: ~900ms (reduced-motion: 100ms)
+```
+
+### Ícones PWA
+Copiar `src/assets/logo-linkou-roxo.png` para os três ícones em `public/icons/` para garantir que a logo da marca aparece corretamente no launcher Android/iOS. O manifest já referencia os paths corretos.
 
