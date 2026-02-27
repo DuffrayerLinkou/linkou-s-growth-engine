@@ -1,35 +1,45 @@
 
 
-# Adicionar Templates de Email ao Composer
+# Fix: Email Sending 401 Error
 
-## Alterações
+## Root Cause
 
-### 1. `src/lib/email-templates-config.ts` — Criar arquivo de templates
+The `send-email` edge function validates user JWTs by dynamically importing `@supabase/supabase-js@2.39.3` (old version). This fails with the current ES256 JWT format, causing every frontend email send to return 401.
 
-Arquivo com templates editáveis para uso no frontend. Cada template tem: `id`, `name`, `category`, `subject`, `body` (texto com placeholders como `{{nome}}`, `{{empresa}}`). Categorias: Comercial, Follow-up, Onboarding, Cobrança, Geral.
+The `notify-email` function (automations) calls `send-email` via service role key, so it should work — but the `email-sender.ts` shared module also relies on `send-email` being functional.
 
-Templates incluídos:
-- **Apresentação comercial** — primeiro contato com lead
-- **Follow-up pós-reunião** — agradecimento após call
-- **Proposta enviada** — aviso de envio de proposta
-- **Boas-vindas novo cliente** — onboarding
-- **Lembrete de pagamento** — cobrança gentil
-- **Reativação de lead** — lead frio
-- **Convite para reunião** — agendar call
-- **Feedback de campanha** — resultados mensais
+## Fix
 
-### 2. `src/pages/admin/EmailComposer.tsx` — Redesign com painel de templates
+### `supabase/functions/send-email/index.ts`
 
-Layout em duas colunas (responsivo):
-- **Coluna esquerda**: lista de templates com busca por nome/categoria, agrupados por categoria, clicável para carregar no formulário
-- **Coluna direita**: formulário de composição (já existente) com os campos preenchidos pelo template selecionado
-- Badge indicando template ativo
-- Botão "Limpar template" para voltar ao modo livre
+Replace the dynamic import + old supabase client auth validation with a direct HTTP call to the Supabase Auth API (`/auth/v1/user`). This is version-independent and reliable.
 
-### Arquivos
+```typescript
+// Replace lines 38-52 (the dynamic import auth block) with:
+if (!isServiceRole) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: {
+      Authorization: authHeader || "",
+      apikey: Deno.env.get("SUPABASE_ANON_KEY") || apikey || "",
+    },
+  });
+  if (!res.ok) {
+    await res.text(); // consume body
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+  await res.json(); // consume body
+}
+```
 
-| Arquivo | Ação |
+This removes the dependency on `esm.sh/@supabase/supabase-js@2.39.3` entirely.
+
+## Files Changed
+
+| File | Change |
 |---|---|
-| `src/lib/email-templates-config.ts` | Criar — definições dos templates |
-| `src/pages/admin/EmailComposer.tsx` | Reescrever — layout com templates + formulário |
+| `supabase/functions/send-email/index.ts` | Replace dynamic import auth with direct Auth API call |
 
