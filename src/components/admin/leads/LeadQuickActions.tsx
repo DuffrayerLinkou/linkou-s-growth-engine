@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Phone, MessageCircle, Mail, StickyNote, FileText } from "lucide-react";
+import { EmailComposeDialog } from "../EmailComposeDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +33,7 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [callNote, setCallNote] = useState("");
   const { toast } = useToast();
@@ -64,14 +66,14 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
     setCallNoteOpen(false);
   };
 
-  const handleEmail = async () => {
-    window.open(`mailto:${lead.email}`, "_blank");
+  const handleEmailSent = async () => {
     try {
       await logLeadActivity(lead.id, "email", `Email enviado para ${lead.email}`);
       onActivityLogged();
     } catch {
       // ignore
     }
+    setEmailOpen(false);
   };
 
   const saveNote = async () => {
@@ -111,7 +113,7 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
             WhatsApp
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={handleEmail} className="gap-1.5">
+        <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)} className="gap-1.5">
           <Mail className="h-3.5 w-3.5" />
           Email
         </Button>
@@ -177,6 +179,15 @@ export function LeadQuickActions({ lead, onActivityLogged }: LeadQuickActionsPro
         onOpenChange={setWhatsappOpen}
         lead={lead}
         onSent={handleWhatsAppSent}
+      />
+
+      {/* Email Compose Dialog */}
+      <EmailComposeDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        defaultTo={lead.email}
+        defaultSubject={`Olá ${lead.name}`}
+        onSent={handleEmailSent}
       />
 
       {/* Proposal Generator */}
