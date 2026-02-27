@@ -14,6 +14,51 @@ export const emailTemplateCategories = [
   "Geral",
 ] as const;
 
+const PRIMARY_COLOR = "#7C3AED";
+const BG_COLOR = "#f4f4f7";
+const CONTACT_EMAIL = "contato@agencialinkou.com.br";
+const CONTACT_PHONE = "(41) 98898-8054";
+
+export function wrapWithLinkoLayout(content: string): string {
+  // Convert plain text line breaks to HTML
+  const htmlContent = content.replace(/\n/g, "<br/>");
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:${BG_COLOR};font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:${BG_COLOR};padding:40px 0;">
+<tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+  <tr><td style="background:${PRIMARY_COLOR};padding:32px;text-align:center;">
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;">Linkou</h1>
+  </td></tr>
+  <tr><td style="padding:36px 32px 24px;">
+    <div style="color:#4a4a68;font-size:15px;line-height:1.7;">
+      ${htmlContent}
+    </div>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;">
+    <p style="margin:0 2px;color:#1a1a2e;font-size:14px;font-weight:700;">Leo Santana</p>
+    <p style="margin:0 0 8px;color:#4a4a68;font-size:12px;font-weight:500;">Diretor Comercial — Linkou</p>
+    <p style="margin:0;color:#9e9eb8;font-size:13px;font-weight:600;">Linkou — Marketing de Performance</p>
+    <p style="margin:8px 0 4px;color:#9e9eb8;font-size:12px;">✉ <a href="mailto:${CONTACT_EMAIL}" style="color:${PRIMARY_COLOR};text-decoration:none;">${CONTACT_EMAIL}</a></p>
+    <p style="margin:0 0 4px;color:#9e9eb8;font-size:12px;">📞 ${CONTACT_PHONE}</p>
+    <p style="margin:0;"><a href="https://agencialinkou.com.br" style="color:${PRIMARY_COLOR};font-size:12px;text-decoration:none;">agencialinkou.com.br</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+export function replacePlaceholders(text: string, data: { nome?: string; empresa?: string }): string {
+  let result = text;
+  if (data.nome) result = result.replace(/\{\{nome\}\}/g, data.nome);
+  if (data.empresa) result = result.replace(/\{\{empresa\}\}/g, data.empresa);
+  return result;
+}
+
 export const emailTemplates: EmailTemplate[] = [
   {
     id: "apresentacao-comercial",
@@ -22,16 +67,13 @@ export const emailTemplates: EmailTemplate[] = [
     subject: "Transforme seus resultados digitais — {{empresa}}",
     body: `Olá {{nome}},
 
-Tudo bem? Me chamo [seu nome] e sou da Linkou.
+Tudo bem? Me chamo Leo Santana e sou da Linkou.
 
 Estamos ajudando empresas como a {{empresa}} a escalar seus resultados com tráfego pago e estratégias de marketing digital personalizadas.
 
 Gostaria de entender melhor seus desafios atuais e mostrar como podemos ajudar. Podemos agendar uma conversa rápida de 15 minutos?
 
-Fico no aguardo!
-
-Abraços,
-[seu nome]`,
+Fico no aguardo!`,
   },
   {
     id: "followup-pos-reuniao",
@@ -47,10 +89,7 @@ Conforme conversamos, seguem os próximos passos:
 - [passo 2]
 - [passo 3]
 
-Qualquer dúvida, estou à disposição.
-
-Abraços,
-[seu nome]`,
+Qualquer dúvida, estou à disposição.`,
   },
   {
     id: "proposta-enviada",
@@ -66,10 +105,7 @@ Principais pontos:
 - Investimento e condições
 - Cronograma de implementação
 
-Estou disponível para esclarecer qualquer dúvida. Podemos agendar uma call para revisar juntos?
-
-Abraços,
-[seu nome]`,
+Estou disponível para esclarecer qualquer dúvida. Podemos agendar uma call para revisar juntos?`,
   },
   {
     id: "boas-vindas-cliente",
@@ -88,9 +124,7 @@ Próximos passos do onboarding:
 
 Seu gestor de conta entrará em contato em breve para agendar o kick-off.
 
-Seja bem-vindo(a)!
-
-Equipe Linkou`,
+Seja bem-vindo(a)!`,
   },
   {
     id: "lembrete-pagamento",
@@ -105,10 +139,7 @@ Detalhes:
 - Valor: R$ [valor]
 - Vencimento: [data]
 
-Caso já tenha efetuado o pagamento, desconsidere este email. Se precisar de alguma ajuda, estamos à disposição.
-
-Atenciosamente,
-Equipe Linkou`,
+Caso já tenha efetuado o pagamento, desconsidere este email. Se precisar de alguma ajuda, estamos à disposição.`,
   },
   {
     id: "reativacao-lead",
@@ -123,10 +154,7 @@ O mercado digital está em constante evolução e temos novidades que podem ser 
 - [novidade 1]
 - [novidade 2]
 
-Que tal agendarmos uma conversa rápida para atualizar?
-
-Abraços,
-[seu nome]`,
+Que tal agendarmos uma conversa rápida para atualizar?`,
   },
   {
     id: "convite-reuniao",
@@ -144,10 +172,7 @@ Sugestões de horário:
 
 A reunião terá duração de aproximadamente [X] minutos e será via [Google Meet/Zoom].
 
-Qual horário funciona melhor para você?
-
-Abraços,
-[seu nome]`,
+Qual horário funciona melhor para você?`,
   },
   {
     id: "feedback-campanha",
@@ -173,9 +198,6 @@ Segue o resumo dos resultados das campanhas de [mês]:
 - [ajuste 1]
 - [ajuste 2]
 
-Vamos agendar uma call para revisar juntos?
-
-Abraços,
-[seu nome]`,
+Vamos agendar uma call para revisar juntos?`,
   },
 ];
