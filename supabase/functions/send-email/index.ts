@@ -36,20 +36,21 @@ serve(async (req) => {
     const isServiceRole = authHeader === `Bearer ${serviceRoleKey}` || apikey === serviceRoleKey;
 
     if (!isServiceRole) {
-      // Validate user JWT
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.39.3");
-      const supabase = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader || "" } },
+      const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          Authorization: authHeader || "",
+          apikey: Deno.env.get("SUPABASE_ANON_KEY") || apikey || "",
+        },
       });
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) {
+      if (!res.ok) {
+        await res.text();
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
+      await res.json();
     }
 
     const { to, subject, html, from, reply_to }: EmailRequest = await req.json();
