@@ -1,45 +1,42 @@
 
 
-# Fix: Email Sending 401 Error
+# Templates com Design Linkou + Seletor de Lead/Cliente
 
-## Root Cause
+## Problema
 
-The `send-email` edge function validates user JWTs by dynamically importing `@supabase/supabase-js@2.39.3` (old version). This fails with the current ES256 JWT format, causing every frontend email send to return 401.
+1. Os emails enviados manualmente vão como texto puro (sem design, sem assinatura Linkou)
+2. Não há como selecionar um lead ou cliente — o usuário precisa digitar o email manualmente
 
-The `notify-email` function (automations) calls `send-email` via service role key, so it should work — but the `email-sender.ts` shared module also relies on `send-email` being functional.
+## Alterações
 
-## Fix
+### 1. `src/lib/email-templates-config.ts` — Adicionar HTML com design
 
-### `supabase/functions/send-email/index.ts`
+Cada template passa a ter o `body` em formato HTML usando o mesmo design system dos emails automáticos (header roxo #7C3AED com "Linkou", card branco, assinatura Leo Santana no rodapé). O campo `body` será o conteúdo interno editável, e uma função `wrapWithLinkoLayout(content)` envolverá o conteúdo no layout completo antes do envio. Os placeholders `{{nome}}` e `{{empresa}}` continuam funcionando.
 
-Replace the dynamic import + old supabase client auth validation with a direct HTTP call to the Supabase Auth API (`/auth/v1/user`). This is version-independent and reliable.
+### 2. `src/pages/admin/EmailComposer.tsx` — Redesign completo
 
-```typescript
-// Replace lines 38-52 (the dynamic import auth block) with:
-if (!isServiceRole) {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: authHeader || "",
-      apikey: Deno.env.get("SUPABASE_ANON_KEY") || apikey || "",
-    },
-  });
-  if (!res.ok) {
-    await res.text(); // consume body
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-  }
-  await res.json(); // consume body
-}
-```
+- **Seletor de destinatário**: Adicionar um combobox/select que busca leads e clientes do Supabase para selecionar o destinatário (preenche automaticamente email, nome e empresa nos placeholders)
+- **Opção manual**: Manter campo de digitação manual para emails não cadastrados
+- **Preview HTML**: Adicionar aba de preview que renderiza o email com o layout Linkou completo
+- **Envio com layout**: Ao enviar, o corpo é automaticamente envolvido pelo `wrapWithLinkoLayout()` antes de ir para o Resend
+- **Substituição de placeholders**: Ao selecionar lead/cliente, substituir automaticamente `{{nome}}` e `{{empresa}}` nos campos
 
-This removes the dependency on `esm.sh/@supabase/supabase-js@2.39.3` entirely.
+### 3. `src/lib/email-templates-config.ts` — Função `wrapWithLinkoLayout`
 
-## Files Changed
+Função no frontend que replica o `baseEmailLayout` do backend (header roxo, card branco, assinatura Leo Santana, contato, link do site) para envolver o conteúdo do email antes do envio. Garante que todo email manual tenha o mesmo design profissional dos automáticos.
 
-| File | Change |
+## Arquivos
+
+| Arquivo | Ação |
 |---|---|
-| `supabase/functions/send-email/index.ts` | Replace dynamic import auth with direct Auth API call |
+| `src/lib/email-templates-config.ts` | Reescrever — adicionar `wrapWithLinkoLayout()` e manter templates com corpo editável |
+| `src/pages/admin/EmailComposer.tsx` | Reescrever — seletor de lead/cliente, preview HTML, envio com layout |
+
+## Fluxo do usuário
+
+1. Seleciona um lead ou cliente no combobox (ou digita email manualmente)
+2. Escolhe um template na barra lateral (ou escreve do zero)
+3. Placeholders são substituídos automaticamente com dados do contato selecionado
+4. Pode visualizar o email no preview com design completo
+5. Ao enviar, o sistema envolve o conteúdo no layout Linkou com assinatura e envia via Resend
 
