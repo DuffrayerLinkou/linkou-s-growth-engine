@@ -1,68 +1,67 @@
 
 
-# Corrigir Logo do PWA e Melhorar Splash Screen
+# Envio Manual de Email via Resend no Admin
 
-## Problema Identificado
+## O que será criado
 
-A logo errada no ícone do PWA provavelmente vem de duas causas:
-
-1. **React duplicado no bundle** — O stack-overflow hint indica que múltiplas instâncias de React podem causar assets renderizados incorretamente. O `vite.config.ts` já tem `dedupe: ["react", "react-dom"]` mas falta `"react/jsx-runtime"`.
-
-2. **Ícones do manifest podem estar com a imagem errada** — Os arquivos `public/icons/icon-192x192.png` e `icon-512x512.png` podem não ser a logo correta da marca (logo-linkou-roxo). Precisam ser verificados/substituídos.
-
-3. **Splash Screen** — A animação atual é funcional mas a transição (fade-in 300ms + hold 200ms + fade-out 300ms) pode parecer abrupta. Melhorar para uma transição mais suave e visualmente agradável.
-
----
+Uma página dedicada de **Envio de Email** no painel admin onde o usuário pode compor e enviar emails manualmente usando o Resend, além de um **dialog de email rápido** reutilizável para enviar emails diretamente de contextos como leads e clientes.
 
 ## Alterações
 
-### 1. `vite.config.ts` — Deduplicar React completamente
+### 1. `src/pages/admin/EmailComposer.tsx` — Nova página
 
-Adicionar `"react/jsx-runtime"` ao array `dedupe` para evitar instâncias duplicadas que causam problemas de contexto e assets incorretos.
+Página com formulário completo para envio manual de emails:
+- **Para**: campo de email (aceita múltiplos separados por vírgula)
+- **Assunto**: campo de texto livre
+- **Corpo**: textarea com suporte a HTML básico ou texto simples
+- **Responder para**: campo opcional (reply_to)
+- Botão de enviar que chama `supabase.functions.invoke("send-email")`
+- Feedback visual de sucesso/erro via toast
+- Opção de usar templates existentes (selecionar template base para preencher automaticamente)
 
-### 2. `src/components/SplashScreen.tsx` — Melhorar a transição
+### 2. `src/components/admin/EmailComposeDialog.tsx` — Dialog reutilizável
 
-- Aumentar o hold para 600ms (total ~900ms) para uma transição mais premium
-- Garantir que a logo `logo-linkou-roxo.png` está sendo importada corretamente via `@/assets/`
+Dialog de composição de email que pode ser aberto de qualquer contexto (leads, clientes):
+- Recebe `to` e `subject` como props opcionais (pré-preenchidos)
+- Mesmo formulário da página, mas em formato dialog
+- Loga atividade quando enviado a partir de um lead
 
-### 3. `src/index.css` — Animação mais suave
+### 3. `src/components/admin/leads/LeadQuickActions.tsx` — Integrar dialog
 
-- Aumentar duração do fade-in para 400ms
-- Adicionar animação de scale mais pronunciada na logo
-- Fade-out mais suave (400ms)
+Substituir o `handleEmail` (que apenas abre `mailto:`) por abrir o `EmailComposeDialog` com o email do lead pré-preenchido, enviando via Resend diretamente pelo app.
 
-### 4. Verificar/corrigir ícones do PWA
+### 4. `src/layouts/AdminLayout.tsx` — Adicionar rota no menu
 
-Os ícones em `public/icons/` precisam corresponder à logo da marca (`logo-linkou-roxo.png`). Se estiverem errados, copiar a logo correta para os ícones do manifest.
+Adicionar item "Enviar Email" no grupo "Comunicação" do sidebar.
 
----
+### 5. `src/App.tsx` — Adicionar rota
 
-## Arquivos Alterados
+Registrar `/admin/email` como rota lazy-loaded.
 
-| Arquivo | Alteração |
+## Arquivos
+
+| Arquivo | Ação |
 |---|---|
-| `vite.config.ts` | Adicionar `"react/jsx-runtime"` ao `dedupe` |
-| `src/components/SplashScreen.tsx` | Ajustar timings para transição mais suave (~900ms total) |
-| `src/index.css` | Melhorar keyframes da splash (400ms fade, scale mais suave) |
-| `public/icons/icon-192x192.png` | Copiar logo correta da marca |
-| `public/icons/icon-512x512.png` | Copiar logo correta da marca |
-| `public/icons/apple-touch-icon-180x180.png` | Copiar logo correta da marca |
+| `src/pages/admin/EmailComposer.tsx` | Criar — página de composição de email |
+| `src/components/admin/EmailComposeDialog.tsx` | Criar — dialog reutilizável |
+| `src/components/admin/leads/LeadQuickActions.tsx` | Editar — usar dialog em vez de mailto |
+| `src/layouts/AdminLayout.tsx` | Editar — adicionar item no menu |
+| `src/App.tsx` | Editar — adicionar rota /admin/email |
 
 ## Detalhes Técnicos
 
-### vite.config.ts
+### Envio
 ```typescript
-dedupe: ["react", "react-dom", "react/jsx-runtime"],
+const { error } = await supabase.functions.invoke("send-email", {
+  body: { to, subject, html, reply_to }
+});
 ```
 
-### SplashScreen timings
-```text
-fade-in: 400ms (opacity 0→1, scale 0.85→1)
-hold: 500ms
-fade-out: 400ms (opacity 1→0)
-Total: ~900ms (reduced-motion: 100ms)
-```
+### Template rápido
+O corpo do email usa o `baseEmailLayout` via uma função utilitária no frontend que replica o layout base, ou simplesmente envia HTML livre que o Resend renderiza.
 
-### Ícones PWA
-Copiar `src/assets/logo-linkou-roxo.png` para os três ícones em `public/icons/` para garantir que a logo da marca aparece corretamente no launcher Android/iOS. O manifest já referencia os paths corretos.
+### Formulário
+- Validação: email obrigatório, assunto obrigatório, corpo obrigatório
+- Loading state no botão durante envio
+- Toast de sucesso com contagem de destinatários
 
