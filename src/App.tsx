@@ -11,6 +11,8 @@ import { ClientLayout } from "@/layouts/ClientLayout";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplashScreen } from "@/components/SplashScreen";
+import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
