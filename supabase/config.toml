@@ -42,3 +42,6 @@ verify_jwt = false
 [functions.linkouzinho-chat]
 verify_jwt = false
 
+[functions.send-push]
+verify_jwt = false
+
