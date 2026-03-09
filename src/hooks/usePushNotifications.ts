@@ -105,9 +105,10 @@ export function usePushNotifications() {
 
       // Create new subscription if none exists
       if (!subscription) {
+        const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
         });
       }
 
