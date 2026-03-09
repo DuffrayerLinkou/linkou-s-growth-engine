@@ -96,6 +96,8 @@ const App = () => (
             <SplashScreen>
             <Toaster />
             <Sonner />
+            <PWAInstallPrompt />
+            <PushNotificationPrompt />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
