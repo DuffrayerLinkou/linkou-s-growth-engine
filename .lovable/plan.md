@@ -1,68 +1,42 @@
 
-# Push Notifications para PWA
 
-Sim, é totalmente possível! PWAs suportam **Web Push Notifications** que funcionam mesmo quando o app não está aberto.
+# Templates com Design Linkou + Seletor de Lead/Cliente
 
-## Requisitos Técnicos
+## Problema
 
-| Componente | Descrição |
-|---|---|
-| **VAPID Keys** | Par de chaves públicas/privadas para autenticação |
-| **Service Worker** | Adicionar listener para eventos `push` |
-| **Tabela no Supabase** | Armazenar subscriptions dos usuários |
-| **Edge Function** | Enviar notificações via Web Push API |
-| **Frontend** | Solicitar permissão e gerenciar subscriptions |
+1. Os emails enviados manualmente vão como texto puro (sem design, sem assinatura Linkou)
+2. Não há como selecionar um lead ou cliente — o usuário precisa digitar o email manualmente
 
-## Fluxo do Usuário
+## Alterações
 
-```text
-1. Usuário instala o PWA
-2. App solicita permissão de notificação
-3. Subscription é salva no Supabase (vinculada ao user_id)
-4. Admin envia notificação via painel
-5. Edge function dispara push para todas subscriptions ativas
-```
+### 1. `src/lib/email-templates-config.ts` — Adicionar HTML com design
 
-## Implementação
+Cada template passa a ter o `body` em formato HTML usando o mesmo design system dos emails automáticos (header roxo #7C3AED com "Linkou", card branco, assinatura Leo Santana no rodapé). O campo `body` será o conteúdo interno editável, e uma função `wrapWithLinkoLayout(content)` envolverá o conteúdo no layout completo antes do envio. Os placeholders `{{nome}}` e `{{empresa}}` continuam funcionando.
 
-### 1. `push_subscriptions` — Nova tabela
+### 2. `src/pages/admin/EmailComposer.tsx` — Redesign completo
 
-Campos: `id`, `user_id`, `endpoint`, `keys` (p256dh, auth), `created_at`. RLS: usuários gerenciam suas próprias subscriptions, admins podem enviar para todas.
+- **Seletor de destinatário**: Adicionar um combobox/select que busca leads e clientes do Supabase para selecionar o destinatário (preenche automaticamente email, nome e empresa nos placeholders)
+- **Opção manual**: Manter campo de digitação manual para emails não cadastrados
+- **Preview HTML**: Adicionar aba de preview que renderiza o email com o layout Linkou completo
+- **Envio com layout**: Ao enviar, o corpo é automaticamente envolvido pelo `wrapWithLinkoLayout()` antes de ir para o Resend
+- **Substituição de placeholders**: Ao selecionar lead/cliente, substituir automaticamente `{{nome}}` e `{{empresa}}` nos campos
 
-### 2. `public/sw.js` — Adicionar push handler
+### 3. `src/lib/email-templates-config.ts` — Função `wrapWithLinkoLayout`
 
-Listener para `push` que exibe notificação nativa e `notificationclick` para abrir o app.
-
-### 3. `src/hooks/usePushNotifications.ts` — Hook de subscription
-
-Solicita permissão, gera subscription via `pushManager.subscribe()`, salva no Supabase.
-
-### 4. `supabase/functions/send-push/index.ts` — Edge function
-
-Recebe payload (título, mensagem, url), busca todas subscriptions ativas, envia via `web-push` library.
-
-### 5. VAPID Keys
-
-Será necessário gerar um par de chaves e configurar como secrets no Supabase (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
-
-### 6. UI de envio
-
-Adicionar botão/modal no painel admin para enviar notificações push para todos usuários ou segmentos específicos.
+Função no frontend que replica o `baseEmailLayout` do backend (header roxo, card branco, assinatura Leo Santana, contato, link do site) para envolver o conteúdo do email antes do envio. Garante que todo email manual tenha o mesmo design profissional dos automáticos.
 
 ## Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| Migração SQL | Criar tabela `push_subscriptions` |
-| `public/sw.js` | Adicionar handlers de push e notificationclick |
-| `src/hooks/usePushNotifications.ts` | Criar hook de subscription |
-| `src/components/PushNotificationPrompt.tsx` | UI para solicitar permissão |
-| `supabase/functions/send-push/index.ts` | Edge function para enviar pushes |
-| Secrets | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` |
+| `src/lib/email-templates-config.ts` | Reescrever — adicionar `wrapWithLinkoLayout()` e manter templates com corpo editável |
+| `src/pages/admin/EmailComposer.tsx` | Reescrever — seletor de lead/cliente, preview HTML, envio com layout |
 
-## Limitações
+## Fluxo do usuário
 
-- **iOS Safari**: Notificações push em PWAs só funcionam a partir do iOS 16.4+, e o usuário precisa adicionar à tela inicial
-- **Permissão**: Usuário precisa aceitar notificações
-- **HTTPS**: Obrigatório (já está ok)
+1. Seleciona um lead ou cliente no combobox (ou digita email manualmente)
+2. Escolhe um template na barra lateral (ou escreve do zero)
+3. Placeholders são substituídos automaticamente com dados do contato selecionado
+4. Pode visualizar o email no preview com design completo
+5. Ao enviar, o sistema envolve o conteúdo no layout Linkou com assinatura e envia via Resend
 
