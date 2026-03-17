@@ -171,13 +171,14 @@ export default function AdminAppointments() {
 
   // Create/Update mutation
   const appointmentMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id?: string }) => {
+    mutationFn: async (data: typeof formData & { id?: string; _participantType: "client" | "lead" }) => {
       const appointmentDateTime = new Date(`${data.appointment_date}T${data.appointment_time}`);
       
-      const appointmentData = {
+      const appointmentData: Record<string, unknown> = {
         title: data.title,
         description: data.description || null,
-        client_id: data.client_id,
+        client_id: data._participantType === "client" ? data.participant_id : null,
+        lead_id: data._participantType === "lead" ? data.participant_id : null,
         appointment_date: appointmentDateTime.toISOString(),
         duration_minutes: parseInt(data.duration_minutes) || 60,
         type: data.type,
