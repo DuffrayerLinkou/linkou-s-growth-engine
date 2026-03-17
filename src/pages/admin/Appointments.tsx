@@ -97,10 +97,11 @@ export default function AdminAppointments() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [clientFilter, setClientFilter] = useState<string>("all");
+  const [participantType, setParticipantType] = useState<"client" | "lead">("client");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    client_id: "",
+    participant_id: "",
     appointment_date: "",
     appointment_time: "10:00",
     duration_minutes: "60",
