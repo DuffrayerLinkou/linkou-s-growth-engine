@@ -60,7 +60,8 @@ import { ptBR } from "date-fns/locale";
 
 interface Appointment {
   id: string;
-  client_id: string;
+  client_id: string | null;
+  lead_id: string | null;
   project_id: string | null;
   title: string;
   description: string | null;
@@ -72,6 +73,7 @@ interface Appointment {
   created_by: string | null;
   created_at: string | null;
   clients?: { name: string } | null;
+  leads?: { name: string } | null;
 }
 
 const typeConfig: Record<string, { label: string; icon: typeof Video; color: string }> = {
