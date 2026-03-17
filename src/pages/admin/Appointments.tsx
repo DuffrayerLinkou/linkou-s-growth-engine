@@ -276,16 +276,18 @@ export default function AdminAppointments() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.client_id || !formData.appointment_date) {
+    if (!formData.title || !formData.participant_id || !formData.appointment_date) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Preencha o título, cliente e data.",
+        description: "Preencha o título, participante e data.",
       });
       return;
     }
     appointmentMutation.mutate(
-      editingAppointment ? { ...formData, id: editingAppointment.id } : formData
+      editingAppointment
+        ? { ...formData, id: editingAppointment.id, _participantType: participantType }
+        : { ...formData, _participantType: participantType }
     );
   };
 
