@@ -244,7 +244,7 @@ export default function AdminAppointments() {
     setFormData({
       title: "",
       description: "",
-      client_id: "",
+      participant_id: "",
       appointment_date: "",
       appointment_time: "10:00",
       duration_minutes: "60",
@@ -252,6 +252,7 @@ export default function AdminAppointments() {
       status: "scheduled",
       location: "",
     });
+    setParticipantType("client");
   };
 
   const openEditDialog = (appointment: Appointment) => {
