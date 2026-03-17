@@ -529,14 +529,21 @@ export default function AdminAppointments() {
       {/* Filter */}
       <div className="flex gap-4">
         <Select value={clientFilter} onValueChange={setClientFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por cliente" />
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Filtrar por participante" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os Clientes</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Clientes</SelectLabel>
             {clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
                 {client.name}
+              </SelectItem>
+            ))}
+            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Leads</SelectLabel>
+            {leads.map((lead) => (
+              <SelectItem key={lead.id} value={`lead:${lead.id}`}>
+                {lead.name}
               </SelectItem>
             ))}
           </SelectContent>
