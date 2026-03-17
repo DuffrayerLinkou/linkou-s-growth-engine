@@ -143,6 +143,19 @@ export default function AdminAppointments() {
     },
   });
 
+  // Fetch leads
+  const { data: leads = [] } = useQuery({
+    queryKey: ["leads-list-appointments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch clients
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
