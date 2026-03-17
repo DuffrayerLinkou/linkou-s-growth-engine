@@ -258,10 +258,12 @@ export default function AdminAppointments() {
   const openEditDialog = (appointment: Appointment) => {
     setEditingAppointment(appointment);
     const date = new Date(appointment.appointment_date);
+    const isLead = !!appointment.lead_id;
+    setParticipantType(isLead ? "lead" : "client");
     setFormData({
       title: appointment.title,
       description: appointment.description || "",
-      client_id: appointment.client_id,
+      participant_id: (isLead ? appointment.lead_id : appointment.client_id) || "",
       appointment_date: format(date, "yyyy-MM-dd"),
       appointment_time: format(date, "HH:mm"),
       duration_minutes: String(appointment.duration_minutes || 60),
