@@ -123,13 +123,18 @@ export default function AdminAppointments() {
     queryFn: async () => {
       let query = supabase
         .from("appointments")
-        .select(`*, clients(name)`)
+        .select(`*, clients(name), leads(name)`)
         .gte("appointment_date", monthStart.toISOString())
         .lte("appointment_date", monthEnd.toISOString())
         .order("appointment_date", { ascending: true });
 
       if (clientFilter && clientFilter !== "all") {
-        query = query.eq("client_id", clientFilter);
+        // Check if it's a lead or client filter
+        if (clientFilter.startsWith("lead:")) {
+          query = query.eq("lead_id", clientFilter.replace("lead:", ""));
+        } else {
+          query = query.eq("client_id", clientFilter);
+        }
       }
 
       const { data, error } = await query;
