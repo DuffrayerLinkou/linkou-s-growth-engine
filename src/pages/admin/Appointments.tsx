@@ -190,11 +190,11 @@ export default function AdminAppointments() {
       if (data.id) {
         const { error } = await supabase
           .from("appointments")
-          .update(appointmentData)
+          .update(appointmentData as any)
           .eq("id", data.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("appointments").insert(appointmentData);
+        const { error } = await supabase.from("appointments").insert(appointmentData as any);
         if (error) throw error;
       }
     },
