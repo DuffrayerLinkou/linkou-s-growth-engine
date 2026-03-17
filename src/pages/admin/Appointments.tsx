@@ -720,7 +720,7 @@ export default function AdminAppointments() {
                     <div>
                       <h4 className="font-medium">{apt.title}</h4>
                       <div className="text-sm text-muted-foreground">
-                        {apt.clients?.name} •{" "}
+                        {apt.leads?.name || apt.clients?.name}{apt.lead_id ? " (Lead)" : ""} •{" "}
                         {format(new Date(apt.appointment_date), "HH:mm")}
                       </div>
                     </div>
