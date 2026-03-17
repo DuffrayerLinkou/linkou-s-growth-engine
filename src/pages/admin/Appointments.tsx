@@ -355,22 +355,47 @@ export default function AdminAppointments() {
               </div>
 
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label>Tipo de Participante *</Label>
                 <Select
-                  value={formData.client_id}
+                  value={participantType}
+                  onValueChange={(value: "client" | "lead") => {
+                    setParticipantType(value);
+                    setFormData({ ...formData, participant_id: "" });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{participantType === "client" ? "Cliente" : "Lead"} *</Label>
+                <Select
+                  value={formData.participant_id}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, client_id: value })
+                    setFormData({ ...formData, participant_id: value })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
+                    <SelectValue placeholder={`Selecione o ${participantType === "client" ? "cliente" : "lead"}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
+                    {participantType === "client"
+                      ? clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))
+                      : leads.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.name}
+                          </SelectItem>
+                        ))}
                   </SelectContent>
                 </Select>
               </div>
