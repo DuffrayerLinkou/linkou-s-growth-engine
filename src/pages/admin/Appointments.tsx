@@ -622,7 +622,10 @@ export default function AdminAppointments() {
                                   <span>•</span>
                                   <span>{apt.duration_minutes} min</span>
                                 </div>
-                                <Badge variant="outline">{apt.clients?.name}</Badge>
+                                <Badge variant="outline">
+                                  {apt.leads?.name || apt.clients?.name}
+                                  {apt.lead_id ? " (Lead)" : ""}
+                                </Badge>
                                 {apt.location && (
                                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                     <MapPin className="h-3 w-3" />
