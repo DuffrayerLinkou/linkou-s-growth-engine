@@ -1,35 +1,42 @@
 
 
-# Agendamentos para Leads
+# Templates com Design Linkou + Seletor de Lead/Cliente
 
 ## Problema
-A tabela `appointments` tem `client_id` como NOT NULL e não tem coluna para leads. O formulário admin só lista clientes no seletor.
+
+1. Os emails enviados manualmente vão como texto puro (sem design, sem assinatura Linkou)
+2. Não há como selecionar um lead ou cliente — o usuário precisa digitar o email manualmente
 
 ## Alterações
 
-### 1. Migration SQL
-- Tornar `client_id` nullable na tabela `appointments`
-- Adicionar coluna `lead_id uuid` nullable com referência à tabela `leads`
-- Adicionar constraint CHECK para garantir que ao menos um dos dois (client_id ou lead_id) esteja preenchido
-- Atualizar RLS: admins já têm acesso total, sem necessidade de mudança
+### 1. `src/lib/email-templates-config.ts` — Adicionar HTML com design
 
-### 2. `src/pages/admin/Appointments.tsx`
-- Adicionar fetch de leads junto com clientes
-- No formulário, trocar o seletor de "Cliente" por um seletor com duas categorias: **Clientes** e **Leads** (agrupados com labels)
-- `formData` passa a ter `client_id` e `lead_id` (mutuamente exclusivos)
-- Na lista de agendamentos, exibir o nome do lead quando não houver cliente vinculado (join com leads)
-- No filtro lateral, incluir leads como opção de filtro
+Cada template passa a ter o `body` em formato HTML usando o mesmo design system dos emails automáticos (header roxo #7C3AED com "Linkou", card branco, assinatura Leo Santana no rodapé). O campo `body` será o conteúdo interno editável, e uma função `wrapWithLinkoLayout(content)` envolverá o conteúdo no layout completo antes do envio. Os placeholders `{{nome}}` e `{{empresa}}` continuam funcionando.
 
-### 3. Interface do Appointment
-- Adicionar `lead_id` e `leads?: { name: string }` ao tipo `Appointment`
-- Query passa a fazer `select(*, clients(name), leads(name))`
-- Exibir badge "Lead" ou "Cliente" ao lado do nome para diferenciar
+### 2. `src/pages/admin/EmailComposer.tsx` — Redesign completo
+
+- **Seletor de destinatário**: Adicionar um combobox/select que busca leads e clientes do Supabase para selecionar o destinatário (preenche automaticamente email, nome e empresa nos placeholders)
+- **Opção manual**: Manter campo de digitação manual para emails não cadastrados
+- **Preview HTML**: Adicionar aba de preview que renderiza o email com o layout Linkou completo
+- **Envio com layout**: Ao enviar, o corpo é automaticamente envolvido pelo `wrapWithLinkoLayout()` antes de ir para o Resend
+- **Substituição de placeholders**: Ao selecionar lead/cliente, substituir automaticamente `{{nome}}` e `{{empresa}}` nos campos
+
+### 3. `src/lib/email-templates-config.ts` — Função `wrapWithLinkoLayout`
+
+Função no frontend que replica o `baseEmailLayout` do backend (header roxo, card branco, assinatura Leo Santana, contato, link do site) para envolver o conteúdo do email antes do envio. Garante que todo email manual tenha o mesmo design profissional dos automáticos.
 
 ## Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| Migration SQL | Alterar tabela appointments (client_id nullable, add lead_id) |
-| `src/pages/admin/Appointments.tsx` | Adicionar suporte a leads no form, listagem e filtros |
-| `src/integrations/supabase/types.ts` | Atualizado automaticamente |
+| `src/lib/email-templates-config.ts` | Reescrever — adicionar `wrapWithLinkoLayout()` e manter templates com corpo editável |
+| `src/pages/admin/EmailComposer.tsx` | Reescrever — seletor de lead/cliente, preview HTML, envio com layout |
+
+## Fluxo do usuário
+
+1. Seleciona um lead ou cliente no combobox (ou digita email manualmente)
+2. Escolhe um template na barra lateral (ou escreve do zero)
+3. Placeholders são substituídos automaticamente com dados do contato selecionado
+4. Pode visualizar o email no preview com design completo
+5. Ao enviar, o sistema envolve o conteúdo no layout Linkou com assinatura e envia via Resend
 

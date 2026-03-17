@@ -23,6 +23,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -60,7 +61,8 @@ import { ptBR } from "date-fns/locale";
 
 interface Appointment {
   id: string;
-  client_id: string;
+  client_id: string | null;
+  lead_id: string | null;
   project_id: string | null;
   title: string;
   description: string | null;
@@ -72,6 +74,7 @@ interface Appointment {
   created_by: string | null;
   created_at: string | null;
   clients?: { name: string } | null;
+  leads?: { name: string } | null;
 }
 
 const typeConfig: Record<string, { label: string; icon: typeof Video; color: string }> = {
@@ -95,10 +98,11 @@ export default function AdminAppointments() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [clientFilter, setClientFilter] = useState<string>("all");
+  const [participantType, setParticipantType] = useState<"client" | "lead">("client");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    client_id: "",
+    participant_id: "",
     appointment_date: "",
     appointment_time: "10:00",
     duration_minutes: "60",
@@ -120,18 +124,36 @@ export default function AdminAppointments() {
     queryFn: async () => {
       let query = supabase
         .from("appointments")
-        .select(`*, clients(name)`)
+        .select(`*, clients(name), leads(name)`)
         .gte("appointment_date", monthStart.toISOString())
         .lte("appointment_date", monthEnd.toISOString())
         .order("appointment_date", { ascending: true });
 
       if (clientFilter && clientFilter !== "all") {
-        query = query.eq("client_id", clientFilter);
+        // Check if it's a lead or client filter
+        if (clientFilter.startsWith("lead:")) {
+          query = query.eq("lead_id", clientFilter.replace("lead:", ""));
+        } else {
+          query = query.eq("client_id", clientFilter);
+        }
       }
 
       const { data, error } = await query;
       if (error) throw error;
       return data as Appointment[];
+    },
+  });
+
+  // Fetch leads
+  const { data: leads = [] } = useQuery({
+    queryKey: ["leads-list-appointments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -150,13 +172,14 @@ export default function AdminAppointments() {
 
   // Create/Update mutation
   const appointmentMutation = useMutation({
-    mutationFn: async (data: typeof formData & { id?: string }) => {
+    mutationFn: async (data: typeof formData & { id?: string; _participantType: "client" | "lead" }) => {
       const appointmentDateTime = new Date(`${data.appointment_date}T${data.appointment_time}`);
       
-      const appointmentData = {
+      const appointmentData: Record<string, unknown> = {
         title: data.title,
         description: data.description || null,
-        client_id: data.client_id,
+        client_id: data._participantType === "client" ? data.participant_id : null,
+        lead_id: data._participantType === "lead" ? data.participant_id : null,
         appointment_date: appointmentDateTime.toISOString(),
         duration_minutes: parseInt(data.duration_minutes) || 60,
         type: data.type,
@@ -168,11 +191,11 @@ export default function AdminAppointments() {
       if (data.id) {
         const { error } = await supabase
           .from("appointments")
-          .update(appointmentData)
+          .update(appointmentData as any)
           .eq("id", data.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("appointments").insert(appointmentData);
+        const { error } = await supabase.from("appointments").insert(appointmentData as any);
         if (error) throw error;
       }
     },
@@ -222,7 +245,7 @@ export default function AdminAppointments() {
     setFormData({
       title: "",
       description: "",
-      client_id: "",
+      participant_id: "",
       appointment_date: "",
       appointment_time: "10:00",
       duration_minutes: "60",
@@ -230,15 +253,18 @@ export default function AdminAppointments() {
       status: "scheduled",
       location: "",
     });
+    setParticipantType("client");
   };
 
   const openEditDialog = (appointment: Appointment) => {
     setEditingAppointment(appointment);
     const date = new Date(appointment.appointment_date);
+    const isLead = !!appointment.lead_id;
+    setParticipantType(isLead ? "lead" : "client");
     setFormData({
       title: appointment.title,
       description: appointment.description || "",
-      client_id: appointment.client_id,
+      participant_id: (isLead ? appointment.lead_id : appointment.client_id) || "",
       appointment_date: format(date, "yyyy-MM-dd"),
       appointment_time: format(date, "HH:mm"),
       duration_minutes: String(appointment.duration_minutes || 60),
@@ -251,16 +277,18 @@ export default function AdminAppointments() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.client_id || !formData.appointment_date) {
+    if (!formData.title || !formData.participant_id || !formData.appointment_date) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Preencha o título, cliente e data.",
+        description: "Preencha o título, participante e data.",
       });
       return;
     }
     appointmentMutation.mutate(
-      editingAppointment ? { ...formData, id: editingAppointment.id } : formData
+      editingAppointment
+        ? { ...formData, id: editingAppointment.id, _participantType: participantType }
+        : { ...formData, _participantType: participantType }
     );
   };
 
@@ -328,22 +356,47 @@ export default function AdminAppointments() {
               </div>
 
               <div className="space-y-2">
-                <Label>Cliente *</Label>
+                <Label>Tipo de Participante *</Label>
                 <Select
-                  value={formData.client_id}
+                  value={participantType}
+                  onValueChange={(value: "client" | "lead") => {
+                    setParticipantType(value);
+                    setFormData({ ...formData, participant_id: "" });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{participantType === "client" ? "Cliente" : "Lead"} *</Label>
+                <Select
+                  value={formData.participant_id}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, client_id: value })
+                    setFormData({ ...formData, participant_id: value })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
+                    <SelectValue placeholder={`Selecione o ${participantType === "client" ? "cliente" : "lead"}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
+                    {participantType === "client"
+                      ? clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))
+                      : leads.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.name}
+                          </SelectItem>
+                        ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -477,14 +530,21 @@ export default function AdminAppointments() {
       {/* Filter */}
       <div className="flex gap-4">
         <Select value={clientFilter} onValueChange={setClientFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por cliente" />
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Filtrar por participante" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os Clientes</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Clientes</SelectLabel>
             {clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
                 {client.name}
+              </SelectItem>
+            ))}
+            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Leads</SelectLabel>
+            {leads.map((lead) => (
+              <SelectItem key={lead.id} value={`lead:${lead.id}`}>
+                {lead.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -563,7 +623,10 @@ export default function AdminAppointments() {
                                   <span>•</span>
                                   <span>{apt.duration_minutes} min</span>
                                 </div>
-                                <Badge variant="outline">{apt.clients?.name}</Badge>
+                                <Badge variant="outline">
+                                  {apt.leads?.name || apt.clients?.name}
+                                  {apt.lead_id ? " (Lead)" : ""}
+                                </Badge>
                                 {apt.location && (
                                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                     <MapPin className="h-3 w-3" />
@@ -658,7 +721,7 @@ export default function AdminAppointments() {
                     <div>
                       <h4 className="font-medium">{apt.title}</h4>
                       <div className="text-sm text-muted-foreground">
-                        {apt.clients?.name} •{" "}
+                        {apt.leads?.name || apt.clients?.name}{apt.lead_id ? " (Lead)" : ""} •{" "}
                         {format(new Date(apt.appointment_date), "HH:mm")}
                       </div>
                     </div>
