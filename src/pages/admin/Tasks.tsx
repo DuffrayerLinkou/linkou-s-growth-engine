@@ -20,6 +20,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
