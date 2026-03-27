@@ -20,6 +20,8 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -133,18 +135,15 @@ export default function AdminTasks() {
     },
   });
 
-  // Fetch admins/managers for internal assignment
+  // Fetch all internal team members (profiles without client_id)
   const { data: internalAssignees = [] } = useQuery({
     queryKey: ["internal-assignees-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select(`
-          id, 
-          full_name,
-          user_roles!inner(role)
-        `)
-        .in("user_roles.role", ["admin", "account_manager"]);
+        .select("id, full_name")
+        .is("client_id", null)
+        .order("full_name");
       if (error) throw error;
       return data;
     },
@@ -166,15 +165,17 @@ export default function AdminTasks() {
     enabled: !!formData.client_id,
   });
 
-  // Build assignee names map
+  // Build assignee names map (internal + client users)
   const assigneeNames = useMemo(() => {
     const map = new Map<string, string>();
     internalAssignees.forEach((user) => {
       map.set(user.id, user.full_name || "Sem nome");
     });
-    // Also add client users from all clients for display purposes
+    clientUsers.forEach((user) => {
+      map.set(user.id, user.full_name || user.email || "Sem nome");
+    });
     return map;
-  }, [internalAssignees]);
+  }, [internalAssignees, clientUsers]);
 
   // Create/Update task mutation
   const taskMutation = useMutation({
@@ -449,53 +450,39 @@ export default function AdminTasks() {
 
               <div className="space-y-2">
                 <Label>Responsável</Label>
-                {formData.executor_type === "internal" ? (
-                  <Select
-                    value={formData.assigned_to}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, assigned_to: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione da equipe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {internalAssignees.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.full_name || "Sem nome"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Select
-                    value={formData.assigned_to}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, assigned_to: value })
-                    }
-                    disabled={!formData.client_id}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={formData.client_id ? "Selecione do cliente" : "Selecione o cliente primeiro"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          <div className="flex items-center gap-2">
-                            {user.ponto_focal && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
-                            <span>{user.full_name || user.email}</span>
-                            {user.ponto_focal && <span className="text-xs text-muted-foreground">(Ponto Focal)</span>}
-                          </div>
-                        </SelectItem>
-                      ))}
-                      {clientUsers.length === 0 && formData.client_id && (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          Nenhum usuário cadastrado para este cliente
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
+                <Select
+                  value={formData.assigned_to}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, assigned_to: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe Interna</SelectLabel>
+                    {internalAssignees.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name || "Sem nome"}
+                      </SelectItem>
+                    ))}
+                    {formData.executor_type === "client" && formData.client_id && clientUsers.length > 0 && (
+                      <>
+                        <SelectSeparator />
+                        <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe do Cliente</SelectLabel>
+                        {clientUsers.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            <div className="flex items-center gap-2">
+                              {user.ponto_focal && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                              <span>{user.full_name || user.email}</span>
+                              {user.ponto_focal && <span className="text-xs text-muted-foreground">(Ponto Focal)</span>}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
