@@ -163,15 +163,17 @@ export default function AdminTasks() {
     enabled: !!formData.client_id,
   });
 
-  // Build assignee names map
+  // Build assignee names map (internal + client users)
   const assigneeNames = useMemo(() => {
     const map = new Map<string, string>();
     internalAssignees.forEach((user) => {
       map.set(user.id, user.full_name || "Sem nome");
     });
-    // Also add client users from all clients for display purposes
+    clientUsers.forEach((user) => {
+      map.set(user.id, user.full_name || user.email || "Sem nome");
+    });
     return map;
-  }, [internalAssignees]);
+  }, [internalAssignees, clientUsers]);
 
   // Create/Update task mutation
   const taskMutation = useMutation({
