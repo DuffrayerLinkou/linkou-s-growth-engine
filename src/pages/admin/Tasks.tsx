@@ -133,18 +133,15 @@ export default function AdminTasks() {
     },
   });
 
-  // Fetch admins/managers for internal assignment
+  // Fetch all internal team members (profiles without client_id)
   const { data: internalAssignees = [] } = useQuery({
     queryKey: ["internal-assignees-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select(`
-          id, 
-          full_name,
-          user_roles!inner(role)
-        `)
-        .in("user_roles.role", ["admin", "account_manager"]);
+        .select("id, full_name")
+        .is("client_id", null)
+        .order("full_name");
       if (error) throw error;
       return data;
     },
