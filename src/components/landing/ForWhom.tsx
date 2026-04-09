@@ -79,11 +79,11 @@ export function ForWhom() {
               whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
             >
               <Card className="h-full hover:shadow-xl transition-shadow duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
-                <CardContent className="p-6">
-                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <audience.icon className="h-7 w-7 text-primary" />
+                <CardContent className="p-5 md:p-6">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-3 md:mb-4">
+                    <audience.icon className="h-6 w-6 md:h-7 md:w-7 text-primary" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3">{audience.title}</h3>
+                  <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">{audience.title}</h3>
                   <p className="text-muted-foreground mb-6">
                     {audience.description}
                   </p>
