@@ -63,7 +63,7 @@ export function Results() {
         </motion.div>
 
         {/* Results Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {results.map((result, index) => (
             <motion.div
               key={index}
@@ -74,15 +74,15 @@ export function Results() {
               whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
             >
               <Card className="h-full hover:shadow-xl transition-shadow duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
-                <CardContent className="p-6">
-                  <div className={`w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4`}>
-                    <result.icon className={`h-6 w-6 ${result.color}`} />
+                <CardContent className="p-4 md:p-6">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-secondary flex items-center justify-center mb-3 md:mb-4">
+                    <result.icon className={`h-5 w-5 md:h-6 md:w-6 ${result.color}`} />
                   </div>
-                  <div className={`text-3xl font-bold ${result.color} mb-2`}>
+                  <div className={`text-2xl md:text-3xl font-bold ${result.color} mb-1 md:mb-2`}>
                     {result.metric}
                   </div>
-                  <h3 className="font-semibold mb-2">{result.title}</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="font-semibold text-sm md:text-base mb-1 md:mb-2">{result.title}</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     {result.description}
                   </p>
                 </CardContent>
