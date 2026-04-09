@@ -3,6 +3,11 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { services } from "@/lib/services-config";
 
+const clipReveal = {
+  hidden: { clipPath: "inset(100% 0 0 0)", opacity: 0 },
+  visible: { clipPath: "inset(0% 0 0 0)", opacity: 1 },
+};
+
 export function Services() {
   const scrollToContact = () => {
     const element = document.querySelector("#contato");
@@ -16,10 +21,11 @@ export function Services() {
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          variants={clipReveal}
+          initial="hidden"
+          whileInView="visible"
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center mb-16"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
@@ -43,11 +49,12 @@ export function Services() {
           {services.map((service, index) => (
             <motion.div
               key={service.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative bg-card border rounded-2xl p-6 lg:p-8 shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all duration-300 card-gradient-border card-glow ${
+              transition={{ duration: 0.5, delay: index * 0.15 }}
+              whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+              className={`relative bg-card border rounded-2xl p-6 lg:p-8 shadow-sm hover:shadow-xl transition-shadow duration-300 card-gradient-border card-glow ${
                 service.highlight
                   ? "border-primary/50 ring-1 ring-primary/20"
                   : "border-border"

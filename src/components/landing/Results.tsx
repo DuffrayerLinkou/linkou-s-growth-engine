@@ -2,6 +2,11 @@ import { motion } from "framer-motion";
 import { TrendingUp, Target, DollarSign, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
+const clipReveal = {
+  hidden: { clipPath: "inset(100% 0 0 0)", opacity: 0 },
+  visible: { clipPath: "inset(0% 0 0 0)", opacity: 1 },
+};
+
 const results = [
   {
     icon: DollarSign,
@@ -39,10 +44,11 @@ export function Results() {
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          variants={clipReveal}
+          initial="hidden"
+          whileInView="visible"
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center mb-16"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
@@ -61,12 +67,13 @@ export function Results() {
           {results.map((result, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.15 }}
+              whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
             >
-              <Card className="h-full hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
+              <Card className="h-full hover:shadow-xl transition-shadow duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
                 <CardContent className="p-6">
                   <div className={`w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4`}>
                     <result.icon className={`h-6 w-6 ${result.color}`} />
