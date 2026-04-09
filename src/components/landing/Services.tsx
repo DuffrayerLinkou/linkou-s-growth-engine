@@ -45,7 +45,7 @@ export function Services() {
         </motion.div>
 
         {/* Services Grid */}
-        <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
           {services.map((service, index) => (
             <motion.div
               key={service.id}
@@ -54,7 +54,7 @@ export function Services() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.15 }}
               whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
-              className={`relative bg-card border rounded-2xl p-6 lg:p-8 shadow-sm hover:shadow-xl transition-shadow duration-300 card-gradient-border card-glow ${
+              className={`relative bg-card border rounded-2xl p-5 md:p-6 lg:p-8 shadow-sm hover:shadow-xl transition-shadow duration-300 card-gradient-border card-glow ${
                 service.highlight
                   ? "border-primary/50 ring-1 ring-primary/20"
                   : "border-border"
@@ -69,31 +69,31 @@ export function Services() {
                 </div>
               )}
 
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
                 <div
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
+                  className={`w-12 h-12 md:w-14 md:h-14 rounded-xl flex items-center justify-center shrink-0 ${
                     service.highlight
                       ? "bg-primary text-primary-foreground"
                       : "bg-primary/10"
                   }`}
                 >
                   <service.icon
-                    className={`h-7 w-7 ${
+                    className={`h-6 w-6 md:h-7 md:w-7 ${
                       service.highlight ? "text-primary-foreground" : "text-primary"
                     }`}
                   />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold">{service.title}</h3>
+                    <h3 className="text-lg md:text-xl font-bold">{service.title}</h3>
                   </div>
                   <p className="text-sm text-primary font-medium mb-3">
                     {service.subtitle}
                   </p>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground text-sm md:text-base mb-4">
                     {service.description}
                   </p>
-                  <ul className="grid grid-cols-2 gap-2 mb-4">
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
                     {service.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
