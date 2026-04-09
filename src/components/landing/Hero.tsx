@@ -123,25 +123,24 @@ function HeroComponent() {
             <div className="hidden lg:block" />
           </div>
 
-          {/* Stats - horizontal with separators */}
           {/* Stats - grid 2x2 mobile, horizontal desktop */}
           <m.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-16 pt-12 border-t border-border/50"
+            className="mt-12 pt-8 border-t border-border/50"
           >
             {/* Mobile: 2x2 grid */}
-            <div className="grid grid-cols-2 gap-3 md:hidden">
+            <div className="grid grid-cols-2 gap-2 md:hidden">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="rounded-xl bg-card/30 backdrop-blur-sm border border-border/30 p-4 text-center"
+                  className="rounded-lg bg-card/20 backdrop-blur-sm border border-border/20 px-3 py-3 flex flex-col items-center justify-center min-h-[100px]"
                 >
-                  <div className="text-3xl font-bold text-primary mb-1">
+                  <div className="text-2xl font-bold text-primary mb-1">
                     {stat.value}
                   </div>
-                  <div className="text-xs text-muted-foreground leading-tight">
+                  <div className="text-[10px] text-muted-foreground leading-tight text-center">
                     {stat.label}
                   </div>
                 </div>
