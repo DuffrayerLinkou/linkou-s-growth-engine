@@ -1,26 +1,24 @@
 
 
-# Corrigir Criacao de Usuario com Email Existente e Garantir Exclusao
+# Fix: Tarefas não abrem ao clicar no desktop
 
 ## Problema
-Ao deletar um **cliente** (empresa), os usuarios associados continuam existindo no auth. Ao tentar criar um novo usuario com o mesmo email para outro cliente, o Supabase retorna erro "User already registered" porque o auth user ja existe.
+No `TasksKanban.tsx`, o `Card` recebe simultaneamente `{...provided.dragHandleProps}` e `onClick`. No desktop, o `@hello-pangea/dnd` captura o `mousedown` para iniciar drag e pode suprimir o `click` event, impedindo a abertura do dialog de edição.
 
-## Solucao
+## Solução
+Separar o drag handle do click area:
+- Mover `dragHandleProps` para um pequeno elemento de "alça" (grip icon) dentro do card
+- Manter o `onClick` no Card body, sem conflito com o drag
 
-### 1. Edge Function `manage-users` — acao `create-user`
-Adicionar tratamento para quando o email ja existe:
-- Capturar o erro de "user already registered"
-- Buscar o usuario existente pelo email via `admin.listUsers`
-- Atualizar o `client_id` e role do usuario existente em vez de falhar
-- Retornar o usuario atualizado com mensagem de sucesso
+### Mudanças em `src/components/admin/TasksKanban.tsx`
 
-### 2. Frontend `Users.tsx` — melhorar feedback
-- Quando o backend detecta usuario existente e reatribui, mostrar toast informativo ("Usuario existente reatribuido ao cliente X")
-- O botao de excluir usuario ja existe e funciona (linhas 538-565), nao precisa de mudanca
+1. Importar `GripVertical` do lucide-react
+2. No `Card`: remover `{...provided.dragHandleProps}` e manter apenas `{...provided.draggableProps}` + `ref`
+3. Adicionar um `div` com `{...provided.dragHandleProps}` contendo o ícone `GripVertical` como alça de arraste
+4. O `onClick` permanece no Card normalmente, sem interferência do drag
 
-### Arquivos alterados
-| Arquivo | Mudanca |
+### Arquivo alterado
+| Arquivo | Mudança |
 |---|---|
-| `supabase/functions/manage-users/index.ts` | Tratar email duplicado no `create-user` — reatribuir usuario existente |
-| `src/pages/admin/Users.tsx` | Melhorar mensagem de sucesso para diferenciar criacao vs reatribuicao |
+| `src/components/admin/TasksKanban.tsx` | Separar drag handle do click handler |
 
