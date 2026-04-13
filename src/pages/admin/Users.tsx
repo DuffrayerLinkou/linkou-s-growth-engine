@@ -102,7 +102,7 @@ export default function AdminUsers() {
   // Create user mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.functions.invoke("manage-users", {
+      const { data: responseData, error } = await supabase.functions.invoke("manage-users", {
         body: {
           action: "create-user",
           email: data.email,
@@ -113,12 +113,17 @@ export default function AdminUsers() {
         },
       });
       if (error) throw error;
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setIsCreateOpen(false);
       resetForm();
-      toast.success("Usuário criado com sucesso!");
+      if (data?.reassigned) {
+        toast.success("Usuário existente reatribuído ao novo cliente com sucesso!");
+      } else {
+        toast.success("Usuário criado com sucesso!");
+      }
     },
     onError: (error: Error) => {
       toast.error(`Erro ao criar usuário: ${error.message}`);
