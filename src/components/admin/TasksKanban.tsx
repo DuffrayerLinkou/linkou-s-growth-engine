@@ -204,6 +204,8 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                         {overdue && <AlertCircle className="h-3 w-3" />}
                                       </span>
                                     )}
+                                   </div>
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>
