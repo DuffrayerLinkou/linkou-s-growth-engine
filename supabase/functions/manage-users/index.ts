@@ -100,6 +100,29 @@ async function handleAdminActions(action: string, payload: Record<string, unknow
         email, password, email_confirm: true,
         user_metadata: { full_name },
       })
+
+      // Handle "user already registered" — reassign existing user
+      if (createError && createError.message?.toLowerCase().includes('already been registered')) {
+        const { data: { users: existingUsers } } = await adminClient.auth.admin.listUsers()
+        const existingUser = existingUsers?.find((u) => u.email === email)
+        if (!existingUser) throw createError
+
+        const profileUpdate: Record<string, unknown> = {}
+        if (client_id) profileUpdate.client_id = client_id
+        if (full_name) profileUpdate.full_name = full_name
+
+        if (Object.keys(profileUpdate).length > 0) {
+          await adminClient.from('profiles').update(profileUpdate).eq('id', existingUser.id)
+        }
+
+        if (role) {
+          await adminClient.from('user_roles').delete().eq('user_id', existingUser.id)
+          await adminClient.from('user_roles').insert({ user_id: existingUser.id, role })
+        }
+
+        return jsonResponse({ user: existingUser, reassigned: true })
+      }
+
       if (createError) throw createError
 
       if (client_id) {
@@ -114,7 +137,7 @@ async function handleAdminActions(action: string, payload: Record<string, unknow
       // Fire-and-forget welcome email
       sendWelcomeEmail(email, full_name || '', password)
 
-      return jsonResponse({ user: newUser.user })
+      return jsonResponse({ user: newUser.user, reassigned: false })
     }
 
     case 'update-user': {
