@@ -1,7 +1,7 @@
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, AlertCircle, EyeOff, Route, Users, User } from "lucide-react";
+import { Clock, AlertCircle, EyeOff, Route, Users, User, GripVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
