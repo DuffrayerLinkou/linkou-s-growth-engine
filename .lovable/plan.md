@@ -1,34 +1,26 @@
 
 
-# Melhorar Enquadramento dos Cards na Landing Page (Mobile)
+# Corrigir Criacao de Usuario com Email Existente e Garantir Exclusao
 
 ## Problema
-Na versao mobile (390px), os cards das secoes Services, Results e ForWhom tem problemas de enquadramento: padding apertado, grid de features em 2 colunas fica cramped, e o layout icon+titulo lado a lado nao respira bem em telas pequenas.
+Ao deletar um **cliente** (empresa), os usuarios associados continuam existindo no auth. Ao tentar criar um novo usuario com o mesmo email para outro cliente, o Supabase retorna erro "User already registered" porque o auth user ja existe.
 
 ## Solucao
 
-### 1. Services Cards (`src/components/landing/Services.tsx`)
-- **Mobile**: Mudar layout do icon+titulo de `flex-row` para **stack vertical** (icon em cima, titulo embaixo) em telas < md
-- **Features grid**: Mudar de `grid-cols-2` para `grid-cols-1` no mobile para evitar texto quebrado e apertado
-- **Padding**: Aumentar padding interno no mobile de `p-6` para `p-5` com espacamento mais consistente
-- **Gap do grid**: Reduzir gap entre cards no mobile de `gap-6` para `gap-4`
+### 1. Edge Function `manage-users` — acao `create-user`
+Adicionar tratamento para quando o email ja existe:
+- Capturar o erro de "user already registered"
+- Buscar o usuario existente pelo email via `admin.listUsers`
+- Atualizar o `client_id` e role do usuario existente em vez de falhar
+- Retornar o usuario atualizado com mensagem de sucesso
 
-### 2. Results Cards (`src/components/landing/Results.tsx`)
-- **Mobile grid**: Mudar de `grid md:grid-cols-2 lg:grid-cols-4` para `grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4` — 2 colunas no mobile em vez de 1
-- **Padding mobile**: Reduzir padding de `p-6` para `p-4` no mobile para os cards caberem melhor em 2 colunas
-- **Tipografia**: Reduzir metrica de `text-3xl` para `text-2xl` no mobile
+### 2. Frontend `Users.tsx` — melhorar feedback
+- Quando o backend detecta usuario existente e reatribui, mostrar toast informativo ("Usuario existente reatribuido ao cliente X")
+- O botao de excluir usuario ja existe e funciona (linhas 538-565), nao precisa de mudanca
 
-### 3. ForWhom Cards (`src/components/landing/ForWhom.tsx`)
-- **Mobile**: Cards ja estao em 1 coluna, apenas ajustar padding de `p-6` para `p-5`
-- **Titulo**: Reduzir de `text-xl` para `text-lg` no mobile para melhor fit
-
-### 4. Container padding geral
-- Garantir `px-4` consistente no container em todas as secoes (ja esta, apenas confirmar)
-
-## Arquivos alterados
+### Arquivos alterados
 | Arquivo | Mudanca |
 |---|---|
-| `src/components/landing/Services.tsx` | Stack vertical icon/titulo mobile, features 1 col mobile |
-| `src/components/landing/Results.tsx` | Grid 2 cols mobile, padding/tipografia menor |
-| `src/components/landing/ForWhom.tsx` | Ajuste fino de padding e tipografia |
+| `supabase/functions/manage-users/index.ts` | Tratar email duplicado no `create-user` — reatribuir usuario existente |
+| `src/pages/admin/Users.tsx` | Melhorar mensagem de sucesso para diferenciar criacao vs reatribuicao |
 
