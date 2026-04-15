@@ -249,7 +249,6 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     )}
                                   </div>
-                                   </div>
                                     </div>
                                   </div>
                                 </CardContent>
