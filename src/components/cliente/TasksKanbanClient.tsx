@@ -1,7 +1,7 @@
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, AlertCircle, Route, Star, CheckCircle2 } from "lucide-react";
+import { Clock, AlertCircle, Route, Star, CheckCircle2, GripVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -248,6 +248,9 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                                     {task.status === "completed" && (
                                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     )}
+                                  </div>
+                                   </div>
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>
