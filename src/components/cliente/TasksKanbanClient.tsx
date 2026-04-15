@@ -153,11 +153,8 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                               <Card
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={() => onTaskClick?.(task)}
                                 className={cn(
                                   "mb-2 transition-all",
-                                  isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
                                   snapshot.isDragging && "shadow-lg ring-2 ring-primary",
                                   isMyTask 
                                     ? "border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-500/10 to-transparent shadow-sm" 
@@ -165,7 +162,19 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                                   overdue && !isMyTask && "border-red-500/50 bg-red-500/5"
                                 )}
                               >
-                                <CardContent className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
+                                <CardContent className="p-0">
+                                  <div className="flex">
+                                    {isDraggable && (
+                                      <div
+                                        {...provided.dragHandleProps}
+                                        className="flex items-center px-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                      </div>
+                                    )}
+                                    {!isDraggable && <div {...provided.dragHandleProps} />}
+                                    <div className="flex-1 p-2 sm:p-3 space-y-1.5 sm:space-y-2 cursor-pointer" onClick={() => onTaskClick?.(task)}>
                                   {/* Title + My Task indicator */}
                                   <div className="flex items-start justify-between gap-1.5 sm:gap-2">
                                     <h4 className={cn(
