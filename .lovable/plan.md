@@ -1,24 +1,24 @@
 
 
-# Fix: Tarefas não abrem ao clicar no desktop
+# Fix: Clicar nos cards de tarefa no Kanban nao abre o dialog
 
 ## Problema
-No `TasksKanban.tsx`, o `Card` recebe simultaneamente `{...provided.dragHandleProps}` e `onClick`. No desktop, o `@hello-pangea/dnd` captura o `mousedown` para iniciar drag e pode suprimir o `click` event, impedindo a abertura do dialog de edição.
+O fix anterior separou o `dragHandleProps` do `onClick`, mas o `onClick` no `Card` pode estar sendo suprimido pelo `@hello-pangea/dnd` porque `provided.draggableProps` (espalhado no Card) pode interferir com eventos de pointer em certos cenarios. Alem disso, o `ScrollArea` envolvendo o droppable pode estar capturando eventos.
 
-## Solução
-Separar o drag handle do click area:
-- Mover `dragHandleProps` para um pequeno elemento de "alça" (grip icon) dentro do card
-- Manter o `onClick` no Card body, sem conflito com o drag
+## Solucao
+Mover o click handler para o conteudo interno do card (o div de conteudo), em vez de no Card raiz que recebe `draggableProps`. Isso garante que o click nao e interceptado pela biblioteca DnD.
 
-### Mudanças em `src/components/admin/TasksKanban.tsx`
+### Mudancas em `src/components/admin/TasksKanban.tsx`
+1. Remover `onClick` do `Card` (que recebe `draggableProps`)
+2. Adicionar `onClick={() => onTaskClick(task)}` no div interno de conteudo (linha 136)
+3. Isso isola completamente o click do DnD
 
-1. Importar `GripVertical` do lucide-react
-2. No `Card`: remover `{...provided.dragHandleProps}` e manter apenas `{...provided.draggableProps}` + `ref`
-3. Adicionar um `div` com `{...provided.dragHandleProps}` contendo o ícone `GripVertical` como alça de arraste
-4. O `onClick` permanece no Card normalmente, sem interferência do drag
+### Mudancas em `src/components/cliente/TasksKanbanClient.tsx`
+1. Mesma abordagem: garantir que o `onClick` esta no conteudo interno, nao no Card que recebe `draggableProps`
 
-### Arquivo alterado
-| Arquivo | Mudança |
+## Arquivos alterados
+| Arquivo | Mudanca |
 |---|---|
-| `src/components/admin/TasksKanban.tsx` | Separar drag handle do click handler |
+| `src/components/admin/TasksKanban.tsx` | Mover onClick do Card para o div de conteudo |
+| `src/components/cliente/TasksKanbanClient.tsx` | Mesma correcao para consistencia |
 
