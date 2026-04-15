@@ -122,7 +122,6 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                   snapshot.isDragging && "shadow-lg ring-2 ring-primary",
                                   overdue && "border-red-500 bg-red-500/5"
                                 )}
-                                onClick={() => onTaskClick(task)}
                               >
                                 <CardContent className="p-0">
                                   <div className="flex">
@@ -133,7 +132,7 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                     >
                                       <GripVertical className="h-4 w-4" />
                                     </div>
-                                    <div className="flex-1 p-2 sm:p-3 space-y-1.5 sm:space-y-2 cursor-pointer">
+                                    <div className="flex-1 p-2 sm:p-3 space-y-1.5 sm:space-y-2 cursor-pointer" onClick={() => onTaskClick(task)}>
                                   {/* Title + visibility */}
                                   <div className="flex items-start justify-between gap-1.5 sm:gap-2">
                                     <h4 className="font-medium text-xs sm:text-sm line-clamp-2">
