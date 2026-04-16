@@ -266,6 +266,7 @@ export default function AdminCampaigns() {
       setCampaigns((campaignsRes.data || []).map(c => ({
         ...c,
         placements: Array.isArray(c.placements) ? c.placements as string[] : null,
+        metrics: (c.metrics && typeof c.metrics === "object" && !Array.isArray(c.metrics)) ? c.metrics as Record<string, unknown> : null,
       })));
       setClients(clientsRes.data || []);
       setProjects(projectsRes.data || []);
