@@ -196,6 +196,84 @@ export default function ClienteDashboard() {
     enabled: !!clientInfo?.id && isPontoFocal,
   });
 
+      {/* Resultados do Mês */}
+      {trafficMetrics?.current && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Resultados do Mês
+          </h2>
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                label: "Investimento",
+                value: trafficMetrics.current.investimento,
+                prev: trafficMetrics.previous?.investimento,
+                icon: DollarSign,
+                format: (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                color: "text-emerald-500",
+                bg: "bg-emerald-500/10",
+              },
+              {
+                label: "Leads",
+                value: trafficMetrics.current.quantidade_leads,
+                prev: trafficMetrics.previous?.quantidade_leads,
+                icon: UsersIcon,
+                format: (v: number) => v.toLocaleString("pt-BR"),
+                color: "text-blue-500",
+                bg: "bg-blue-500/10",
+              },
+              {
+                label: "CPL Médio",
+                value: trafficMetrics.current.custo_por_lead,
+                prev: trafficMetrics.previous?.custo_por_lead,
+                icon: TrendingDown,
+                format: (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                color: "text-orange-500",
+                bg: "bg-orange-500/10",
+                invertVariation: true,
+              },
+              {
+                label: "Vendas",
+                value: trafficMetrics.current.quantidade_vendas,
+                prev: trafficMetrics.previous?.quantidade_vendas,
+                icon: ShoppingCart,
+                format: (v: number) => v.toLocaleString("pt-BR"),
+                color: "text-purple-500",
+                bg: "bg-purple-500/10",
+              },
+            ].map((metric) => {
+              const variation = getVariation(metric.value, metric.prev);
+              const isPositive = variation !== null && (metric.invertVariation ? variation < 0 : variation > 0);
+              return (
+                <Card key={metric.label}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+                    <CardTitle className="text-xs sm:text-sm font-medium">{metric.label}</CardTitle>
+                    <div className={`p-1.5 sm:p-2 rounded-lg ${metric.bg}`}>
+                      <metric.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${metric.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-4 pt-0">
+                    <div className="text-xl sm:text-2xl font-bold">
+                      {metric.value != null ? metric.format(metric.value) : "-"}
+                    </div>
+                    {variation !== null && (
+                      <p className={`text-[10px] sm:text-xs flex items-center gap-1 ${isPositive ? "text-green-500" : "text-red-500"}`}>
+                        {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {Math.abs(variation).toFixed(1)}% vs mês anterior
+                      </p>
+                    )}
+                    {variation === null && (
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">sem comparativo</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
 
   // Query: 3 últimas campanhas
   const { data: recentCampaigns, isLoading: loadingRecentCampaigns } = useQuery({
