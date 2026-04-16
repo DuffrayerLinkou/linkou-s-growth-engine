@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, RotateCcw, Sparkles } from "lucide-react";
+import { X, Send, RotateCcw, Sparkles, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -23,8 +23,8 @@ interface Props {
 const ADMIN_SUGGESTIONS = [
   "Análise do último mês",
   "Comparar CPL das campanhas",
-  "Recomendações de otimização",
-  "Resumo do plano estratégico",
+  "Agendar reunião",
+  "Criar tarefa",
 ];
 
 const CLIENT_SUGGESTIONS = [
@@ -34,7 +34,7 @@ const CLIENT_SUGGESTIONS = [
   "O que é CPL?",
 ];
 
-function TypingIndicator() {
+function TypingIndicator({ isExecuting }: { isExecuting: boolean }) {
   return (
     <div className="flex items-end gap-2 mb-3">
       <Avatar className="h-7 w-7 shrink-0">
@@ -42,11 +42,18 @@ function TypingIndicator() {
         <AvatarFallback className="bg-yellow-400 text-black text-xs">LK</AvatarFallback>
       </Avatar>
       <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 max-w-[80%]">
-        <div className="flex gap-1 items-center h-4">
-          <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:0ms]" />
-          <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:150ms]" />
-          <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:300ms]" />
-        </div>
+        {isExecuting ? (
+          <div className="flex gap-1.5 items-center h-4 text-muted-foreground">
+            <Settings className="h-3.5 w-3.5 animate-spin" />
+            <span className="text-[11px]">Executando ação...</span>
+          </div>
+        ) : (
+          <div className="flex gap-1 items-center h-4">
+            <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:0ms]" />
+            <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:150ms]" />
+            <span className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce [animation-delay:300ms]" />
+          </div>
+        )}
       </div>
     </div>
   );

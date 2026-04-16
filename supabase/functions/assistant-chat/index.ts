@@ -14,6 +14,155 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// ── Tool definitions (admin only) ──────────────────────────────────────
+const adminTools = [
+  {
+    type: "function",
+    function: {
+      name: "create_appointment",
+      description: "Agenda uma reunião/compromisso para o cliente atual. Use quando o admin pedir para agendar, marcar reunião, call, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título da reunião" },
+          date: { type: "string", description: "Data e hora no formato ISO 8601 (ex: 2026-04-20T14:00:00)" },
+          duration_minutes: { type: "number", description: "Duração em minutos. Padrão: 60" },
+          description: { type: "string", description: "Descrição ou pauta da reunião (opcional)" },
+        },
+        required: ["title", "date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_task",
+      description: "Cria uma tarefa para o cliente atual. Use quando o admin pedir para criar task, tarefa, atividade, to-do.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título da tarefa" },
+          description: { type: "string", description: "Descrição detalhada (opcional)" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"], description: "Prioridade. Padrão: medium" },
+          due_date: { type: "string", description: "Data limite no formato YYYY-MM-DD (opcional)" },
+          executor_type: { type: "string", enum: ["internal", "client"], description: "Quem executa: internal (equipe Linkou) ou client. Padrão: internal" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "upsert_traffic_metrics",
+      description: "Insere ou atualiza métricas de tráfego de um mês/ano específico para o cliente atual. Use quando o admin pedir para preencher, atualizar ou registrar métricas de tráfego.",
+      parameters: {
+        type: "object",
+        properties: {
+          month: { type: "number", description: "Mês (1-12)" },
+          year: { type: "number", description: "Ano (ex: 2026)" },
+          investimento: { type: "number", description: "Investimento total em R$" },
+          impressoes: { type: "number", description: "Número de impressões" },
+          cliques: { type: "number", description: "Número de cliques" },
+          alcance: { type: "number", description: "Alcance" },
+          quantidade_leads: { type: "number", description: "Quantidade de leads" },
+          quantidade_vendas: { type: "number", description: "Quantidade de vendas" },
+          custo_por_lead: { type: "number", description: "Custo por lead em R$" },
+          custo_por_venda: { type: "number", description: "Custo por venda em R$" },
+        },
+        required: ["month", "year"],
+      },
+    },
+  },
+];
+
+// ── Tool executors ─────────────────────────────────────────────────────
+async function executeTool(
+  db: ReturnType<typeof createClient>,
+  toolName: string,
+  args: Record<string, unknown>,
+  clientId: string,
+  userId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    switch (toolName) {
+      case "create_appointment": {
+        const { error } = await db.from("appointments").insert({
+          client_id: clientId,
+          title: args.title as string,
+          appointment_date: args.date as string,
+          duration_minutes: (args.duration_minutes as number) || 60,
+          description: (args.description as string) || null,
+          created_by: userId,
+          status: "scheduled",
+        });
+        if (error) throw error;
+        return { success: true, message: `Reunião "${args.title}" agendada para ${args.date} com sucesso.` };
+      }
+
+      case "create_task": {
+        const { error } = await db.from("tasks").insert({
+          client_id: clientId,
+          title: args.title as string,
+          description: (args.description as string) || null,
+          priority: (args.priority as string) || "medium",
+          due_date: (args.due_date as string) || null,
+          executor_type: (args.executor_type as string) || "internal",
+          created_by: userId,
+          status: "todo",
+          visible_to_client: true,
+        });
+        if (error) throw error;
+        return { success: true, message: `Tarefa "${args.title}" criada com sucesso.` };
+      }
+
+      case "upsert_traffic_metrics": {
+        const month = args.month as number;
+        const year = args.year as number;
+
+        // Check existing
+        const { data: existing } = await db
+          .from("traffic_metrics")
+          .select("id")
+          .eq("client_id", clientId)
+          .eq("month", month)
+          .eq("year", year)
+          .maybeSingle();
+
+        const metricsPayload: Record<string, unknown> = {
+          client_id: clientId,
+          month,
+          year,
+          updated_by: userId,
+        };
+        // Only set provided fields
+        for (const key of ["investimento", "impressoes", "cliques", "alcance", "quantidade_leads", "quantidade_vendas", "custo_por_lead", "custo_por_venda"]) {
+          if (args[key] !== undefined && args[key] !== null) {
+            metricsPayload[key] = args[key];
+          }
+        }
+
+        if (existing) {
+          const { error } = await db.from("traffic_metrics").update(metricsPayload).eq("id", existing.id);
+          if (error) throw error;
+          return { success: true, message: `Métricas de ${month}/${year} atualizadas com sucesso.` };
+        } else {
+          metricsPayload.created_by = userId;
+          const { error } = await db.from("traffic_metrics").insert(metricsPayload);
+          if (error) throw error;
+          return { success: true, message: `Métricas de ${month}/${year} inseridas com sucesso.` };
+        }
+      }
+
+      default:
+        return { success: false, message: `Tool "${toolName}" não reconhecida.` };
+    }
+  } catch (err) {
+    console.error(`Tool ${toolName} error:`, err);
+    return { success: false, message: `Erro ao executar ${toolName}: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -138,7 +287,7 @@ serve(async (req) => {
     }
 
     // System prompt by mode
-    const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\n\n`;
+    const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
     let systemPrompt: string;
     if (mode === "admin") {
@@ -149,6 +298,13 @@ serve(async (req) => {
         `Foco: insights de performance, comparações, recomendações de otimização, identificar problemas e oportunidades.\n` +
         `Quando relevante, sugira ações específicas (ajustar budget, pausar campanha, escalar canal).\n` +
         `Formate com markdown: tabelas, bullet points, negrito para números importantes.\n\n` +
+        `## Ferramentas disponíveis\n` +
+        `Você tem acesso a 3 ferramentas para executar ações no sistema:\n` +
+        `- **create_appointment**: Use para agendar reuniões, calls, compromissos. Extraia data/hora da mensagem do usuário.\n` +
+        `- **create_task**: Use para criar tarefas/atividades. Extraia título, prioridade e prazo se mencionados.\n` +
+        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n\n` +
+        `Quando o usuário pedir uma ação, use a ferramenta apropriada. Confirme os dados antes de executar se forem ambíguos.\n` +
+        `Ao inferir datas, use o ano atual (${new Date().getFullYear()}) e o mês atual como referência.\n\n` +
         `${context}` +
         `Responda APENAS com base nos dados acima. Se não tiver dados suficientes, diga claramente.`;
     } else {
@@ -163,7 +319,104 @@ serve(async (req) => {
         `Responda APENAS com base nos dados acima. Se não tiver dados suficientes, diga claramente.`;
     }
 
-    // Call Lovable AI Gateway with streaming
+    const allMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.slice(-20),
+    ];
+
+    // ── Decide: tool calling (admin) or direct streaming ───────────────
+    const isAdminMode = mode === "admin";
+
+    if (isAdminMode) {
+      // Step 1: Non-streaming call with tools to check for tool_calls
+      const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: allMessages,
+          tools: adminTools,
+          tool_choice: "auto",
+          stream: false,
+        }),
+      });
+
+      if (!firstResponse.ok) {
+        if (firstResponse.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }, 429);
+        if (firstResponse.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
+        const t = await firstResponse.text();
+        console.error("AI gateway error (step1):", firstResponse.status, t);
+        return json({ error: "Erro ao processar com IA" }, 500);
+      }
+
+      const firstResult = await firstResponse.json();
+      const choice = firstResult.choices?.[0];
+
+      if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
+        // Execute each tool call
+        const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
+
+        for (const tc of choice.message.tool_calls) {
+          const fnName = tc.function.name;
+          let fnArgs: Record<string, unknown> = {};
+          try {
+            fnArgs = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
+          } catch {
+            fnArgs = {};
+          }
+
+          const result = await executeTool(db, fnName, fnArgs, client_id, userId);
+          toolMessages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: JSON.stringify(result),
+          });
+        }
+
+        // Step 2: Stream the final response with tool results
+        const finalMessages = [
+          ...allMessages,
+          choice.message, // assistant message with tool_calls
+          ...toolMessages,
+        ];
+
+        const streamResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: finalMessages,
+            stream: true,
+          }),
+        });
+
+        if (!streamResponse.ok) {
+          const t = await streamResponse.text();
+          console.error("AI gateway error (step2):", streamResponse.status, t);
+          return json({ error: "Erro ao processar confirmação" }, 500);
+        }
+
+        return new Response(streamResponse.body, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
+
+      // No tool calls → the model responded with text. Stream it back.
+      // Since we already have the full response, we convert it to an SSE stream.
+      const content = choice?.message?.content || "Sem resposta.";
+      const ssePayload = `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`;
+      return new Response(ssePayload, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
+    }
+
+    // ── Client mode: direct streaming (no tools) ───────────────────────
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -172,10 +425,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.slice(-20), // limit context window
-        ],
+        messages: allMessages,
         stream: true,
       }),
     });
