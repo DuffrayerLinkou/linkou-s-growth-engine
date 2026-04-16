@@ -74,8 +74,39 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_campaign",
+      description: "Estrutura uma campanha de tráfego pago completa e profissional para o cliente atual. Use quando o admin pedir para criar, estruturar ou montar uma campanha. Baseie-se nos dados do briefing, plano estratégico, personas, métricas históricas e segmento do cliente para definir targeting, estratégia, objetivo, budget e copy como um gestor de tráfego profissional. Defina o objetivo correto para cada plataforma (ex: Meta=conversions/traffic/awareness, Google=search/display/pmax). A campanha será criada como rascunho (draft) para revisão.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome da campanha (ex: '[Meta] Conversão - Público Frio - Abril/26')" },
+          platform: { type: "string", enum: ["meta_ads", "google_ads", "tiktok_ads", "linkedin_ads", "other"], description: "Plataforma de anúncios" },
+          objective: { type: "string", description: "Objetivo principal (ex: conversions, traffic, awareness, leads, engagement, video_views, app_installs, reach)" },
+          objective_detail: { type: "string", description: "Detalhamento do objetivo (ex: 'Gerar leads qualificados via formulário instantâneo')" },
+          campaign_type: { type: "string", description: "Tipo de campanha (ex: prospecting, retargeting, remarketing, branding, launch)" },
+          strategy: { type: "string", description: "Estratégia detalhada da campanha incluindo funil, público e abordagem" },
+          budget: { type: "number", description: "Budget total da campanha em R$" },
+          daily_budget: { type: "number", description: "Budget diário em R$" },
+          start_date: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "Data de término (YYYY-MM-DD)" },
+          headline: { type: "string", description: "Headline principal do anúncio" },
+          ad_copy: { type: "string", description: "Texto/copy do anúncio" },
+          call_to_action: { type: "string", description: "CTA do anúncio (ex: Saiba Mais, Compre Agora, Cadastre-se)" },
+          targeting: { type: "object", description: "Configuração de público-alvo em JSON (idade, gênero, interesses, localização, custom audiences, lookalikes)" },
+          placements: { type: "array", items: { type: "string" }, description: "Posicionamentos (ex: feed, stories, reels, search, display, youtube)" },
+          bidding_strategy: { type: "string", description: "Estratégia de lance (ex: lowest_cost, cost_cap, bid_cap, target_cpa, maximize_conversions)" },
+          target_cpa: { type: "number", description: "CPA alvo em R$" },
+          target_roas: { type: "number", description: "ROAS alvo" },
+          description: { type: "string", description: "Descrição geral da campanha e contexto estratégico" },
+        },
+        required: ["name", "platform"],
+      },
+    },
+  },
 ];
-
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
