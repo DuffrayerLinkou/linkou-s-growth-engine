@@ -106,6 +106,68 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_project",
+      description: "Cria um novo projeto para o cliente atual. Use quando o admin pedir para criar, iniciar ou montar um projeto.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome do projeto (ex: 'Projeto Lançamento Produto X - Q2/2026')" },
+          description: { type: "string", description: "Descrição do projeto com escopo e objetivos" },
+          start_date: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "Data de término (YYYY-MM-DD)" },
+          budget: { type: "number", description: "Budget total do projeto em R$" },
+          status: { type: "string", enum: ["planning", "active", "paused", "completed"], description: "Status inicial. Padrão: planning" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_strategic_plan",
+      description: "Cria um plano estratégico completo e profissional para o cliente atual. Use quando o admin pedir para criar plano, estratégia, planejamento. Gere personas detalhadas, KPIs SMART, estratégia de funil (topo/meio/fundo), alocação de budget por canal e tipos de campanha recomendados. Baseie-se no briefing, métricas históricas e segmento do cliente.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título do plano (ex: 'Plano Estratégico Q2/2026 - Escala de Vendas')" },
+          objectives: { type: "array", items: { type: "object" }, description: "Array de objetivos SMART com name, description, target, deadline" },
+          kpis: { type: "array", items: { type: "object" }, description: "Array de KPIs com name, target, current, unit (ex: CPL, ROAS, leads/mês)" },
+          personas: { type: "array", items: { type: "object" }, description: "Array de personas com name, age_range, interests, pain_points, channels" },
+          funnel_strategy: { type: "string", description: "Estratégia de funil detalhada: topo (awareness), meio (consideração), fundo (conversão)" },
+          campaign_types: { type: "array", items: { type: "string" }, description: "Tipos de campanha recomendados (ex: prospecting, retargeting, branding, remarketing)" },
+          timeline_start: { type: "string", description: "Data de início do plano (YYYY-MM-DD)" },
+          timeline_end: { type: "string", description: "Data de término do plano (YYYY-MM-DD)" },
+          budget_allocation: { type: "object", description: "Alocação de budget por canal/objetivo em JSON (ex: { meta_ads: 60, google_ads: 30, tiktok: 10 })" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_briefing",
+      description: "Cria um briefing para o cliente atual. Use quando o admin ditar informações do cliente como nicho, público-alvo, objetivos, diferenciais, concorrentes ou budget.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título do briefing (ex: 'Briefing Inicial - [Nome Cliente]')" },
+          nicho: { type: "string", description: "Nicho/segmento de mercado do cliente" },
+          publico_alvo: { type: "string", description: "Descrição detalhada do público-alvo" },
+          objetivos: { type: "string", description: "Objetivos de marketing e vendas do cliente" },
+          diferenciais: { type: "string", description: "Diferenciais competitivos do cliente" },
+          concorrentes: { type: "string", description: "Principais concorrentes" },
+          budget_mensal: { type: "number", description: "Budget mensal disponível em R$" },
+          observacoes: { type: "string", description: "Observações adicionais" },
+        },
+        required: ["title"],
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(

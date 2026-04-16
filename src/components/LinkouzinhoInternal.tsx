@@ -26,6 +26,8 @@ const ADMIN_SUGGESTIONS = [
   "Agendar reunião",
   "Criar tarefa",
   "Estruturar campanha",
+  "Criar projeto",
+  "Criar plano estratégico",
 ];
 
 const CLIENT_SUGGESTIONS = [
