@@ -287,6 +287,51 @@ async function executeTool(
         return { success: true, message: `Campanha "${args.name}" (${args.platform}) criada como rascunho com sucesso. Revise na seção Campanhas.` };
       }
 
+      case "create_project": {
+        const projectPayload: Record<string, unknown> = {
+          client_id: clientId,
+          name: args.name as string,
+          created_by: userId,
+          status: (args.status as string) || "planning",
+        };
+        for (const key of ["description", "start_date", "end_date", "budget"]) {
+          if (args[key] !== undefined && args[key] !== null) projectPayload[key] = args[key];
+        }
+        const { error } = await db.from("projects").insert(projectPayload);
+        if (error) throw error;
+        return { success: true, message: `Projeto "${args.name}" criado com sucesso em status "${projectPayload.status}".` };
+      }
+
+      case "create_strategic_plan": {
+        const planPayload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          created_by: userId,
+          status: "draft",
+        };
+        for (const key of ["objectives", "kpis", "personas", "funnel_strategy", "campaign_types", "timeline_start", "timeline_end", "budget_allocation"]) {
+          if (args[key] !== undefined && args[key] !== null) planPayload[key] = args[key];
+        }
+        const { error } = await db.from("strategic_plans").insert(planPayload);
+        if (error) throw error;
+        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho. Revise na seção Plano Estratégico.` };
+      }
+
+      case "create_briefing": {
+        const briefingPayload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          created_by: userId,
+          status: "pending",
+        };
+        for (const key of ["nicho", "publico_alvo", "objetivos", "diferenciais", "concorrentes", "budget_mensal", "observacoes"]) {
+          if (args[key] !== undefined && args[key] !== null) briefingPayload[key] = args[key];
+        }
+        const { error } = await db.from("briefings").insert(briefingPayload);
+        if (error) throw error;
+        return { success: true, message: `Briefing "${args.title}" criado com sucesso.` };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
