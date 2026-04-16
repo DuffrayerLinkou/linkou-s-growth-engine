@@ -30,12 +30,6 @@ interface StrategicPlan {
   timeline_end: string | null;
   budget_allocation: unknown;
 }
-  funnel_strategy: string | null;
-  campaign_types: string[] | null;
-  timeline_start: string | null;
-  timeline_end: string | null;
-  budget_allocation: Record<string, number> | null;
-}
 
 const statusLabels: Record<string, string> = {
   draft: "Rascunho",
