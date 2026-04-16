@@ -725,11 +725,12 @@ export default function AdminCampaigns() {
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Básico</TabsTrigger>
               <TabsTrigger value="creative">Criativo</TabsTrigger>
               <TabsTrigger value="budget">Orçamento</TabsTrigger>
               <TabsTrigger value="schedule">Cronograma</TabsTrigger>
+              <TabsTrigger value="results">Resultados</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4 mt-4">
@@ -1098,6 +1099,60 @@ export default function AdminCampaigns() {
                   <p><span className="text-muted-foreground">Budget:</span> {formData.budget ? `R$ ${formData.budget}` : "-"}</p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="results" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Resumo dos Resultados</Label>
+                <Textarea
+                  value={resultsText}
+                  onChange={(e) => setResultsText(e.target.value)}
+                  placeholder="Escreva um resumo executivo dos resultados desta campanha para o cliente..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">Este texto será exibido no painel do cliente como relatório profissional.</p>
+              </div>
+
+              {formData.platform ? (
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Métricas de Performance — {platformLabels[formData.platform]}</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {getMetricsForChannel(formData.platform).filter(f => !f.computed).map((field) => (
+                      <div key={field.key} className="space-y-1">
+                        <Label className="text-xs">{field.label}</Label>
+                        <Input
+                          type="number"
+                          step={field.type === "currency" ? "0.01" : "1"}
+                          value={metricsForm[field.key] || ""}
+                          onChange={(e) => setMetricsForm({ ...metricsForm, [field.key]: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Auto-calculated preview */}
+                  {(() => {
+                    const computed = computeMetrics(formData.platform, metricsForm);
+                    const computedFields = getMetricsForChannel(formData.platform).filter(f => f.computed);
+                    const hasComputed = computedFields.some(f => computed[f.key] != null);
+                    if (!hasComputed) return null;
+                    return (
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                        <p className="font-medium text-sm mb-1">Cálculos automáticos:</p>
+                        {computedFields.map((f) => {
+                          const val = computed[f.key];
+                          if (val == null) return null;
+                          const display = f.type === "percent" ? `${val}%` : f.type === "currency" ? val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : val.toLocaleString("pt-BR");
+                          return <p key={f.key} className="text-xs">{f.label}: {display}</p>;
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma plataforma na aba "Básico" para ver as métricas disponíveis.</p>
+              )}
             </TabsContent>
           </Tabs>
 
