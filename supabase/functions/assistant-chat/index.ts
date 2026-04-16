@@ -501,19 +501,21 @@ serve(async (req) => {
         `Quando relevante, sugira ações específicas (ajustar budget, pausar campanha, escalar canal).\n` +
         `Formate com markdown: tabelas, bullet points, negrito para números importantes.\n\n` +
         `## Ferramentas disponíveis\n` +
-        `Você tem acesso a 4 ferramentas para executar ações no sistema:\n` +
-        `- **create_appointment**: Use para agendar reuniões, calls, compromissos. Extraia data/hora da mensagem do usuário.\n` +
-        `- **create_task**: Use para criar tarefas/atividades. Extraia título, prioridade e prazo se mencionados.\n` +
-        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n` +
-        `- **create_campaign**: Use para estruturar campanhas de tráfego pago completas. Ao criar campanhas:\n` +
-        `  * Analise o briefing, plano estratégico, personas e métricas históricas do cliente.\n` +
-        `  * Defina objetivos corretos por plataforma (Meta: conversions/traffic/leads; Google: search/pmax/display; TikTok: conversions/traffic).\n` +
-        `  * Preencha targeting baseado nas personas e público-alvo do briefing.\n` +
-        `  * Sugira budget baseado no histórico e budget_mensal do briefing.\n` +
-        `  * Escreva headline e ad_copy profissionais e persuasivos.\n` +
-        `  * Defina bidding_strategy, placements e CPA/ROAS alvo com base nas métricas históricas.\n` +
-        `  * Use nomenclatura profissional: [Plataforma] Objetivo - Público - Período.\n` +
-        `  * A campanha será criada como rascunho (draft) para revisão humana.\n\n` +
+        `Você tem acesso a 7 ferramentas para executar ações no sistema:\n` +
+        `- **create_appointment**: Agendar reuniões, calls, compromissos.\n` +
+        `- **create_task**: Criar tarefas/atividades.\n` +
+        `- **upsert_traffic_metrics**: Registrar/atualizar métricas de tráfego.\n` +
+        `- **create_campaign**: Estruturar campanhas de tráfego pago completas (use briefing, plano, personas e métricas para targeting, budget, copy e bidding). Nomenclatura: [Plataforma] Objetivo - Público - Período. Status: draft.\n` +
+        `- **create_project**: Criar projetos com nome, escopo, datas e budget.\n` +
+        `- **create_strategic_plan**: Criar planos estratégicos completos. Gere:\n` +
+        `  * Personas detalhadas (nome, faixa etária, dores, canais preferidos) baseadas no briefing.\n` +
+        `  * KPIs SMART com metas numéricas baseadas nas métricas históricas.\n` +
+        `  * Estratégia de funil: topo (awareness), meio (consideração), fundo (conversão).\n` +
+        `  * Alocação de budget por canal (%) baseado no histórico.\n` +
+        `  * Tipos de campanha recomendados.\n` +
+        `- **create_briefing**: Registrar dados do cliente (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## Análise estratégica\n` +
+        `Quando pedirem análise: compare CPL/CPV entre meses, calcule variação %, identifique gargalos no funil, sugira ações concretas e projete cenários.\n\n` +
         `Quando o usuário pedir uma ação, use a ferramenta apropriada. Confirme os dados antes de executar se forem ambíguos.\n` +
         `Ao inferir datas, use o ano atual (${new Date().getFullYear()}) e o mês atual como referência.\n\n` +
         `${context}` +
