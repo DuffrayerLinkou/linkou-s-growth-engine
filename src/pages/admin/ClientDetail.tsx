@@ -94,6 +94,9 @@ import {
   serviceTypes,
   getPhasesByService,
 } from "@/lib/service-phases-config";
+import ClientMetricsTab from "@/components/admin/client-detail/ClientMetricsTab";
+import ClientCampaignsTab from "@/components/admin/client-detail/ClientCampaignsTab";
+import ClientPlanTab from "@/components/admin/client-detail/ClientPlanTab";
 
 interface Client {
   id: string;
