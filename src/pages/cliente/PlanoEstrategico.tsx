@@ -241,9 +241,11 @@ export default function PlanoEstrategico() {
                   <CardContent className="space-y-2">
                     {Object.entries(budgetAllocation).map(([key, value]) => (
                       <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-sm">{key}</span>
+                        <span className="text-sm capitalize">{String(key).replace(/_/g, " ")}</span>
                         <span className="text-sm font-semibold">
-                          {typeof value === "number" ? `${value}%` : String(value)}
+                          {typeof value === "number"
+                            ? value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                            : String(value)}
                         </span>
                       </div>
                     ))}
