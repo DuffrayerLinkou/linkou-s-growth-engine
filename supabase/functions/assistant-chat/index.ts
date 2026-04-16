@@ -106,6 +106,68 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_project",
+      description: "Cria um novo projeto para o cliente atual. Use quando o admin pedir para criar, iniciar ou montar um projeto.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome do projeto (ex: 'Projeto Lançamento Produto X - Q2/2026')" },
+          description: { type: "string", description: "Descrição do projeto com escopo e objetivos" },
+          start_date: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "Data de término (YYYY-MM-DD)" },
+          budget: { type: "number", description: "Budget total do projeto em R$" },
+          status: { type: "string", enum: ["planning", "active", "paused", "completed"], description: "Status inicial. Padrão: planning" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_strategic_plan",
+      description: "Cria um plano estratégico completo e profissional para o cliente atual. Use quando o admin pedir para criar plano, estratégia, planejamento. Gere personas detalhadas, KPIs SMART, estratégia de funil (topo/meio/fundo), alocação de budget por canal e tipos de campanha recomendados. Baseie-se no briefing, métricas históricas e segmento do cliente.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título do plano (ex: 'Plano Estratégico Q2/2026 - Escala de Vendas')" },
+          objectives: { type: "array", items: { type: "object" }, description: "Array de objetivos SMART com name, description, target, deadline" },
+          kpis: { type: "array", items: { type: "object" }, description: "Array de KPIs com name, target, current, unit (ex: CPL, ROAS, leads/mês)" },
+          personas: { type: "array", items: { type: "object" }, description: "Array de personas com name, age_range, interests, pain_points, channels" },
+          funnel_strategy: { type: "string", description: "Estratégia de funil detalhada: topo (awareness), meio (consideração), fundo (conversão)" },
+          campaign_types: { type: "array", items: { type: "string" }, description: "Tipos de campanha recomendados (ex: prospecting, retargeting, branding, remarketing)" },
+          timeline_start: { type: "string", description: "Data de início do plano (YYYY-MM-DD)" },
+          timeline_end: { type: "string", description: "Data de término do plano (YYYY-MM-DD)" },
+          budget_allocation: { type: "object", description: "Alocação de budget por canal/objetivo em JSON (ex: { meta_ads: 60, google_ads: 30, tiktok: 10 })" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_briefing",
+      description: "Cria um briefing para o cliente atual. Use quando o admin ditar informações do cliente como nicho, público-alvo, objetivos, diferenciais, concorrentes ou budget.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título do briefing (ex: 'Briefing Inicial - [Nome Cliente]')" },
+          nicho: { type: "string", description: "Nicho/segmento de mercado do cliente" },
+          publico_alvo: { type: "string", description: "Descrição detalhada do público-alvo" },
+          objetivos: { type: "string", description: "Objetivos de marketing e vendas do cliente" },
+          diferenciais: { type: "string", description: "Diferenciais competitivos do cliente" },
+          concorrentes: { type: "string", description: "Principais concorrentes" },
+          budget_mensal: { type: "number", description: "Budget mensal disponível em R$" },
+          observacoes: { type: "string", description: "Observações adicionais" },
+        },
+        required: ["title"],
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
@@ -223,6 +285,51 @@ async function executeTool(
         const { error } = await db.from("campaigns").insert(campaignPayload);
         if (error) throw error;
         return { success: true, message: `Campanha "${args.name}" (${args.platform}) criada como rascunho com sucesso. Revise na seção Campanhas.` };
+      }
+
+      case "create_project": {
+        const projectPayload: Record<string, unknown> = {
+          client_id: clientId,
+          name: args.name as string,
+          created_by: userId,
+          status: (args.status as string) || "planning",
+        };
+        for (const key of ["description", "start_date", "end_date", "budget"]) {
+          if (args[key] !== undefined && args[key] !== null) projectPayload[key] = args[key];
+        }
+        const { error } = await db.from("projects").insert(projectPayload);
+        if (error) throw error;
+        return { success: true, message: `Projeto "${args.name}" criado com sucesso em status "${projectPayload.status}".` };
+      }
+
+      case "create_strategic_plan": {
+        const planPayload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          created_by: userId,
+          status: "draft",
+        };
+        for (const key of ["objectives", "kpis", "personas", "funnel_strategy", "campaign_types", "timeline_start", "timeline_end", "budget_allocation"]) {
+          if (args[key] !== undefined && args[key] !== null) planPayload[key] = args[key];
+        }
+        const { error } = await db.from("strategic_plans").insert(planPayload);
+        if (error) throw error;
+        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho. Revise na seção Plano Estratégico.` };
+      }
+
+      case "create_briefing": {
+        const briefingPayload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          created_by: userId,
+          status: "pending",
+        };
+        for (const key of ["nicho", "publico_alvo", "objetivos", "diferenciais", "concorrentes", "budget_mensal", "observacoes"]) {
+          if (args[key] !== undefined && args[key] !== null) briefingPayload[key] = args[key];
+        }
+        const { error } = await db.from("briefings").insert(briefingPayload);
+        if (error) throw error;
+        return { success: true, message: `Briefing "${args.title}" criado com sucesso.` };
       }
 
       default:
@@ -394,19 +501,21 @@ serve(async (req) => {
         `Quando relevante, sugira ações específicas (ajustar budget, pausar campanha, escalar canal).\n` +
         `Formate com markdown: tabelas, bullet points, negrito para números importantes.\n\n` +
         `## Ferramentas disponíveis\n` +
-        `Você tem acesso a 4 ferramentas para executar ações no sistema:\n` +
-        `- **create_appointment**: Use para agendar reuniões, calls, compromissos. Extraia data/hora da mensagem do usuário.\n` +
-        `- **create_task**: Use para criar tarefas/atividades. Extraia título, prioridade e prazo se mencionados.\n` +
-        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n` +
-        `- **create_campaign**: Use para estruturar campanhas de tráfego pago completas. Ao criar campanhas:\n` +
-        `  * Analise o briefing, plano estratégico, personas e métricas históricas do cliente.\n` +
-        `  * Defina objetivos corretos por plataforma (Meta: conversions/traffic/leads; Google: search/pmax/display; TikTok: conversions/traffic).\n` +
-        `  * Preencha targeting baseado nas personas e público-alvo do briefing.\n` +
-        `  * Sugira budget baseado no histórico e budget_mensal do briefing.\n` +
-        `  * Escreva headline e ad_copy profissionais e persuasivos.\n` +
-        `  * Defina bidding_strategy, placements e CPA/ROAS alvo com base nas métricas históricas.\n` +
-        `  * Use nomenclatura profissional: [Plataforma] Objetivo - Público - Período.\n` +
-        `  * A campanha será criada como rascunho (draft) para revisão humana.\n\n` +
+        `Você tem acesso a 7 ferramentas para executar ações no sistema:\n` +
+        `- **create_appointment**: Agendar reuniões, calls, compromissos.\n` +
+        `- **create_task**: Criar tarefas/atividades.\n` +
+        `- **upsert_traffic_metrics**: Registrar/atualizar métricas de tráfego.\n` +
+        `- **create_campaign**: Estruturar campanhas de tráfego pago completas (use briefing, plano, personas e métricas para targeting, budget, copy e bidding). Nomenclatura: [Plataforma] Objetivo - Público - Período. Status: draft.\n` +
+        `- **create_project**: Criar projetos com nome, escopo, datas e budget.\n` +
+        `- **create_strategic_plan**: Criar planos estratégicos completos. Gere:\n` +
+        `  * Personas detalhadas (nome, faixa etária, dores, canais preferidos) baseadas no briefing.\n` +
+        `  * KPIs SMART com metas numéricas baseadas nas métricas históricas.\n` +
+        `  * Estratégia de funil: topo (awareness), meio (consideração), fundo (conversão).\n` +
+        `  * Alocação de budget por canal (%) baseado no histórico.\n` +
+        `  * Tipos de campanha recomendados.\n` +
+        `- **create_briefing**: Registrar dados do cliente (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## Análise estratégica\n` +
+        `Quando pedirem análise: compare CPL/CPV entre meses, calcule variação %, identifique gargalos no funil, sugira ações concretas e projete cenários.\n\n` +
         `Quando o usuário pedir uma ação, use a ferramenta apropriada. Confirme os dados antes de executar se forem ambíguos.\n` +
         `Ao inferir datas, use o ano atual (${new Date().getFullYear()}) e o mês atual como referência.\n\n` +
         `${context}` +
