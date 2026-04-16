@@ -56,6 +56,7 @@ const AdminCapturePages = lazy(() => import("./pages/admin/CapturePages"));
 const AdminProposals = lazy(() => import("./pages/admin/Proposals"));
 const AdminEmailFunnel = lazy(() => import("./pages/admin/EmailFunnel"));
 const AdminEmailComposer = lazy(() => import("./pages/admin/EmailComposer"));
+const AdminMetrics = lazy(() => import("./pages/admin/Metrics"));
 const CapturePage = lazy(() => import("./pages/CapturePage"));
 const CaptureThankYou = lazy(() => import("./pages/CaptureThankYou"));
 
@@ -157,6 +158,7 @@ const App = () => (
                 <Route path="propostas" element={<Suspense fallback={<PageLoader />}><AdminProposals /></Suspense>} />
                 <Route path="funil-email" element={<Suspense fallback={<PageLoader />}><AdminEmailFunnel /></Suspense>} />
                 <Route path="email" element={<Suspense fallback={<PageLoader />}><AdminEmailComposer /></Suspense>} />
+                <Route path="metricas" element={<Suspense fallback={<PageLoader />}><AdminMetrics /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

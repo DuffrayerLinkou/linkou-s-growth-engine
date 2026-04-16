@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Mail,
   Send,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ const navGroups = [
       { href: "/admin/clientes", icon: Users, label: "Clientes" },
       { href: "/admin/projetos", icon: FolderKanban, label: "Projetos" },
       { href: "/admin/campanhas", icon: Megaphone, label: "Campanhas" },
+      { href: "/admin/metricas", icon: BarChart3, label: "Métricas" },
       { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
       { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
     ],
