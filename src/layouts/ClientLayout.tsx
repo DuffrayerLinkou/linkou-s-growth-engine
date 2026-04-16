@@ -26,6 +26,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
+import { LinkouzinhoInternal } from "@/components/LinkouzinhoInternal";
 
 type PermissionKey = "canViewFinancials" | "canManageTeam";
 
@@ -206,6 +207,8 @@ export function ClientLayout() {
           </m.div>
         </LazyMotion>
       </main>
+
+      <LinkouzinhoInternal mode="client" />
     </div>
   );
 }

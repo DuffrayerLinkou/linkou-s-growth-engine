@@ -35,6 +35,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
+import { LinkouzinhoInternal } from "@/components/LinkouzinhoInternal";
 
 const navGroups = [
   {
@@ -282,6 +283,8 @@ export function AdminLayout() {
           </m.div>
         </LazyMotion>
       </main>
+
+      <LinkouzinhoInternal mode="admin" />
     </div>
   );
 }
