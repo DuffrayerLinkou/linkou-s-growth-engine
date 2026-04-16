@@ -25,6 +25,7 @@ const ADMIN_SUGGESTIONS = [
   "Comparar CPL das campanhas",
   "Agendar reunião",
   "Criar tarefa",
+  "Estruturar campanha",
 ];
 
 const CLIENT_SUGGESTIONS = [

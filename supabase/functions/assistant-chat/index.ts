@@ -74,8 +74,39 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_campaign",
+      description: "Estrutura uma campanha de tráfego pago completa e profissional para o cliente atual. Use quando o admin pedir para criar, estruturar ou montar uma campanha. Baseie-se nos dados do briefing, plano estratégico, personas, métricas históricas e segmento do cliente para definir targeting, estratégia, objetivo, budget e copy como um gestor de tráfego profissional. Defina o objetivo correto para cada plataforma (ex: Meta=conversions/traffic/awareness, Google=search/display/pmax). A campanha será criada como rascunho (draft) para revisão.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome da campanha (ex: '[Meta] Conversão - Público Frio - Abril/26')" },
+          platform: { type: "string", enum: ["meta_ads", "google_ads", "tiktok_ads", "linkedin_ads", "other"], description: "Plataforma de anúncios" },
+          objective: { type: "string", description: "Objetivo principal (ex: conversions, traffic, awareness, leads, engagement, video_views, app_installs, reach)" },
+          objective_detail: { type: "string", description: "Detalhamento do objetivo (ex: 'Gerar leads qualificados via formulário instantâneo')" },
+          campaign_type: { type: "string", description: "Tipo de campanha (ex: prospecting, retargeting, remarketing, branding, launch)" },
+          strategy: { type: "string", description: "Estratégia detalhada da campanha incluindo funil, público e abordagem" },
+          budget: { type: "number", description: "Budget total da campanha em R$" },
+          daily_budget: { type: "number", description: "Budget diário em R$" },
+          start_date: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "Data de término (YYYY-MM-DD)" },
+          headline: { type: "string", description: "Headline principal do anúncio" },
+          ad_copy: { type: "string", description: "Texto/copy do anúncio" },
+          call_to_action: { type: "string", description: "CTA do anúncio (ex: Saiba Mais, Compre Agora, Cadastre-se)" },
+          targeting: { type: "object", description: "Configuração de público-alvo em JSON (idade, gênero, interesses, localização, custom audiences, lookalikes)" },
+          placements: { type: "array", items: { type: "string" }, description: "Posicionamentos (ex: feed, stories, reels, search, display, youtube)" },
+          bidding_strategy: { type: "string", description: "Estratégia de lance (ex: lowest_cost, cost_cap, bid_cap, target_cpa, maximize_conversions)" },
+          target_cpa: { type: "number", description: "CPA alvo em R$" },
+          target_roas: { type: "number", description: "ROAS alvo" },
+          description: { type: "string", description: "Descrição geral da campanha e contexto estratégico" },
+        },
+        required: ["name", "platform"],
+      },
+    },
+  },
 ];
-
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
@@ -154,6 +185,46 @@ async function executeTool(
         }
       }
 
+      case "create_campaign": {
+        // Find latest project for this client
+        const { data: project } = await db
+          .from("projects")
+          .select("id")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!project) {
+          return { success: false, message: "Nenhum projeto encontrado para este cliente. Crie um projeto antes de estruturar campanhas." };
+        }
+
+        const campaignPayload: Record<string, unknown> = {
+          client_id: clientId,
+          project_id: project.id,
+          name: args.name as string,
+          platform: args.platform as string,
+          created_by: userId,
+          status: "draft",
+        };
+
+        const optionalFields = [
+          "objective", "objective_detail", "campaign_type", "strategy",
+          "budget", "daily_budget", "start_date", "end_date",
+          "headline", "ad_copy", "call_to_action", "targeting",
+          "placements", "bidding_strategy", "target_cpa", "target_roas", "description",
+        ];
+        for (const key of optionalFields) {
+          if (args[key] !== undefined && args[key] !== null) {
+            campaignPayload[key] = args[key];
+          }
+        }
+
+        const { error } = await db.from("campaigns").insert(campaignPayload);
+        if (error) throw error;
+        return { success: true, message: `Campanha "${args.name}" (${args.platform}) criada como rascunho com sucesso. Revise na seção Campanhas.` };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -216,10 +287,10 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes] = await Promise.all([
+    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
-        .select("name, platform, status, budget, metrics, results, start_date, end_date")
+        .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(10),
@@ -230,9 +301,15 @@ serve(async (req) => {
         .order("month", { ascending: false })
         .limit(6),
       db.from("strategic_plans")
-        .select("title, status, objectives, kpis, funnel_strategy, campaign_types, timeline_start, timeline_end")
+        .select("title, status, objectives, kpis, funnel_strategy, campaign_types, timeline_start, timeline_end, personas, budget_allocation")
         .eq("client_id", client_id)
         .eq("status", "active")
+        .limit(1)
+        .maybeSingle(),
+      db.from("briefings")
+        .select("nicho, publico_alvo, objetivos, diferenciais, concorrentes, budget_mensal, observacoes")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
     ]);
@@ -241,6 +318,7 @@ serve(async (req) => {
     const campaigns = campaignsRes.data || [];
     const metrics = metricsRes.data || [];
     const plan = plansRes.data;
+    const briefing = briefingsRes.data;
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -286,6 +364,23 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (briefing) {
+      context += `## Briefing do Cliente:\n`;
+      if (briefing.nicho) context += `- Nicho: ${briefing.nicho}\n`;
+      if (briefing.publico_alvo) context += `- Público-alvo: ${briefing.publico_alvo}\n`;
+      if (briefing.objetivos) context += `- Objetivos: ${briefing.objetivos}\n`;
+      if (briefing.diferenciais) context += `- Diferenciais: ${briefing.diferenciais}\n`;
+      if (briefing.concorrentes) context += `- Concorrentes: ${briefing.concorrentes}\n`;
+      if (briefing.budget_mensal) context += `- Budget mensal: R$${briefing.budget_mensal}\n`;
+      if (briefing.observacoes) context += `- Observações: ${briefing.observacoes}\n`;
+      context += "\n";
+    }
+
+    if (plan) {
+      if (plan.personas) context += `- Personas: ${JSON.stringify(plan.personas)}\n`;
+      if (plan.budget_allocation) context += `- Alocação de Budget: ${JSON.stringify(plan.budget_allocation)}\n`;
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
@@ -293,16 +388,25 @@ serve(async (req) => {
     if (mode === "admin") {
       systemPrompt =
         baseIdentity +
-        `Modo: ANALISTA TÉCNICO (para equipe interna/admin).\n` +
+        `Modo: ANALISTA TÉCNICO E GESTOR DE TRÁFEGO (para equipe interna/admin).\n` +
         `Tom: direto, técnico, analítico. Use termos de marketing digital.\n` +
         `Foco: insights de performance, comparações, recomendações de otimização, identificar problemas e oportunidades.\n` +
         `Quando relevante, sugira ações específicas (ajustar budget, pausar campanha, escalar canal).\n` +
         `Formate com markdown: tabelas, bullet points, negrito para números importantes.\n\n` +
         `## Ferramentas disponíveis\n` +
-        `Você tem acesso a 3 ferramentas para executar ações no sistema:\n` +
+        `Você tem acesso a 4 ferramentas para executar ações no sistema:\n` +
         `- **create_appointment**: Use para agendar reuniões, calls, compromissos. Extraia data/hora da mensagem do usuário.\n` +
         `- **create_task**: Use para criar tarefas/atividades. Extraia título, prioridade e prazo se mencionados.\n` +
-        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n\n` +
+        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n` +
+        `- **create_campaign**: Use para estruturar campanhas de tráfego pago completas. Ao criar campanhas:\n` +
+        `  * Analise o briefing, plano estratégico, personas e métricas históricas do cliente.\n` +
+        `  * Defina objetivos corretos por plataforma (Meta: conversions/traffic/leads; Google: search/pmax/display; TikTok: conversions/traffic).\n` +
+        `  * Preencha targeting baseado nas personas e público-alvo do briefing.\n` +
+        `  * Sugira budget baseado no histórico e budget_mensal do briefing.\n` +
+        `  * Escreva headline e ad_copy profissionais e persuasivos.\n` +
+        `  * Defina bidding_strategy, placements e CPA/ROAS alvo com base nas métricas históricas.\n` +
+        `  * Use nomenclatura profissional: [Plataforma] Objetivo - Público - Período.\n` +
+        `  * A campanha será criada como rascunho (draft) para revisão humana.\n\n` +
         `Quando o usuário pedir uma ação, use a ferramenta apropriada. Confirme os dados antes de executar se forem ambíguos.\n` +
         `Ao inferir datas, use o ano atual (${new Date().getFullYear()}) e o mês atual como referência.\n\n` +
         `${context}` +
