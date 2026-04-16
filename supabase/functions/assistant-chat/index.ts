@@ -364,6 +364,23 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (briefing) {
+      context += `## Briefing do Cliente:\n`;
+      if (briefing.nicho) context += `- Nicho: ${briefing.nicho}\n`;
+      if (briefing.publico_alvo) context += `- Público-alvo: ${briefing.publico_alvo}\n`;
+      if (briefing.objetivos) context += `- Objetivos: ${briefing.objetivos}\n`;
+      if (briefing.diferenciais) context += `- Diferenciais: ${briefing.diferenciais}\n`;
+      if (briefing.concorrentes) context += `- Concorrentes: ${briefing.concorrentes}\n`;
+      if (briefing.budget_mensal) context += `- Budget mensal: R$${briefing.budget_mensal}\n`;
+      if (briefing.observacoes) context += `- Observações: ${briefing.observacoes}\n`;
+      context += "\n";
+    }
+
+    if (plan) {
+      if (plan.personas) context += `- Personas: ${JSON.stringify(plan.personas)}\n`;
+      if (plan.budget_allocation) context += `- Alocação de Budget: ${JSON.stringify(plan.budget_allocation)}\n`;
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
@@ -371,16 +388,25 @@ serve(async (req) => {
     if (mode === "admin") {
       systemPrompt =
         baseIdentity +
-        `Modo: ANALISTA TÉCNICO (para equipe interna/admin).\n` +
+        `Modo: ANALISTA TÉCNICO E GESTOR DE TRÁFEGO (para equipe interna/admin).\n` +
         `Tom: direto, técnico, analítico. Use termos de marketing digital.\n` +
         `Foco: insights de performance, comparações, recomendações de otimização, identificar problemas e oportunidades.\n` +
         `Quando relevante, sugira ações específicas (ajustar budget, pausar campanha, escalar canal).\n` +
         `Formate com markdown: tabelas, bullet points, negrito para números importantes.\n\n` +
         `## Ferramentas disponíveis\n` +
-        `Você tem acesso a 3 ferramentas para executar ações no sistema:\n` +
+        `Você tem acesso a 4 ferramentas para executar ações no sistema:\n` +
         `- **create_appointment**: Use para agendar reuniões, calls, compromissos. Extraia data/hora da mensagem do usuário.\n` +
         `- **create_task**: Use para criar tarefas/atividades. Extraia título, prioridade e prazo se mencionados.\n` +
-        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n\n` +
+        `- **upsert_traffic_metrics**: Use para registrar/atualizar métricas de tráfego de um mês específico.\n` +
+        `- **create_campaign**: Use para estruturar campanhas de tráfego pago completas. Ao criar campanhas:\n` +
+        `  * Analise o briefing, plano estratégico, personas e métricas históricas do cliente.\n` +
+        `  * Defina objetivos corretos por plataforma (Meta: conversions/traffic/leads; Google: search/pmax/display; TikTok: conversions/traffic).\n` +
+        `  * Preencha targeting baseado nas personas e público-alvo do briefing.\n` +
+        `  * Sugira budget baseado no histórico e budget_mensal do briefing.\n` +
+        `  * Escreva headline e ad_copy profissionais e persuasivos.\n` +
+        `  * Defina bidding_strategy, placements e CPA/ROAS alvo com base nas métricas históricas.\n` +
+        `  * Use nomenclatura profissional: [Plataforma] Objetivo - Público - Período.\n` +
+        `  * A campanha será criada como rascunho (draft) para revisão humana.\n\n` +
         `Quando o usuário pedir uma ação, use a ferramenta apropriada. Confirme os dados antes de executar se forem ambíguos.\n` +
         `Ao inferir datas, use o ano atual (${new Date().getFullYear()}) e o mês atual como referência.\n\n` +
         `${context}` +
