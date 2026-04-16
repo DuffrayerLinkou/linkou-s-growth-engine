@@ -1488,6 +1488,21 @@ export default function ClientDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Metrics Tab */}
+        <TabsContent value="metrics" className="space-y-4">
+          <ClientMetricsTab clientId={id!} />
+        </TabsContent>
+
+        {/* Campaigns Tab */}
+        <TabsContent value="campaigns" className="space-y-4">
+          <ClientCampaignsTab clientId={id!} />
+        </TabsContent>
+
+        {/* Plan Tab */}
+        <TabsContent value="plan" className="space-y-4">
+          <ClientPlanTab clientId={id!} />
+        </TabsContent>
       </Tabs>
 
       {/* Phase Change Dialog */}
