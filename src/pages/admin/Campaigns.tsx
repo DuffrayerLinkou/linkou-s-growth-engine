@@ -111,6 +111,8 @@ interface Campaign {
   end_date: string | null;
   created_at: string;
   approved_by_ponto_focal: boolean;
+  results: string | null;
+  metrics: Record<string, unknown> | null;
   clients?: Client;
   projects?: Project | null;
 }
@@ -154,19 +156,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-blue-500/20 text-blue-600 border-blue-500/30",
 };
 
-const platformLabels: Record<string, string> = {
-  meta_ads: "Meta Ads",
-  google_ads: "Google Ads",
-  tiktok: "TikTok Ads",
-  linkedin: "LinkedIn Ads",
-};
-
-const platformObjectives: Record<string, string[]> = {
-  meta_ads: ["Reconhecimento", "Tráfego", "Engajamento", "Leads", "Vendas", "Promoção de App"],
-  google_ads: ["Search", "Display", "Video (YouTube)", "Shopping", "Performance Max"],
-  tiktok: ["Alcance", "Tráfego", "Visualizações de Vídeo", "Conversões"],
-  linkedin: ["Reconhecimento", "Visitas ao Site", "Engajamento", "Leads", "Conversões"],
-};
+import { platformLabels, platformObjectives, getMetricsForChannel, computeMetrics } from "@/lib/channel-metrics-config";
 
 const platformPlacements: Record<string, { id: string; label: string }[]> = {
   meta_ads: [
@@ -257,6 +247,9 @@ export default function AdminCampaigns() {
     status: "draft",
   });
 
+  const [resultsText, setResultsText] = useState("");
+  const [metricsForm, setMetricsForm] = useState<Record<string, string>>({});
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -276,6 +269,7 @@ export default function AdminCampaigns() {
       setCampaigns((campaignsRes.data || []).map(c => ({
         ...c,
         placements: Array.isArray(c.placements) ? c.placements as string[] : null,
+        metrics: (c.metrics && typeof c.metrics === "object" && !Array.isArray(c.metrics)) ? c.metrics as Record<string, unknown> : null,
       })));
       setClients(clientsRes.data || []);
       setProjects(projectsRes.data || []);
@@ -321,6 +315,14 @@ export default function AdminCampaigns() {
         status: campaign.status || "draft",
       });
       setSelectedPlacements((campaign.placements as string[]) || []);
+      setResultsText(campaign.results || "");
+      // Load existing metrics into form
+      const m = campaign.metrics || {};
+      const mForm: Record<string, string> = {};
+      for (const [k, v] of Object.entries(m)) {
+        mForm[k] = v != null ? String(v) : "";
+      }
+      setMetricsForm(mForm);
     } else {
       setSelectedCampaign(null);
       setFormData({
@@ -346,6 +348,8 @@ export default function AdminCampaigns() {
         status: "draft",
       });
       setSelectedPlacements([]);
+      setResultsText("");
+      setMetricsForm({});
     }
     setErrors({});
     setActiveTab("basic");
@@ -370,6 +374,9 @@ export default function AdminCampaigns() {
     setIsSubmitting(true);
 
     try {
+      const metricsPayload = formData.platform ? computeMetrics(formData.platform, metricsForm) : null;
+      const hasMetrics = metricsPayload && Object.values(metricsPayload).some(v => v != null);
+
       const campaignData = {
         client_id: formData.client_id,
         project_id: formData.project_id && formData.project_id !== "none" ? formData.project_id : null,
@@ -392,6 +399,8 @@ export default function AdminCampaigns() {
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
         status: formData.status,
+        results: resultsText.trim() || null,
+        metrics: hasMetrics ? metricsPayload : null,
       };
 
       if (selectedCampaign) {
@@ -716,11 +725,12 @@ export default function AdminCampaigns() {
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Básico</TabsTrigger>
               <TabsTrigger value="creative">Criativo</TabsTrigger>
               <TabsTrigger value="budget">Orçamento</TabsTrigger>
               <TabsTrigger value="schedule">Cronograma</TabsTrigger>
+              <TabsTrigger value="results">Resultados</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4 mt-4">
@@ -1089,6 +1099,60 @@ export default function AdminCampaigns() {
                   <p><span className="text-muted-foreground">Budget:</span> {formData.budget ? `R$ ${formData.budget}` : "-"}</p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="results" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Resumo dos Resultados</Label>
+                <Textarea
+                  value={resultsText}
+                  onChange={(e) => setResultsText(e.target.value)}
+                  placeholder="Escreva um resumo executivo dos resultados desta campanha para o cliente..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">Este texto será exibido no painel do cliente como relatório profissional.</p>
+              </div>
+
+              {formData.platform ? (
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Métricas de Performance — {platformLabels[formData.platform]}</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {getMetricsForChannel(formData.platform).filter(f => !f.computed).map((field) => (
+                      <div key={field.key} className="space-y-1">
+                        <Label className="text-xs">{field.label}</Label>
+                        <Input
+                          type="number"
+                          step={field.type === "currency" ? "0.01" : "1"}
+                          value={metricsForm[field.key] || ""}
+                          onChange={(e) => setMetricsForm({ ...metricsForm, [field.key]: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Auto-calculated preview */}
+                  {(() => {
+                    const computed = computeMetrics(formData.platform, metricsForm);
+                    const computedFields = getMetricsForChannel(formData.platform).filter(f => f.computed);
+                    const hasComputed = computedFields.some(f => computed[f.key] != null);
+                    if (!hasComputed) return null;
+                    return (
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                        <p className="font-medium text-sm mb-1">Cálculos automáticos:</p>
+                        {computedFields.map((f) => {
+                          const val = computed[f.key];
+                          if (val == null) return null;
+                          const display = f.type === "percent" ? `${val}%` : f.type === "currency" ? val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : val.toLocaleString("pt-BR");
+                          return <p key={f.key} className="text-xs">{f.label}: {display}</p>;
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Selecione uma plataforma na aba "Básico" para ver as métricas disponíveis.</p>
+              )}
             </TabsContent>
           </Tabs>
 

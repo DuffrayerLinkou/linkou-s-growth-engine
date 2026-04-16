@@ -82,12 +82,7 @@ const statusConfig: Record<
   paused: { label: "Pausada", color: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30", icon: Pause },
 };
 
-const platformLabels: Record<string, string> = {
-  meta_ads: "Meta Ads",
-  google_ads: "Google Ads",
-  tiktok: "TikTok Ads",
-  linkedin: "LinkedIn Ads",
-};
+import { platformLabels, allMetricLabels, formatMetricValue } from "@/lib/channel-metrics-config";
 
 const placementLabels: Record<string, string> = {
   feed_facebook: "Feed Facebook",
@@ -461,9 +456,9 @@ export default function ClienteCampanhas() {
                         )}
 
                         {campaign.results && (
-                          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                            <p className="text-xs font-medium text-green-600 mb-1">Resultados</p>
-                            <p className="text-sm">{campaign.results}</p>
+                          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                            <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">📊 Relatório de Resultados</p>
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{campaign.results}</p>
                           </div>
                         )}
 
@@ -472,38 +467,9 @@ export default function ClienteCampanhas() {
                             <p className="text-xs font-medium text-muted-foreground mb-3">Métricas de Performance</p>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                               {Object.entries(campaign.metrics).map(([key, value]) => {
-                                const metricLabels: Record<string, string> = {
-                                  impressions: "Impressões",
-                                  impressoes: "Impressões",
-                                  clicks: "Cliques",
-                                  cliques: "Cliques",
-                                  ctr: "CTR",
-                                  leads: "Leads",
-                                  cost: "Custo",
-                                  custo: "Custo",
-                                  cpl: "CPL",
-                                  cpc: "CPC",
-                                  conversions: "Conversões",
-                                  reach: "Alcance",
-                                  alcance: "Alcance",
-                                  frequency: "Frequência",
-                                  roas: "ROAS",
-                                  spend: "Investimento",
-                                  investimento: "Investimento",
-                                  vendas: "Vendas",
-                                  sales: "Vendas",
-                                };
-                                const label = metricLabels[key.toLowerCase()] || key;
-                                const isCurrency = ["cost", "custo", "cpl", "cpc", "spend", "investimento"].includes(key.toLowerCase());
-                                const isPercent = ["ctr"].includes(key.toLowerCase());
-                                let displayValue = String(value);
-                                if (isCurrency && typeof value === "number") {
-                                  displayValue = value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-                                } else if (isPercent && typeof value === "number") {
-                                  displayValue = `${value.toFixed(2)}%`;
-                                } else if (typeof value === "number") {
-                                  displayValue = value.toLocaleString("pt-BR");
-                                }
+                                if (value == null) return null;
+                                const label = allMetricLabels[key.toLowerCase()] || key;
+                                const displayValue = formatMetricValue(key, value);
                                 return (
                                   <div key={key} className="p-2.5 rounded-lg bg-card border text-center">
                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
