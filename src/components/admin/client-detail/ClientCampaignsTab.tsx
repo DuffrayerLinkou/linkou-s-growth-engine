@@ -71,14 +71,12 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
   const openMetrics = (c: Campaign) => {
     setSelectedCampaign(c);
     const m = (c.metrics as Record<string, any>) || {};
-    setMetricsForm({
-      impressoes: m.impressoes?.toString() || "",
-      cliques: m.cliques?.toString() || "",
-      ctr: m.ctr?.toString() || "",
-      leads: m.leads?.toString() || "",
-      custo: m.custo?.toString() || m.cost?.toString() || "",
-      cpl: m.cpl?.toString() || "",
-    });
+    const mForm: Record<string, string> = {};
+    for (const [k, v] of Object.entries(m)) {
+      mForm[k] = v != null ? String(v) : "";
+    }
+    setMetricsForm(mForm);
+    setResultsText(c.results || "");
     setIsMetricsOpen(true);
   };
 
@@ -86,29 +84,22 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
     if (!selectedCampaign) return;
     setIsSubmitting(true);
 
-    const leads = parseFloat(metricsForm.leads) || 0;
-    const custo = parseFloat(metricsForm.custo) || 0;
-    const cliques = parseFloat(metricsForm.cliques) || 0;
-    const impressoes = parseFloat(metricsForm.impressoes) || 0;
-
-    const metricsPayload: Record<string, number | null> = {
-      impressoes: impressoes || null,
-      cliques: cliques || null,
-      ctr: impressoes > 0 ? +((cliques / impressoes) * 100).toFixed(2) : parseFloat(metricsForm.ctr) || null,
-      leads: leads || null,
-      custo: custo || null,
-      cpl: leads > 0 ? +(custo / leads).toFixed(2) : null,
-    };
+    const platform = selectedCampaign.platform || "other";
+    const metricsPayload = computeMetrics(platform, metricsForm);
+    const hasMetrics = Object.values(metricsPayload).some(v => v != null);
 
     const { error } = await supabase
       .from("campaigns")
-      .update({ metrics: metricsPayload as unknown as Json })
+      .update({
+        metrics: (hasMetrics ? metricsPayload : null) as unknown as Json,
+        results: resultsText.trim() || null,
+      })
       .eq("id", selectedCampaign.id);
 
     if (error) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     } else {
-      toast({ title: "Salvo", description: "Métricas da campanha atualizadas." });
+      toast({ title: "Salvo", description: "Métricas e resultados atualizados." });
       setIsMetricsOpen(false);
       fetchCampaigns();
     }
