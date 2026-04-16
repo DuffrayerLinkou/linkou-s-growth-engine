@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
   Users,
   Star,
@@ -18,6 +19,7 @@ import {
   Route,
   ArrowRight,
   FileText,
+  Megaphone,
   CheckSquare,
   Key,
   CheckCircle2,
@@ -94,6 +96,9 @@ import {
   serviceTypes,
   getPhasesByService,
 } from "@/lib/service-phases-config";
+import ClientMetricsTab from "@/components/admin/client-detail/ClientMetricsTab";
+import ClientCampaignsTab from "@/components/admin/client-detail/ClientCampaignsTab";
+import ClientPlanTab from "@/components/admin/client-detail/ClientPlanTab";
 
 interface Client {
   id: string;
@@ -1094,6 +1099,18 @@ export default function ClientDetail() {
               <span className="xs:hidden">Files</span>
               <span className="ml-0.5">({files.length})</span>
             </TabsTrigger>
+            <TabsTrigger value="metrics" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Métricas</span>
+            </TabsTrigger>
+            <TabsTrigger value="campaigns" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Campanhas</span>
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Plano</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -1470,6 +1487,21 @@ export default function ClientDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Metrics Tab */}
+        <TabsContent value="metrics" className="space-y-4">
+          <ClientMetricsTab clientId={id!} />
+        </TabsContent>
+
+        {/* Campaigns Tab */}
+        <TabsContent value="campaigns" className="space-y-4">
+          <ClientCampaignsTab clientId={id!} />
+        </TabsContent>
+
+        {/* Plan Tab */}
+        <TabsContent value="plan" className="space-y-4">
+          <ClientPlanTab clientId={id!} />
         </TabsContent>
       </Tabs>
 
