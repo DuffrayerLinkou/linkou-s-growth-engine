@@ -1,34 +1,46 @@
 
 
-# Correções de Consistência: Admin ↔ Cliente
+# Nova Página Admin "Métricas" no Operacional + Relatório Estruturado no Cliente
 
-## Problemas Encontrados na Revisão
+## Contexto
+Atualmente, métricas de tráfego são gerenciadas apenas dentro do detalhe de cada cliente (`/admin/clientes/:id` aba Métricas). O pedido é ter uma **página dedicada** no menu Operacional para gestão centralizada de métricas de todos os clientes, com visão técnica e controle completo. O relatório estruturado resultante já é exibido no painel do cliente (`/cliente/metricas-trafego`), que possui gráficos, tabela, exportação XLSX e KPIs.
 
-### 1. Formatação de Budget Allocation inconsistente
-- **Admin** (`ClientPlanTab.tsx` linha 155): formata como moeda BRL (`toLocaleString("pt-BR", { style: "currency", currency: "BRL" })`)
-- **Cliente** (`PlanoEstrategico.tsx` linha 246): formata como porcentagem (`${value}%`)
-- **Problema**: Se o admin salvar R$ 5.000, o cliente vai exibir "5000%"
-- **Correção**: Unificar a lógica — detectar se o valor é numérico e usar a mesma formatação inteligente (se < 100 e parece %, mostrar como %; se parecer valor monetário, mostrar como BRL)
+## O que será feito
 
-### 2. Missing DialogDescription (warnings no console)
-- `ClientMetricsTab.tsx` e `ClientCampaignsTab.tsx` não têm `DialogDescription` nos dialogs
-- Causa warnings de acessibilidade no console
-- **Correção**: Adicionar `DialogDescription` nos dois componentes
+### 1. Nova página `/admin/metricas` — Gestão Centralizada de Métricas
+**Novo arquivo**: `src/pages/admin/Metrics.tsx`
 
-### 3. Tudo mais está OK
-- **traffic_metrics**: Admin e cliente usam mesmos campos (`investimento`, `quantidade_leads`, `custo_por_lead`, etc.) com mesmos cálculos automáticos
-- **campaigns.metrics**: Admin salva `impressoes`, `cliques`, `ctr`, `leads`, `custo`, `cpl` — cliente mapeia todos corretamente no `metricLabels`
-- **strategic_plans**: Ambos lêem os mesmos campos (`objectives`, `kpis`, `personas`, `funnel_strategy`, `campaign_types`, `budget_allocation`)
-- **Dashboard KPIs**: Query correta buscando mês atual/anterior de `traffic_metrics` com cálculos de variação
-- **RLS**: Todas as políticas permitem admin (ALL) e cliente (SELECT via `get_user_client_id`)
+- **Seletor de cliente** no topo (dropdown com todos os clientes ativos)
+- **Visão geral**: cards resumo do mês mais recente do cliente selecionado (Investimento, Leads, CPL, Vendas, CPV, ROAS)
+- **Tabela completa**: todos os meses do cliente com todas as colunas técnicas (alcance, impressões, frequência, cliques, CPC, leads, CPL, SQLs, CPSQL, vendas, CPV)
+- **CRUD completo**: criar, editar e excluir registros mensais com cálculos automáticos (CPL, CPV, CPC, CPSQL)
+- **Filtro por ano**: seletor de ano igual ao do cliente
+- **Visão multi-cliente**: tabela resumo mostrando o último mês de cada cliente para comparação rápida (investimento, leads, CPL, vendas)
+- **Exportação**: botão para exportar os dados do cliente selecionado em XLSX
 
-## Arquivos Alterados
+### 2. Adicionar ao menu e rotas
+**Arquivos editados**:
+- `src/layouts/AdminLayout.tsx` — adicionar item "Métricas" com ícone `BarChart3` no grupo Operacional
+- `src/App.tsx` — adicionar rota lazy `/admin/metricas` → `Metrics.tsx`
+
+### 3. Relatório no cliente (já existe)
+A página `/cliente/metricas-trafego` já exibe relatório estruturado com:
+- Cards de KPIs do mês mais recente
+- Gráfico de evolução mensal (LineChart)
+- Tabela completa com todos os dados
+- Exportação XLSX
+- Edição pelo Ponto Focal
+
+Qualquer dado inserido na nova página admin aparece automaticamente no painel do cliente (mesma tabela `traffic_metrics`).
+
+## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/cliente/PlanoEstrategico.tsx` | Corrigir formatação de budget allocation (usar mesma lógica do admin) |
-| `src/components/admin/client-detail/ClientMetricsTab.tsx` | Adicionar `DialogDescription` |
-| `src/components/admin/client-detail/ClientCampaignsTab.tsx` | Adicionar `DialogDescription` |
+| `src/pages/admin/Metrics.tsx` | **Novo** — Página centralizada de métricas por cliente |
+| `src/layouts/AdminLayout.tsx` | Adicionar "Métricas" no grupo Operacional |
+| `src/App.tsx` | Adicionar rota `/admin/metricas` |
 
-Correções pequenas e focadas — sem mudanças de banco nem de lógica.
+## Sem mudanças de banco
+Tabela `traffic_metrics` e RLS já existem e suportam admin com ALL.
 
