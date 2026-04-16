@@ -42,21 +42,15 @@ const statusColors: Record<string, string> = {
   completed: "outline",
 };
 
-const defaultMetricsForm = {
-  impressoes: "",
-  cliques: "",
-  ctr: "",
-  leads: "",
-  custo: "",
-  cpl: "",
-};
+const defaultMetricsForm: Record<string, string> = {};
 
 export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMetricsOpen, setIsMetricsOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  const [metricsForm, setMetricsForm] = useState(defaultMetricsForm);
+  const [metricsForm, setMetricsForm] = useState<Record<string, string>>(defaultMetricsForm);
+  const [resultsText, setResultsText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -64,7 +58,7 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("campaigns")
-      .select("id, name, status, platform, start_date, end_date, budget, metrics")
+      .select("id, name, status, platform, start_date, end_date, budget, metrics, results")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false });
 
