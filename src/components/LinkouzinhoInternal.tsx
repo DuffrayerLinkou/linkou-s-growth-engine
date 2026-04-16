@@ -69,7 +69,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
       const { data } = await supabase
         .from("clients")
         .select("id, name")
-        .eq("status", "active")
+        .eq("status", "ativo")
         .order("name");
       return data || [];
     },
