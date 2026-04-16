@@ -64,6 +64,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -362,7 +363,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
                 </div>
               ))}
 
-              {isLoading && <TypingIndicator />}
+              {isLoading && <TypingIndicator isExecuting={isExecuting} />}
             </div>
           </ScrollArea>
 
