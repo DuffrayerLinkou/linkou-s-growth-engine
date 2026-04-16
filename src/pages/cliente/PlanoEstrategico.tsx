@@ -21,9 +21,15 @@ interface StrategicPlan {
   id: string;
   title: string;
   status: string | null;
-  objectives: { name: string; description?: string }[] | null;
-  kpis: { name: string; target?: string }[] | null;
-  personas: { name: string; description?: string }[] | null;
+  objectives: unknown;
+  kpis: unknown;
+  personas: unknown;
+  funnel_strategy: string | null;
+  campaign_types: string[] | null;
+  timeline_start: string | null;
+  timeline_end: string | null;
+  budget_allocation: unknown;
+}
   funnel_strategy: string | null;
   campaign_types: string[] | null;
   timeline_start: string | null;
