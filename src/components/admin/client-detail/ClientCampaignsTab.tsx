@@ -23,6 +23,7 @@ interface Campaign {
   end_date: string | null;
   budget: number | null;
   metrics: Json | null;
+  results: string | null;
 }
 
 const statusLabels: Record<string, string> = {
