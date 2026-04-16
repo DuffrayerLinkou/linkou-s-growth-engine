@@ -469,14 +469,48 @@ export default function ClienteCampanhas() {
 
                         {campaign.metrics && Object.keys(campaign.metrics).length > 0 && (
                           <div className="p-3 rounded-lg bg-muted/50">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">Métricas</p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {Object.entries(campaign.metrics).map(([key, value]) => (
-                                <div key={key} className="text-sm">
-                                  <span className="text-muted-foreground">{key}:</span>{" "}
-                                  <span className="font-medium">{String(value)}</span>
-                                </div>
-                              ))}
+                            <p className="text-xs font-medium text-muted-foreground mb-3">Métricas de Performance</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                              {Object.entries(campaign.metrics).map(([key, value]) => {
+                                const metricLabels: Record<string, string> = {
+                                  impressions: "Impressões",
+                                  impressoes: "Impressões",
+                                  clicks: "Cliques",
+                                  cliques: "Cliques",
+                                  ctr: "CTR",
+                                  leads: "Leads",
+                                  cost: "Custo",
+                                  custo: "Custo",
+                                  cpl: "CPL",
+                                  cpc: "CPC",
+                                  conversions: "Conversões",
+                                  reach: "Alcance",
+                                  alcance: "Alcance",
+                                  frequency: "Frequência",
+                                  roas: "ROAS",
+                                  spend: "Investimento",
+                                  investimento: "Investimento",
+                                  vendas: "Vendas",
+                                  sales: "Vendas",
+                                };
+                                const label = metricLabels[key.toLowerCase()] || key;
+                                const isCurrency = ["cost", "custo", "cpl", "cpc", "spend", "investimento"].includes(key.toLowerCase());
+                                const isPercent = ["ctr"].includes(key.toLowerCase());
+                                let displayValue = String(value);
+                                if (isCurrency && typeof value === "number") {
+                                  displayValue = value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                                } else if (isPercent && typeof value === "number") {
+                                  displayValue = `${value.toFixed(2)}%`;
+                                } else if (typeof value === "number") {
+                                  displayValue = value.toLocaleString("pt-BR");
+                                }
+                                return (
+                                  <div key={key} className="p-2.5 rounded-lg bg-card border text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                                    <p className="text-sm font-bold">{displayValue}</p>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

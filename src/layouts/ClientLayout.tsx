@@ -39,6 +39,7 @@ const navItems: { href: string; icon: typeof LayoutDashboard; label: string; per
   { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },
   { href: "/cliente/minha-equipe", icon: Users, label: "Minha Equipe", permission: "canManageTeam" },
+  { href: "/cliente/plano-estrategico", icon: Route, label: "Plano Estratégico" },
   { href: "/cliente/minha-conta", icon: User, label: "Minha Conta" },
 ];
 
