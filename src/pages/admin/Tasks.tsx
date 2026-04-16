@@ -461,25 +461,29 @@ export default function AdminTasks() {
                     <SelectValue placeholder="Selecione o responsável" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe Interna</SelectLabel>
-                    {internalAssignees.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.full_name || "Sem nome"}
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe Interna</SelectLabel>
+                      {internalAssignees.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.full_name || "Sem nome"}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                     {formData.executor_type === "client" && formData.client_id && clientUsers.length > 0 && (
                       <>
                         <SelectSeparator />
-                        <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe do Cliente</SelectLabel>
-                        {clientUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            <div className="flex items-center gap-2">
-                              {user.ponto_focal && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
-                              <span>{user.full_name || user.email}</span>
-                              {user.ponto_focal && <span className="text-xs text-muted-foreground">(Ponto Focal)</span>}
-                            </div>
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          <SelectLabel className="text-xs font-semibold text-muted-foreground">Equipe do Cliente</SelectLabel>
+                          {clientUsers.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              <div className="flex items-center gap-2">
+                                {user.ponto_focal && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+                                <span>{user.full_name || user.email}</span>
+                                {user.ponto_focal && <span className="text-xs text-muted-foreground">(Ponto Focal)</span>}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </>
                     )}
                   </SelectContent>

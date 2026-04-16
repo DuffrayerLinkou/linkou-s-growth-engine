@@ -536,18 +536,22 @@ export default function AdminAppointments() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Clientes</SelectLabel>
-            {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
-                {client.name}
-              </SelectItem>
-            ))}
-            <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Leads</SelectLabel>
-            {leads.map((lead) => (
-              <SelectItem key={lead.id} value={`lead:${lead.id}`}>
-                {lead.name}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Clientes</SelectLabel>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel className="text-xs font-semibold text-muted-foreground mt-2">Leads</SelectLabel>
+              {leads.map((lead) => (
+                <SelectItem key={lead.id} value={`lead:${lead.id}`}>
+                  {lead.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>
