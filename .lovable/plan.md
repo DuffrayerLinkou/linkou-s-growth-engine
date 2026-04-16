@@ -1,64 +1,73 @@
 
 
-# Resultados de Campanhas: Gestão Completa no Admin + Relatório no Cliente
+# Linkouzinho Interno: Mesmo personagem, diferentes poderes
 
-## Problema atual
-1. A página `/admin/campanhas` **não tem aba de Resultados/Métricas** — o admin cria a campanha mas não pode preencher resultados ali
-2. As plataformas são limitadas a 4 (Meta, Google, TikTok, LinkedIn) — faltam canais como "Disparo Banco de Dados", "E-mail Marketing", "WhatsApp", "Evento Presencial", "Orgânico"
-3. O campo `metrics` (JSONB) aceita qualquer estrutura, mas o formulário é fixo em 6 campos (impressões, cliques, CTR, leads, custo, CPL) — insuficiente para diferentes tipos de canal
-4. Não existe conceito de "Ações" dentro de uma campanha (sub-ações com métricas individuais)
-5. O cliente vê métricas genéricas sem contexto de relatório profissional
+## Conceito
+O Linkouzinho da landing page será reaproveitado como assistente interno nos painéis Admin e Cliente. Mesma identidade visual (avatar amarelo, nome "Linkouzinho"), mas com **aparência da janela diferenciada** por role e **inteligência contextual** com acesso a dados reais.
 
-## Plano de implementação
+## Diferenças por role
 
-### 1. Expandir plataformas/canais
-**Arquivo**: `src/pages/admin/Campaigns.tsx`
+```text
+                    Landing Page          Cliente              Admin
+─────────────────────────────────────────────────────────────────────
+Inteligência        Comercial (vendas)    Consultor acessível  Analista técnico
+Dados acessados     Nenhum (genérico)     Seus dados apenas    Todos os clientes
+Header da janela    bg-primary (roxo)     bg-primary (roxo)    bg-zinc-900 (escuro)
+Subtítulo           "Agência Linkou"      "Seu Consultor"      "Modo Analista"
+Sugestões rápidas   Sobre serviços        Sobre métricas       Análise e comparação
+Capture Mode        Sim (lead forms)      Não                  Não
+Seletor de cliente  Não                   Não (auto)           Sim (dropdown)
+```
 
-Adicionar novos canais ao `platformLabels` e `platformObjectives`:
-- `email_marketing` → E-mail Marketing (objetivos: Nutrição, Conversão, Retenção)
-- `whatsapp` → WhatsApp (objetivos: Disparo em Massa, Atendimento, Follow-up)
-- `database_blast` → Disparo Banco de Dados (objetivos: Reativação, Prospecção)
-- `organic` → Orgânico / SEO (objetivos: Tráfego, Autoridade)
-- `event` → Evento / Presencial (objetivos: Networking, Geração de Leads)
-- `other` → Outro
+## Implementação
 
-Replicar no `platformLabels` do cliente (`src/pages/cliente/Campanhas.tsx`)
+### 1. Nova Edge Function `assistant-chat`
+**Arquivo**: `supabase/functions/assistant-chat/index.ts`
 
-### 2. Nova aba "Resultados" no formulário de campanha do admin
-**Arquivo**: `src/pages/admin/Campaigns.tsx`
+- Valida JWT via `/auth/v1/user`
+- Recebe `{ messages, client_id, mode: "admin" | "client" }`
+- Com service role, busca dados do `client_id`:
+  - `campaigns` (últimas 10 com métricas e resultados)
+  - `traffic_metrics` (últimos 6 meses)
+  - `strategic_plans` (plano ativo)
+  - `clients` (nome, segmento, fase)
+- Monta **system prompt dinâmico** diferente por mode:
+  - **Client**: tom acessível, foco em explicar resultados e próximos passos
+  - **Admin**: tom técnico/analítico, foco em insights comparativos e recomendações de otimização
+- Stream via Lovable AI Gateway (gemini-3-flash-preview)
 
-Adicionar 5a aba `results` no TabsList do dialog de criação/edição:
-- Campo `results` (textarea) — resumo textual dos resultados
-- Formulário dinâmico de métricas baseado no tipo de canal:
-  - **Ads (Meta/Google/TikTok/LinkedIn)**: impressões, alcance, cliques, CTR, leads, conversões, custo, CPC, CPL, ROAS
-  - **E-mail/Disparo BD**: enviados, entregues, aberturas, taxa_abertura, cliques, taxa_cliques, respostas, conversões
-  - **WhatsApp**: enviados, entregues, lidos, respostas, conversões
-  - **Orgânico/Evento**: alcance, leads, conversões, observações
-- Cálculos automáticos (CTR, CPL, taxa_abertura, taxa_cliques)
-- Salva tudo no campo `metrics` (JSONB) + `results` (text)
+### 2. Componente reutilizável `LinkouzinhoInternal`
+**Arquivo**: `src/components/LinkouzinhoInternal.tsx`
 
-### 3. Melhorar exibição de métricas no painel do cliente
-**Arquivo**: `src/pages/cliente/Campanhas.tsx`
+- Reusa a mesma estrutura visual do `LinkouzinhoWidget` (avatar, SSE streaming, markdown, typing indicator)
+- Props: `mode: "admin" | "client"`
+- **Diferenças visuais**:
+  - Admin: header `bg-zinc-900`, subtítulo "Modo Analista", dropdown de cliente no header
+  - Cliente: header `bg-primary` (roxo), subtítulo "Seu Consultor", `client_id` automático do perfil
+- **Sem capture mode** (sem formulários de lead, sem WhatsApp redirect)
+- Sugestões rápidas contextuais:
+  - Cliente: "Como estão minhas métricas?", "Resumo das campanhas", "Qual o próximo passo?"
+  - Admin: "Análise do último mês", "Comparar CPL dos clientes", "Recomendações de otimização"
+- Histórico em `sessionStorage` (limpa ao fechar sessão, sem localStorage para não conflitar com o bot da landing)
 
-- Expandir o `metricLabels` para incluir as novas chaves (enviados, entregues, aberturas, taxa_abertura, respostas, etc.)
-- Adicionar formatação inteligente: detectar se é percentual, moeda ou número inteiro
-- Exibir `results` (texto) como bloco de "Resumo do Relatório" com destaque visual
-- Organizar métricas em seções lógicas (Alcance, Engajamento, Conversão, Custo)
+### 3. Integração nos Layouts
+- `AdminLayout.tsx`: renderiza `<LinkouzinhoInternal mode="admin" />`
+- `ClientLayout.tsx`: renderiza `<LinkouzinhoInternal mode="client" />`
+- Posição: mesmo canto inferior direito (substitui o Linkouzinho da landing que já não aparece nesses layouts)
 
-### 4. Atualizar ClientCampaignsTab (detalhe do cliente no admin)
-**Arquivo**: `src/components/admin/client-detail/ClientCampaignsTab.tsx`
+### 4. Config TOML
+- Adicionar `[functions.assistant-chat]` em `supabase/config.toml`
 
-- Usar o mesmo formulário dinâmico de métricas por canal (consistente com a aba Resultados)
-- Mostrar campo `results` também
-
-## Sem mudanças de banco
-O campo `metrics` já é JSONB (aceita qualquer estrutura) e `results` já existe como TEXT na tabela `campaigns`. Apenas código frontend.
-
-## Arquivos alterados
+## Arquivos
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/admin/Campaigns.tsx` | Novos canais, nova aba "Resultados" com métricas dinâmicas por tipo de canal |
-| `src/pages/cliente/Campanhas.tsx` | Novos labels, bloco de relatório, métricas organizadas por seção |
-| `src/components/admin/client-detail/ClientCampaignsTab.tsx` | Formulário de métricas dinâmico por canal + campo results |
+| `supabase/functions/assistant-chat/index.ts` | **Novo** — Edge function com JWT + dados + AI streaming |
+| `src/components/LinkouzinhoInternal.tsx` | **Novo** — Widget chat reutilizável admin/cliente |
+| `src/layouts/AdminLayout.tsx` | Adicionar `<LinkouzinhoInternal mode="admin" />` |
+| `src/layouts/ClientLayout.tsx` | Adicionar `<LinkouzinhoInternal mode="client" />` |
+| `supabase/config.toml` | Registrar nova function |
+
+## Sem mudanças de banco
+Todas as tabelas já existem com RLS adequado. A function usa service role para ler dados.
 
