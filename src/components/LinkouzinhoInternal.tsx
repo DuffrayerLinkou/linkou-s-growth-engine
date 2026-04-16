@@ -211,7 +211,9 @@ export function LinkouzinhoInternal({ mode }: Props) {
           { role: "assistant", content: `❌ ${e.message || "Erro ao processar. Tente novamente."}` },
         ]);
       } finally {
+        clearTimeout(execTimer);
         setIsLoading(false);
+        setIsExecuting(false);
       }
     },
     [messages, isLoading, clientId, session, mode]
