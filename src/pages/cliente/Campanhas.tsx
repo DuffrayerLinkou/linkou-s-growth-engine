@@ -82,12 +82,7 @@ const statusConfig: Record<
   paused: { label: "Pausada", color: "bg-yellow-500/20 text-yellow-600 border-yellow-500/30", icon: Pause },
 };
 
-const platformLabels: Record<string, string> = {
-  meta_ads: "Meta Ads",
-  google_ads: "Google Ads",
-  tiktok: "TikTok Ads",
-  linkedin: "LinkedIn Ads",
-};
+import { platformLabels, allMetricLabels, formatMetricValue } from "@/lib/channel-metrics-config";
 
 const placementLabels: Record<string, string> = {
   feed_facebook: "Feed Facebook",
