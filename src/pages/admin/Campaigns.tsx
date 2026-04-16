@@ -111,6 +111,8 @@ interface Campaign {
   end_date: string | null;
   created_at: string;
   approved_by_ponto_focal: boolean;
+  results: string | null;
+  metrics: Record<string, unknown> | null;
   clients?: Client;
   projects?: Project | null;
 }
@@ -154,19 +156,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-blue-500/20 text-blue-600 border-blue-500/30",
 };
 
-const platformLabels: Record<string, string> = {
-  meta_ads: "Meta Ads",
-  google_ads: "Google Ads",
-  tiktok: "TikTok Ads",
-  linkedin: "LinkedIn Ads",
-};
-
-const platformObjectives: Record<string, string[]> = {
-  meta_ads: ["Reconhecimento", "Tráfego", "Engajamento", "Leads", "Vendas", "Promoção de App"],
-  google_ads: ["Search", "Display", "Video (YouTube)", "Shopping", "Performance Max"],
-  tiktok: ["Alcance", "Tráfego", "Visualizações de Vídeo", "Conversões"],
-  linkedin: ["Reconhecimento", "Visitas ao Site", "Engajamento", "Leads", "Conversões"],
-};
+import { platformLabels, platformObjectives, getMetricsForChannel, computeMetrics } from "@/lib/channel-metrics-config";
 
 const platformPlacements: Record<string, { id: string; label: string }[]> = {
   meta_ads: [
