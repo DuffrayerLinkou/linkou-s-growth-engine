@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
   Users,
   Star,
@@ -18,6 +19,7 @@ import {
   Route,
   ArrowRight,
   FileText,
+  Megaphone,
   CheckSquare,
   Key,
   CheckCircle2,
