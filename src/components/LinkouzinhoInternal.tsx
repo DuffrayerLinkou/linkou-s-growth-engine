@@ -119,6 +119,8 @@ export function LinkouzinhoInternal({ mode }: Props) {
       setMessages(newMessages);
       setInput("");
       setIsLoading(true);
+      setIsExecuting(false);
+      const execTimer = setTimeout(() => setIsExecuting(true), 3000);
 
       let assistantContent = "";
 
