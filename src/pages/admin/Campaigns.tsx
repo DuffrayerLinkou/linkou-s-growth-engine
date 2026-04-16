@@ -247,6 +247,9 @@ export default function AdminCampaigns() {
     status: "draft",
   });
 
+  const [resultsText, setResultsText] = useState("");
+  const [metricsForm, setMetricsForm] = useState<Record<string, string>>({});
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -312,6 +315,14 @@ export default function AdminCampaigns() {
         status: campaign.status || "draft",
       });
       setSelectedPlacements((campaign.placements as string[]) || []);
+      setResultsText(campaign.results || "");
+      // Load existing metrics into form
+      const m = campaign.metrics || {};
+      const mForm: Record<string, string> = {};
+      for (const [k, v] of Object.entries(m)) {
+        mForm[k] = v != null ? String(v) : "";
+      }
+      setMetricsForm(mForm);
     } else {
       setSelectedCampaign(null);
       setFormData({
@@ -337,6 +348,8 @@ export default function AdminCampaigns() {
         status: "draft",
       });
       setSelectedPlacements([]);
+      setResultsText("");
+      setMetricsForm({});
     }
     setErrors({});
     setActiveTab("basic");
@@ -361,6 +374,9 @@ export default function AdminCampaigns() {
     setIsSubmitting(true);
 
     try {
+      const metricsPayload = formData.platform ? computeMetrics(formData.platform, metricsForm) : null;
+      const hasMetrics = metricsPayload && Object.values(metricsPayload).some(v => v != null);
+
       const campaignData = {
         client_id: formData.client_id,
         project_id: formData.project_id && formData.project_id !== "none" ? formData.project_id : null,
@@ -383,6 +399,8 @@ export default function AdminCampaigns() {
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
         status: formData.status,
+        results: resultsText.trim() || null,
+        metrics: hasMetrics ? metricsPayload : null,
       };
 
       if (selectedCampaign) {
