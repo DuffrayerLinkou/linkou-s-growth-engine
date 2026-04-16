@@ -1,54 +1,57 @@
 
 
-# Melhorar Acompanhamento de Resultados, Métricas e Plano Estratégico
+# Admin gerencia resultados + Cliente visualiza em tempo real
 
-## Problemas Identificados
+## Situação atual
+- **Cliente** (`/cliente/metricas-trafego`): Já tem tabela completa de métricas com CRUD, cálculos automáticos (CPL, CPV, CPSQL), gráficos e exportação. Porém estava bloqueado por `isManager` (já corrigido).
+- **Admin** (`/admin/clientes/:id`): Tem apenas 3 abas (Jornada, Usuários, Arquivos). Não consegue ver nem preencher métricas, campanhas ou plano estratégico do cliente.
+- **Dados compartilhados**: Ambos lêem/escrevem na mesma tabela `traffic_metrics` (RLS já permite admin e ponto_focal). Qualquer dado preenchido por um lado aparece automaticamente no outro.
 
-1. **Métricas bloqueadas**: A página `MetricasTrafego.tsx` exige `user_type === "manager"` — Ponto Focal e Operadores não conseguem ver nem preencher a tabela
-2. **Campanhas sem KPIs visíveis**: A página de campanhas do cliente não mostra métricas de performance por campanha
-3. **Dashboard do cliente sem resumo de resultados**: Não há cards de KPIs de tráfego (investimento, leads, CPL, vendas) no dashboard
-4. **Plano estratégico invisível para o cliente**: Não há página no painel do cliente para visualizar o plano estratégico criado pelo admin
+## Plano de implementação
 
-## Solução em 4 Partes
+### 1. Nova aba "Métricas" no ClientDetail (admin)
+**Arquivo**: `src/pages/admin/ClientDetail.tsx`
+- Adicionar `TabsTrigger` "Métricas" com ícone `BarChart3`
+- Conteúdo: tabela mensal de `traffic_metrics` filtrada pelo `client_id` do cliente aberto
+- Formulário dialog para criar/editar mês com os campos de entrada: investimento, alcance, impressões, frequência, cliques, leads, SQLs, vendas
+- **Cálculos automáticos** (mesma lógica do cliente): CPL = investimento/leads, CPV = investimento/vendas, CPSQL = investimento/sql, CPC = investimento/cliques
+- Botão de excluir registro mensal
+- Cards resumo do mês mais recente no topo da aba
 
-### 1. Liberar métricas para todos os perfis do cliente
-**Arquivo**: `src/pages/cliente/MetricasTrafego.tsx`
-- Remover o bloqueio `if (!isManager)` (linhas 434-445)
-- Manter `canEdit` apenas para Ponto Focal (`profile?.ponto_focal`) — os demais visualizam sem editar
-- Manager continua podendo ver, Ponto Focal vê e edita, Operador apenas visualiza
+### 2. Nova aba "Campanhas" no ClientDetail (admin)
+**Arquivo**: `src/pages/admin/ClientDetail.tsx`
+- Adicionar `TabsTrigger` "Campanhas" com ícone `Megaphone`
+- Lista de campanhas do cliente com status e datas
+- Dialog para editar o campo `metrics` (jsonb) de cada campanha: impressões, cliques, CTR, leads, custo, CPL
+- Admin preenche; cliente visualiza automaticamente em `/cliente/campanhas`
 
-### 2. Adicionar KPIs de resultados no Dashboard do cliente
-**Arquivo**: `src/pages/cliente/Dashboard.tsx`
-- Adicionar query para buscar métricas do mês atual e anterior de `traffic_metrics`
-- Inserir seção "Resultados do Mês" com 4 cards: Investimento, Leads, CPL Médio, Vendas
-- Mostrar variação percentual vs mês anterior
-- Visível para todos os perfis (dados já protegidos por RLS)
+### 3. Nova aba "Plano" no ClientDetail (admin)
+**Arquivo**: `src/pages/admin/ClientDetail.tsx`
+- Adicionar `TabsTrigger` "Plano" com ícone `FileText`
+- Exibir plano estratégico do cliente (`strategic_plans`) com objetivos, KPIs, personas, estratégia de funil
+- Link direto para a página de Onboarding (`/admin/onboarding`) onde o plano é gerenciado em detalhe
 
-### 3. Mostrar métricas por campanha individual
-**Arquivo**: `src/pages/cliente/Campanhas.tsx`
-- No card expandido de cada campanha, exibir o campo `metrics` (jsonb) como mini-cards de KPIs
-- Campos: impressões, cliques, CTR, leads, custo, CPL (já armazenados no campo `metrics` da tabela `campaigns`)
-- Admin preenche via painel; cliente visualiza
+### 4. Garantir que o cliente vê e edita em tempo real
+- A página `/cliente/metricas-trafego` já permite que o Ponto Focal edite (mesma tabela `traffic_metrics`)
+- A página `/cliente/campanhas` já mostra métricas do campo `metrics` (implementado anteriormente)
+- A página `/cliente/plano-estrategico` já mostra o plano read-only (implementado anteriormente)
+- **Nenhuma mudança necessária** no lado do cliente — os dados são compartilhados via Supabase em tempo real
 
-### 4. Página de Plano Estratégico para o cliente
-**Novos arquivos**:
-- `src/pages/cliente/PlanoEstrategico.tsx` — página read-only exibindo dados de `strategic_plans`
-- Mostra: título, objetivos, KPIs, personas, estratégia de funil, tipos de campanha, timeline, alocação de budget
-- Layout em cards organizados por seção
-
-**Arquivo editado**: `src/App.tsx` — adicionar rota `/cliente/plano-estrategico`
-**Arquivo editado**: `src/layouts/ClientLayout.tsx` — adicionar item no menu lateral
-
-## Arquivos Alterados
+## Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/cliente/MetricasTrafego.tsx` | Remover bloqueio de Manager, manter edição só para Ponto Focal |
-| `src/pages/cliente/Dashboard.tsx` | Adicionar seção de KPIs de resultados do mês |
-| `src/pages/cliente/Campanhas.tsx` | Exibir métricas individuais por campanha |
-| `src/pages/cliente/PlanoEstrategico.tsx` | Nova página read-only do plano estratégico |
-| `src/App.tsx` | Adicionar rota do plano estratégico |
-| `src/layouts/ClientLayout.tsx` | Adicionar link no menu |
+| `src/pages/admin/ClientDetail.tsx` | Adicionar 3 novas abas (Métricas, Campanhas, Plano) com queries, formulários CRUD e cálculos automáticos |
 
-Nenhuma mudança de banco necessária — todas as tabelas e RLS já existem.
+## Sem mudanças de banco
+Todas as tabelas (`traffic_metrics`, `campaigns`, `strategic_plans`) e RLS já existem e permitem acesso para admin.
+
+## Lógica de cálculo automático (replicada do cliente)
+```text
+CPL = investimento / quantidade_leads
+CPV = investimento / quantidade_vendas  
+CPSQL = investimento / quantidade_sql
+CPC = investimento / cliques (se houver)
+```
+O admin preenche os dados brutos e os campos calculados são gerados automaticamente no save.
 
