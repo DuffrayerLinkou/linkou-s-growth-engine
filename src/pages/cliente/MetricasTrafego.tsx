@@ -431,18 +431,7 @@ export default function MetricasTrafego() {
     }
   };
 
-  if (!isManager) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-        <BarChart3 className="h-16 w-16 text-muted-foreground/50" />
-        <h2 className="text-xl font-semibold">Acesso Restrito</h2>
-        <p className="text-muted-foreground max-w-md">
-          As métricas de tráfego pago estão disponíveis apenas para gestores. 
-          Entre em contato com o gestor da sua conta para acessar esses dados.
-        </p>
-      </div>
-    );
-  }
+  // All client profiles can view metrics; only ponto_focal can edit
 
   if (isLoading) {
     return (
