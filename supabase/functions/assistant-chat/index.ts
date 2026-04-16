@@ -185,6 +185,46 @@ async function executeTool(
         }
       }
 
+      case "create_campaign": {
+        // Find latest project for this client
+        const { data: project } = await db
+          .from("projects")
+          .select("id")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!project) {
+          return { success: false, message: "Nenhum projeto encontrado para este cliente. Crie um projeto antes de estruturar campanhas." };
+        }
+
+        const campaignPayload: Record<string, unknown> = {
+          client_id: clientId,
+          project_id: project.id,
+          name: args.name as string,
+          platform: args.platform as string,
+          created_by: userId,
+          status: "draft",
+        };
+
+        const optionalFields = [
+          "objective", "objective_detail", "campaign_type", "strategy",
+          "budget", "daily_budget", "start_date", "end_date",
+          "headline", "ad_copy", "call_to_action", "targeting",
+          "placements", "bidding_strategy", "target_cpa", "target_roas", "description",
+        ];
+        for (const key of optionalFields) {
+          if (args[key] !== undefined && args[key] !== null) {
+            campaignPayload[key] = args[key];
+          }
+        }
+
+        const { error } = await db.from("campaigns").insert(campaignPayload);
+        if (error) throw error;
+        return { success: true, message: `Campanha "${args.name}" (${args.platform}) criada como rascunho com sucesso. Revise na seção Campanhas.` };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -247,10 +287,10 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes] = await Promise.all([
+    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
-        .select("name, platform, status, budget, metrics, results, start_date, end_date")
+        .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(10),
@@ -261,9 +301,15 @@ serve(async (req) => {
         .order("month", { ascending: false })
         .limit(6),
       db.from("strategic_plans")
-        .select("title, status, objectives, kpis, funnel_strategy, campaign_types, timeline_start, timeline_end")
+        .select("title, status, objectives, kpis, funnel_strategy, campaign_types, timeline_start, timeline_end, personas, budget_allocation")
         .eq("client_id", client_id)
         .eq("status", "active")
+        .limit(1)
+        .maybeSingle(),
+      db.from("briefings")
+        .select("nicho, publico_alvo, objetivos, diferenciais, concorrentes, budget_mensal, observacoes")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
     ]);
@@ -272,6 +318,7 @@ serve(async (req) => {
     const campaigns = campaignsRes.data || [];
     const metrics = metricsRes.data || [];
     const plan = plansRes.data;
+    const briefing = briefingsRes.data;
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
