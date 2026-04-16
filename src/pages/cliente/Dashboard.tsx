@@ -14,7 +14,12 @@ import {
   CheckSquare,
   Circle,
   Loader2,
-  Ban
+  Ban,
+  DollarSign,
+  Users as UsersIcon,
+  TrendingUp,
+  TrendingDown,
+  ShoppingCart,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -262,6 +267,40 @@ export default function ClienteDashboard() {
     },
     enabled: !!clientInfo?.id,
   });
+
+  // Query: Métricas de tráfego do mês atual e anterior
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+  const { data: trafficMetrics } = useQuery({
+    queryKey: ["client-traffic-kpis", clientInfo?.id, currentMonth, currentYear],
+    queryFn: async () => {
+      if (!clientInfo?.id) return { current: null, previous: null };
+      const { data: currentData } = await supabase
+        .from("traffic_metrics")
+        .select("investimento, quantidade_leads, custo_por_lead, quantidade_vendas")
+        .eq("client_id", clientInfo.id)
+        .eq("year", currentYear)
+        .eq("month", currentMonth)
+        .maybeSingle();
+      const { data: prevData } = await supabase
+        .from("traffic_metrics")
+        .select("investimento, quantidade_leads, custo_por_lead, quantidade_vendas")
+        .eq("client_id", clientInfo.id)
+        .eq("year", prevYear)
+        .eq("month", prevMonth)
+        .maybeSingle();
+      return { current: currentData, previous: prevData };
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  const getVariation = (current: number | null, previous: number | null) => {
+    if (!current || !previous || previous === 0) return null;
+    return ((current - previous) / previous) * 100;
+  };
 
   // Query: Atividade recente (últimos 5 audit_logs)
   const { data: recentActivity, isLoading: loadingRecentActivity } = useQuery({
