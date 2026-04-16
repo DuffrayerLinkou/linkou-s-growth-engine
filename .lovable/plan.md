@@ -1,71 +1,51 @@
 
 
-# Linkouzinho com Tool Calling: 3 Ações Internas (sem pesquisa externa)
+# Adicionar Tool `create_campaign` ao Linkouzinho
 
-## Escopo
-Adicionar ao Linkouzinho a capacidade de executar 3 ações no banco via function calling do Gemini:
-1. **Agendar reunião** (`create_appointment`) — admin only
-2. **Criar tarefa** (`create_task`) — admin only
-3. **Preencher métricas** (`upsert_traffic_metrics`) — admin only
-
-Sem pesquisa externa. Consulta de dados continua funcionando como hoje (read-only via contexto).
-
-## Arquitetura
-
-```text
-Usuário → "Agende reunião dia 20 às 14h"
-  ↓
-Edge Function → Gemini (stream: false, com tools)
-  ↓
-Gemini retorna tool_call → Edge Function executa INSERT
-  ↓
-Edge Function → Gemini (stream: true, com resultado)
-  ↓
-Stream de confirmação → Frontend
-```
+## Objetivo
+Permitir que o Linkouzinho estruture campanhas profissionais na tabela `campaigns` usando dados contextuais do cliente (briefing, plano estratégico, métricas históricas, segmento).
 
 ## Alterações
 
 ### 1. Edge Function `assistant-chat/index.ts`
 
-- Definir 3 tools no formato OpenAI function calling:
-  - `create_appointment`: params `title`, `date` (ISO), `duration_minutes`, `description`
-  - `create_task`: params `title`, `description`, `priority`, `due_date`, `executor_type`
-  - `upsert_traffic_metrics`: params `month`, `year`, `investimento`, `impressoes`, `cliques`, `quantidade_leads`, `quantidade_vendas`, `custo_por_lead`, `custo_por_venda`
+**Nova tool `create_campaign`** no array `adminTools`:
+- Params: `name`, `platform` (meta_ads, google_ads, tiktok_ads, linkedin_ads, etc.), `objective`, `objective_detail`, `campaign_type`, `strategy`, `budget`, `daily_budget`, `start_date`, `end_date`, `headline`, `ad_copy`, `call_to_action`, `targeting` (JSON), `description`
+- Required: `name`, `platform`
+- O AI deve usar os dados do briefing, plano e métricas para preencher campos como targeting, strategy e objective de forma técnica
 
-- Filtrar tools por mode: client mode recebe `tools: []` (sem ações), admin recebe as 3
+**Novo executor** no `executeTool`:
+- INSERT na tabela `campaigns` com `status: "draft"`, `client_id`, `created_by`
+- Precisa de um `project_id` — buscar o projeto mais recente do cliente ou criar sem project_id se não houver
 
-- Fluxo de execução:
-  1. Primeira chamada ao Gemini com `stream: false` e `tools` + `tool_choice: "auto"`
-  2. Se resposta contém `tool_calls`: executar cada tool (INSERT/UPSERT via service role `db`)
-  3. Montar mensagens com resultado da tool e fazer segunda chamada com `stream: true`
-  4. Se não contém `tool_calls`: fazer chamada normal com `stream: true` (comportamento atual)
+**Enriquecer o contexto** com dados do briefing:
+- Adicionar fetch de `briefings` (nicho, público_alvo, objetivos, diferenciais, concorrentes, budget_mensal) no `Promise.all`
+- Incluir no bloco de contexto do system prompt para que o AI tenha base para criar campanhas inteligentes
 
-- Adicionar instruções no system prompt admin sobre quando usar cada tool
-
-- Executores das tools:
-  - `create_appointment`: `db.from("appointments").insert({ client_id, title, appointment_date, duration_minutes, description, created_by: userId, status: "scheduled" })`
-  - `create_task`: `db.from("tasks").insert({ client_id, title, description, priority, due_date, executor_type, created_by: userId, status: "todo" })`
-  - `upsert_traffic_metrics`: SELECT existente por client_id+month+year → INSERT ou UPDATE
+**Atualizar system prompt admin**:
+- Adicionar instrução sobre `create_campaign`: "Use para estruturar campanhas completas. Baseie-se no briefing, plano estratégico, segmento e métricas do cliente. Defina targeting, estratégia e budget como um gestor de tráfego profissional."
+- Instruir o AI a ser técnico: definir objetivos corretos por plataforma, sugerir placements, definir público-alvo baseado nas personas do plano
 
 ### 2. Frontend `LinkouzinhoInternal.tsx`
 
-Mudanças mínimas:
-- Adicionar sugestões admin: "Agendar reunião", "Criar tarefa", "Preencher métricas" (substituir 1 das atuais)
-- Mostrar ícone de engrenagem (⚙️) no typing indicator quando a resposta demora mais (ação sendo executada) — detectado pelo tempo de resposta (>3s mostra "Executando ação...")
-- Nenhuma mudança no parsing SSE (o streaming continua igual)
+- Adicionar sugestão rápida: "Estruturar campanha" nas `ADMIN_SUGGESTIONS`
 
-### 3. Config `supabase/config.toml`
+## Tabela `campaigns` — campos relevantes já existentes
+A tabela já possui todos os campos necessários: `name`, `platform`, `objective`, `objective_detail`, `campaign_type`, `strategy`, `budget`, `daily_budget`, `start_date`, `end_date`, `headline`, `ad_copy`, `call_to_action`, `targeting` (jsonb), `placements` (jsonb), `creatives` (jsonb), `bidding_strategy`, `target_cpa`, `target_roas`. Nenhuma migração necessária.
 
-Já existe `assistant-chat` registrado — sem mudança necessária.
+## Dados de contexto adicionados ao AI
+| Fonte | Dados para o AI |
+|---|---|
+| `briefings` | nicho, público_alvo, diferenciais, concorrentes, objetivos, budget_mensal |
+| `strategic_plans` | personas, KPIs, tipos de campanha, estratégia de funil |
+| `traffic_metrics` | CPL/CPV históricos, volume de leads/vendas |
+| `campaigns` | campanhas existentes (evitar duplicação) |
+
+Com esses dados, o AI poderá gerar campanhas tecnicamente sólidas como um gestor de marketing.
 
 ## Arquivos alterados
-
 | Arquivo | Mudança |
 |---|---|
-| `supabase/functions/assistant-chat/index.ts` | Tool calling + execução de 3 ações |
-| `src/components/LinkouzinhoInternal.tsx` | Novas sugestões + indicador de ação |
-
-## Sem mudanças de banco
-Tabelas `appointments`, `tasks`, `traffic_metrics` já existem. Service role ignora RLS.
+| `supabase/functions/assistant-chat/index.ts` | Nova tool + fetch briefing + executor + prompt |
+| `src/components/LinkouzinhoInternal.tsx` | Nova sugestão "Estruturar campanha" |
 
