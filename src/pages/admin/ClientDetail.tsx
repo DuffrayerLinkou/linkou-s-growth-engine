@@ -1097,6 +1097,18 @@ export default function ClientDetail() {
               <span className="xs:hidden">Files</span>
               <span className="ml-0.5">({files.length})</span>
             </TabsTrigger>
+            <TabsTrigger value="metrics" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Métricas</span>
+            </TabsTrigger>
+            <TabsTrigger value="campaigns" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Campanhas</span>
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3">
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Plano</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
