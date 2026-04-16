@@ -135,7 +135,7 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
                           <Badge variant={statusColors[c.status || "draft"] as any}>
                             {statusLabels[c.status || "draft"] || c.status}
                           </Badge>
-                          {c.platform && <Badge variant="outline" className="text-xs">{c.platform}</Badge>}
+                          {c.platform && <Badge variant="outline" className="text-xs">{platformLabels[c.platform] || c.platform}</Badge>}
                         </div>
                         <div className="flex gap-3 text-xs text-muted-foreground mt-1">
                           {c.start_date && <span>Início: {format(new Date(c.start_date), "dd/MM/yy")}</span>}
@@ -149,43 +149,25 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
                     </div>
 
                     {hasMetrics && (
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3 pt-3 border-t">
-                        {m.impressoes != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">Impressões</p>
-                            <p className="font-medium text-sm">{Number(m.impressoes).toLocaleString("pt-BR")}</p>
-                          </div>
-                        )}
-                        {m.cliques != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">Cliques</p>
-                            <p className="font-medium text-sm">{Number(m.cliques).toLocaleString("pt-BR")}</p>
-                          </div>
-                        )}
-                        {m.ctr != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">CTR</p>
-                            <p className="font-medium text-sm">{Number(m.ctr).toFixed(2)}%</p>
-                          </div>
-                        )}
-                        {m.leads != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">Leads</p>
-                            <p className="font-medium text-sm">{Number(m.leads).toLocaleString("pt-BR")}</p>
-                          </div>
-                        )}
-                        {m.custo != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">Custo</p>
-                            <p className="font-medium text-sm">{fmt(Number(m.custo))}</p>
-                          </div>
-                        )}
-                        {m.cpl != null && (
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground">CPL</p>
-                            <p className="font-medium text-sm">{fmt(Number(m.cpl))}</p>
-                          </div>
-                        )}
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3 pt-3 border-t">
+                        {Object.entries(m).map(([key, value]) => {
+                          if (value == null) return null;
+                          const label = allMetricLabels[key.toLowerCase()] || key;
+                          const display = formatMetricValue(key, value);
+                          return (
+                            <div key={key} className="text-center">
+                              <p className="text-xs text-muted-foreground">{label}</p>
+                              <p className="font-medium text-sm">{display}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {c.results && (
+                      <div className="mt-2 pt-2 border-t">
+                        <p className="text-xs text-muted-foreground mb-1">Relatório:</p>
+                        <p className="text-sm line-clamp-2">{c.results}</p>
                       </div>
                     )}
                   </div>
@@ -198,41 +180,60 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
 
       {/* Metrics Edit Dialog */}
       <Dialog open={isMetricsOpen} onOpenChange={setIsMetricsOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Métricas: {selectedCampaign?.name}</DialogTitle>
-            <DialogDescription>CTR e CPL são calculados automaticamente.</DialogDescription>
+            <DialogTitle>Resultados: {selectedCampaign?.name}</DialogTitle>
+            <DialogDescription>
+              Canal: {platformLabels[selectedCampaign?.platform || ""] || selectedCampaign?.platform || "N/A"} — campos calculados são automáticos.
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Impressões</Label>
-              <Input type="number" value={metricsForm.impressoes} onChange={(e) => setMetricsForm({ ...metricsForm, impressoes: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Cliques</Label>
-              <Input type="number" value={metricsForm.cliques} onChange={(e) => setMetricsForm({ ...metricsForm, cliques: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Leads</Label>
-              <Input type="number" value={metricsForm.leads} onChange={(e) => setMetricsForm({ ...metricsForm, leads: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Custo Total (R$)</Label>
-              <Input type="number" step="0.01" value={metricsForm.custo} onChange={(e) => setMetricsForm({ ...metricsForm, custo: e.target.value })} />
-            </div>
-          </div>
 
-          {(metricsForm.impressoes || metricsForm.custo) && (
-            <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
-              <p className="font-medium text-sm mb-1">Cálculos automáticos:</p>
-              {metricsForm.impressoes && metricsForm.cliques && +metricsForm.impressoes > 0 && (
-                <p>CTR: {((+metricsForm.cliques / +metricsForm.impressoes) * 100).toFixed(2)}%</p>
-              )}
-              {metricsForm.custo && metricsForm.leads && +metricsForm.leads > 0 && (
-                <p>CPL: {(+metricsForm.custo / +metricsForm.leads).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
-              )}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Resumo dos Resultados</Label>
+              <Textarea
+                value={resultsText}
+                onChange={(e) => setResultsText(e.target.value)}
+                placeholder="Resumo executivo dos resultados para o cliente..."
+                rows={3}
+              />
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-3">
+              {getMetricsForChannel(selectedCampaign?.platform || "other").filter(f => !f.computed).map((field) => (
+                <div key={field.key} className="space-y-1">
+                  <Label className="text-xs">{field.label}</Label>
+                  <Input
+                    type="number"
+                    step={field.type === "currency" ? "0.01" : "1"}
+                    value={metricsForm[field.key] || ""}
+                    onChange={(e) => setMetricsForm({ ...metricsForm, [field.key]: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Auto-calculated preview */}
+            {(() => {
+              const platform = selectedCampaign?.platform || "other";
+              const computed = computeMetrics(platform, metricsForm);
+              const computedFields = getMetricsForChannel(platform).filter(f => f.computed);
+              const hasComputed = computedFields.some(f => computed[f.key] != null);
+              if (!hasComputed) return null;
+              return (
+                <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
+                  <p className="font-medium text-sm mb-1">Cálculos automáticos:</p>
+                  {computedFields.map((f) => {
+                    const val = computed[f.key];
+                    if (val == null) return null;
+                    const display = f.type === "percent" ? `${val}%` : f.type === "currency" ? val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : val.toLocaleString("pt-BR");
+                    return <p key={f.key}>{f.label}: {display}</p>;
+                  })}
+                </div>
+              );
+            })()}
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsMetricsOpen(false)}>Cancelar</Button>
