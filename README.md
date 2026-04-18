@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="src/assets/logo-linkou-horizontal-roxo.png" alt="Linkou Logo" width="280"/>
+  <img src="src/assets/logo-linkou-horizontal-roxo.png" alt="Agência Linkou" width="280"/>
 </p>
 
-<h1 align="center">Linkou</h1>
+<h1 align="center">Agência Linkou — Plataforma de Gestão</h1>
 
 <p align="center">
-  <strong>Plataforma SaaS para Gestão de Agências de Marketing Digital</strong>
+  <strong>Ecossistema completo de consultoria, tráfego pago e vendas digitais</strong><br/>
+  <a href="https://agencialinkou.com.br">agencialinkou.com.br</a>
 </p>
 
 <p align="center">
@@ -14,78 +15,126 @@
   <img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
   <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind"/>
   <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Em%20Produção-success?style=flat-square" alt="Status"/>
-  <img src="https://img.shields.io/badge/License-Proprietary-red?style=flat-square" alt="License"/>
+  <img src="https://img.shields.io/badge/Lovable_AI-Gemini-FFC107?style=for-the-badge&logo=googlegemini&logoColor=black" alt="Lovable AI Gateway"/>
 </p>
 
 ---
 
 ## 📋 Índice
 
-- [Sobre o Projeto](#-sobre-o-projeto)
-- [Funcionalidades](#-funcionalidades)
+- [Visão Geral](#-visão-geral)
+- [Módulos da Plataforma](#-módulos-da-plataforma)
+- [Linkouzinho — Assistente IA](#-linkouzinho--assistente-ia)
 - [Stack Tecnológica](#-stack-tecnológica)
-- [Arquitetura](#-arquitetura)
-- [Modelo de Dados](#-modelo-de-dados)
-- [Instalação Local](#-instalação-local)
-- [Variáveis de Ambiente](#-variáveis-de-ambiente)
-- [Deploy em VPS](#-deploy-em-vps)
-- [Scripts Disponíveis](#-scripts-disponíveis)
-- [Segurança](#-segurança)
-- [Contribuição](#-contribuição)
-- [Licença](#-licença)
-- [Contato](#-contato)
+- [Arquitetura Técnica](#-arquitetura-técnica)
+- [Roles & Permissões](#-roles--permissões)
+- [Desenvolvimento Local](#-desenvolvimento-local)
+- [Integração com GitHub](#-integração-com-github)
+- [Links](#-links)
 
 ---
 
-## 🎯 Sobre o Projeto
+## 🎯 Visão Geral
 
-O **Linkou** é uma plataforma completa para gestão de agências de marketing digital, oferecendo um portal administrativo robusto para a equipe interna e um portal exclusivo para clientes acompanharem seus projetos, campanhas e resultados.
+A **Agência Linkou** é uma agência de **consultoria, tráfego pago e vendas digitais**. Esta plataforma é o ecossistema operacional completo da agência: governança da equipe interna, atendimento aos clientes, CRM de leads, automação de marketing, captação, propostas comerciais e analytics — tudo em um único produto multi-tenant.
 
-### Principais Diferenciais
+### Diferenciais
 
-- 🎨 **Interface Moderna** - Design responsivo com tema claro/escuro
-- 📊 **Dashboards Inteligentes** - KPIs e métricas em tempo real
-- 🔐 **Multi-tenant** - Isolamento completo de dados por cliente
-- 📱 **Mobile-First** - Experiência otimizada para dispositivos móveis
-- ⚡ **Performance** - Lazy loading, cache inteligente e otimizações
+- 🤖 **Linkouzinho** — assistente IA com **7 tool calls** internos para automação operacional e estratégica
+- 🎨 **Identidade visual estrita** — Poppins/Lora/Cascadia, paleta roxa, dark mode por padrão
+- 🔐 **Multi-tenant rigoroso** — equipe interna (`client_id IS NULL`) e clientes com 3 perfis (Manager, Focal Point, Operator)
+- 📱 **PWA com push notifications** — instalável e com alertas mesmo com app fechado
+- 📊 **Tracking server-side** — Meta CAPI e TikTok Events API via Edge Functions
+- ✉️ **E-mails transacionais** — Resend com domínio próprio e templates padronizados
 
 ---
 
-## ✨ Funcionalidades
+## 🧩 Módulos da Plataforma
 
-### Portal do Cliente
+### Marketing & Captação
 
-| Funcionalidade | Descrição |
-|----------------|-----------|
-| 📊 **Dashboard** | Visão geral com KPIs, tarefas pendentes e campanhas ativas |
-| ✅ **Tarefas** | Kanban interativo para acompanhamento e aprovação de entregas |
-| 📢 **Campanhas** | Visualização de campanhas com métricas de performance |
-| 📁 **Arquivos** | Gerenciamento de documentos e materiais do projeto |
-| 📅 **Agendamentos** | Calendário de reuniões e eventos |
-| 🛤️ **Jornada** | Timeline visual do progresso do projeto |
-| 📈 **Métricas de Tráfego** | Dados de Google Analytics e Meta Ads |
-| 📚 **Base de Conhecimento** | Documentação e tutoriais personalizados |
-| 👤 **Minha Conta** | Configurações de perfil e preferências |
+| Módulo | Descrição |
+|---|---|
+| 🌐 **Landing Page Institucional** | Site público em agencialinkou.com.br com hero editorial, marquee infinito, glassmorphism, JSON-LD dinâmico e SEO white-label |
+| 🤖 **Linkouzinho Público** | Bot flutuante (botão amarelo) com SSE streaming que qualifica leads e captura via WhatsApp, agendamento ou e-mail |
+| 📄 **Páginas de Captura** | Geradas por IA via `/c/:slug` em layout minimalista ou VSL (Video Sales Letter 16:9). Redirecionam para `/c/:slug/obrigado` para tracking preciso de pixels |
+| 📨 **Funil de E-mails** | Drip campaigns automatizadas em `/admin/funil-email` com gerador IA, variáveis de personalização, auto-start no Day 0 e auto-stop em conversão |
+| 📊 **Tracking & Pixels** | Meta Pixel + CAPI, TikTok Pixel + Events API, Google Analytics 4, GTM, Google Ads, LinkedIn, Hotjar — todos configuráveis em `/admin/landing` |
 
-### Portal Administrativo
+### CRM & Vendas
 
-| Funcionalidade | Descrição |
-|----------------|-----------|
-| 📊 **Dashboard Gerencial** | Métricas globais, performance da equipe e receita |
-| 👥 **Gestão de Clientes** | Cadastro, configurações e histórico completo |
-| 📋 **Projetos** | Gerenciamento de projetos por cliente |
-| ✅ **Tarefas** | Kanban com atribuição, prazos e prioridades |
-| 🎯 **Leads** | Pipeline de vendas com Kanban |
-| 📢 **Campanhas** | Criação e gestão de campanhas publicitárias |
-| 📅 **Agendamentos** | Gestão de agenda da equipe |
-| 🚀 **Onboarding** | Fluxo de integração de novos clientes |
-| 🌐 **Landing Page** | Configurações de SEO, pixels e UTMs |
-| 📄 **Templates** | Modelos de documentos e contratos |
-| 👤 **Usuários** | Gestão de usuários e permissões |
+| Módulo | Descrição |
+|---|---|
+| 🎯 **CRM de Leads** | Kanban com bulk actions, follow-ups, atividades, integração Meta Lead Ads via webhook (HMAC), conversões offline para CAPI ao mover de status |
+| 📑 **Propostas Comerciais** | Geração automática de propostas em slides 16:9 via IA, editor WYSIWYG e exportação PDF |
+| 💬 **WhatsApp Business** | Integração oficial com Meta Cloud API: chat real-time, conversas inbound/outbound, disparos em massa via Edge Function |
+| 📅 **Agendamentos** | Suporta tanto clientes (`client_id`) quanto leads (`lead_id`), com confirmação automática por e-mail para participantes internos |
+
+### Operação & Entrega
+
+| Módulo | Descrição |
+|---|---|
+| 🚀 **Onboarding** | Fluxo completo: briefing, plano estratégico, contrato, planejamento, calculadoras e pagamentos |
+| 📋 **Projetos & Campanhas** | Gestão técnica de campanhas Meta/Google/TikTok/LinkedIn com targeting, criativos, budget, KPIs e aprovação por ponto focal |
+| ✅ **Tarefas** | Kanban com guias de execução em Markdown (gerados por IA ou templates), anexos de referência e templates por fase de jornada |
+| 📈 **Métricas de Tráfego** | Registro mensal manual com dashboards comparativos CPL/CPV/ROAS por canal |
+| 🛤️ **Jornadas de Serviço** | 6 modelos distintos (Auditoria, Produção, Gestão, Design, Site, Web App) com fases e tarefas filtradas dinamicamente |
+
+### Painel do Cliente
+
+| Página | Descrição |
+|---|---|
+| 📊 **Dashboard** | KPIs, tarefas pendentes, campanhas ativas e estado de onboarding |
+| 🛤️ **Minha Jornada** | Timeline visual da fase atual no modelo de serviço contratado |
+| 📋 **Plano Estratégico** | Visualização do plano com personas, objetivos, KPIs e funil |
+| ✅ **Tarefas** | Kanban com aprovação de entregas, comentários e anexos |
+| 📢 **Campanhas** | Aprovação por ponto focal, métricas e comentários |
+| 📁 **Arquivos** | Documentos do projeto |
+| 📅 **Agendamentos** | Reuniões com a equipe |
+| 📈 **Métricas de Tráfego** | Performance mensal |
+| 📚 **Base de Conhecimento** | Documentação personalizada |
+| 👥 **Minha Equipe** | Manager convida e gerencia membros (escopo restrito ao seu `client_id`) |
+| 👤 **Minha Conta** | Perfil e preferências |
+
+---
+
+## 🤖 Linkouzinho — Assistente IA
+
+O **Linkouzinho** é o assistente IA da plataforma, alimentado por **Gemini via Lovable AI Gateway**, com dois modos operacionais distintos.
+
+### 🌐 Modo Público (Landing Page)
+
+Botão flutuante amarelo na landing que conversa com visitantes via SSE streaming, qualificando leads e capturando-os por **WhatsApp**, **agendamento de reunião** ou **e-mail**. Persistência local em `localStorage` com TTL de 24h.
+
+### 🛠️ Modo Admin (Interno) — 7 Tool Calls
+
+Quando acionado por membros da equipe interna, o Linkouzinho ganha capacidade de **executar ações reais no banco** via function calling do Gemini. O contexto inclui briefings, planos estratégicos, métricas históricas e campanhas existentes do cliente em foco.
+
+| Tool | Ação | Valor IA |
+|---|---|---|
+| `create_appointment` | Agenda reuniões automaticamente em `appointments` | 🟡 Operacional |
+| `create_task` | Cria tarefas com prioridade, prazo e responsável | 🟡 Operacional |
+| `upsert_traffic_metrics` | Preenche métricas mensais (UPSERT por cliente/mês/ano) | 🟡 Operacional |
+| `create_project` | Cria novos projetos com escopo e budget | 🟡 Operacional |
+| `create_briefing` | Estrutura briefing de cliente (nicho, público, objetivos, concorrentes, budget) | 🟢 Médio |
+| `create_campaign` | Estrutura campanhas técnicas com targeting, copy, headline, CTA, budget e bidding strategy baseados em briefing + plano + métricas | 🔥 Alto |
+| `create_strategic_plan` | Gera planos completos com **personas detalhadas**, **KPIs SMART**, **estratégia de funil** (topo/meio/fundo), **alocação de budget por canal** e tipos de campanha recomendados | 🔥 Alto |
+
+### 🎓 Análise Estratégica (sem tool call)
+
+Além das ferramentas, o system prompt orienta o Linkouzinho a atuar como **gestor de tráfego sênior**, capaz de:
+
+- Comparar CPL / CPV / ROAS entre meses e calcular variação percentual
+- Identificar gargalos no funil (impressões → cliques → leads → vendas)
+- Projetar cenários e sugerir otimizações concretas
+- Recomendar realocação de budget entre canais com base em performance histórica
+
+### 🛡️ Governança & Custos
+
+- AI sempre **opt-in / intent-based** para controlar custos no Lovable AI Gateway
+- Validação JWT direta via Supabase Auth API (`/auth/v1/user`) em todas as Edge Functions
+- Service role usado apenas no servidor; jamais exposto ao cliente
+- Identidade do remetente IA preservada (Linkou) — sem revelar provedor
 
 ---
 
@@ -93,628 +142,167 @@ O **Linkou** é uma plataforma completa para gestão de agências de marketing d
 
 ### Frontend
 
-| Tecnologia | Versão | Descrição |
-|------------|--------|-----------|
-| [React](https://react.dev) | 18.3 | Biblioteca para construção de interfaces |
-| [TypeScript](https://www.typescriptlang.org) | 5.6 | Superset tipado do JavaScript |
-| [Vite](https://vitejs.dev) | 5.4 | Build tool e dev server ultrarrápido |
-| [Tailwind CSS](https://tailwindcss.com) | 3.4 | Framework CSS utility-first |
-| [shadcn/ui](https://ui.shadcn.com) | - | Componentes acessíveis e customizáveis |
-| [Framer Motion](https://www.framer.com/motion) | 12.x | Animações fluidas e performáticas |
-| [TanStack Query](https://tanstack.com/query) | 5.x | Gerenciamento de estado servidor |
-| [React Router](https://reactrouter.com) | 6.30 | Roteamento declarativo |
-| [React Hook Form](https://react-hook-form.com) | 7.x | Formulários performáticos |
-| [Zod](https://zod.dev) | 3.x | Validação de schemas |
-| [Recharts](https://recharts.org) | 2.x | Gráficos e visualizações |
+| Tech | Versão | Uso |
+|---|---|---|
+| React | 18.3 | Framework UI |
+| TypeScript | 5.6 | Tipagem estática |
+| Vite | 5.4 | Build tool |
+| Tailwind CSS | 3.4 | Design system com tokens semânticos HSL |
+| shadcn/ui | — | Componentes acessíveis |
+| Framer Motion | 12.x | Animações |
+| TanStack Query | 5.x | Data fetching |
+| React Router | 6.30 | Roteamento SPA |
+| React Hook Form + Zod | 7.x / 3.x | Formulários e validação |
+| Recharts | 2.x | Gráficos |
 
 ### Backend (Supabase)
 
-| Serviço | Descrição |
-|---------|-----------|
-| **PostgreSQL** | Banco de dados relacional |
-| **Row Level Security** | Políticas de segurança por linha |
-| **Supabase Auth** | Autenticação e autorização |
-| **Supabase Storage** | Armazenamento de arquivos |
-| **Edge Functions** | Funções serverless (Deno) |
-| **Realtime** | Atualizações em tempo real |
+| Serviço | Uso |
+|---|---|
+| **PostgreSQL** | Banco relacional com RLS estrito |
+| **Supabase Auth** | JWT + refresh, sessões persistentes |
+| **Storage** | Avatares, anexos, arquivos do cliente |
+| **Edge Functions (Deno)** | Lógica server-side + integrações externas |
+| **Realtime** | Atualizações ao vivo (WhatsApp, notificações) |
 
-### Ferramentas de Desenvolvimento
+### IA & Integrações
 
-| Ferramenta | Descrição |
-|------------|-----------|
-| ESLint | Linting e padronização de código |
-| PostCSS | Processamento de CSS |
-| Autoprefixer | Prefixos CSS automáticos |
-
----
-
-## 🏗️ Arquitetura
-
-```
-linkou/
-├── public/
-│   ├── favicon.png
-│   ├── robots.txt
-│   └── videos/              # Vídeos da landing page
-│
-├── src/
-│   ├── assets/              # Logos e imagens estáticas
-│   │
-│   ├── components/
-│   │   ├── admin/           # Componentes exclusivos do admin
-│   │   │   ├── landing/     # Configurações da landing page
-│   │   │   └── onboarding/  # Fluxo de onboarding
-│   │   ├── auth/            # AuthForm, ProtectedRoute
-│   │   ├── cliente/         # Componentes do portal cliente
-│   │   ├── dashboard/       # Cards e seções de dashboard
-│   │   ├── journey/         # Timeline e stepper da jornada
-│   │   ├── landing/         # Seções da landing page pública
-│   │   ├── shared/          # Componentes compartilhados
-│   │   └── ui/              # Componentes shadcn/ui (50+)
-│   │
-│   ├── hooks/
-│   │   ├── useAuth.tsx      # Autenticação e roles
-│   │   ├── useTheme.tsx     # Tema claro/escuro
-│   │   └── use-mobile.tsx   # Detecção de dispositivo
-│   │
-│   ├── integrations/
-│   │   └── supabase/
-│   │       ├── client.ts    # Cliente Supabase configurado
-│   │       └── types.ts     # Tipos gerados do banco
-│   │
-│   ├── layouts/
-│   │   ├── AdminLayout.tsx  # Layout do portal admin
-│   │   └── ClientLayout.tsx # Layout do portal cliente
-│   │
-│   ├── lib/
-│   │   ├── segments-config.ts
-│   │   ├── status-config.ts
-│   │   ├── task-config.ts
-│   │   └── utils.ts         # Utilitários (cn, formatters)
-│   │
-│   ├── pages/
-│   │   ├── admin/           # 12 páginas administrativas
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── Clients.tsx
-│   │   │   ├── ClientDetail.tsx
-│   │   │   ├── Projects.tsx
-│   │   │   ├── Tasks.tsx
-│   │   │   ├── Leads.tsx
-│   │   │   ├── Campaigns.tsx
-│   │   │   ├── Appointments.tsx
-│   │   │   ├── Onboarding.tsx
-│   │   │   ├── LandingPage.tsx
-│   │   │   ├── Templates.tsx
-│   │   │   └── Users.tsx
-│   │   │
-│   │   └── cliente/         # 9 páginas do cliente
-│   │       ├── Dashboard.tsx
-│   │       ├── Tarefas.tsx
-│   │       ├── Campanhas.tsx
-│   │       ├── Arquivos.tsx
-│   │       ├── Agendamentos.tsx
-│   │       ├── MinhaJornada.tsx
-│   │       ├── MetricasTrafego.tsx
-│   │       ├── BaseConhecimento.tsx
-│   │       └── MinhaConta.tsx
-│   │
-│   ├── App.tsx              # Configuração de rotas
-│   ├── main.tsx             # Entry point
-│   └── index.css            # Estilos globais e tokens
-│
-├── supabase/
-│   ├── functions/           # Edge Functions
-│   │   ├── check-task-deadlines/
-│   │   └── manage-users/
-│   ├── migrations/          # 30+ migrações SQL
-│   └── config.toml          # Configuração do Supabase
-│
-├── .env                     # Variáveis de ambiente (não commitado)
-├── .env.example             # Exemplo de variáveis
-├── tailwind.config.ts       # Configuração do Tailwind
-├── vite.config.ts           # Configuração do Vite
-└── package.json             # Dependências e scripts
-```
+| Serviço | Uso |
+|---|---|
+| **Lovable AI Gateway (Gemini)** | Toda a IA: bot, geração de e-mails, propostas, guias de tarefas, planos, campanhas |
+| **Resend** | E-mails transacionais via `contato@agencialinkou.com.br` |
+| **Meta Cloud API** | WhatsApp Business |
+| **Meta Graph API** | Lead Ads (Instant Forms) via webhook HMAC |
+| **Meta CAPI** | Tracking server-side de conversões |
+| **TikTok Events API** | Tracking server-side de conversões |
+| **Web Push (VAPID)** | Notificações PWA |
 
 ---
 
-## 📊 Modelo de Dados
+## 🏗️ Arquitetura Técnica
 
-```mermaid
-erDiagram
-    clients ||--o{ projects : has
-    clients ||--o{ profiles : has
-    clients ||--o{ campaigns : has
-    clients ||--o{ files : has
-    clients ||--o{ leads : has
-    
-    projects ||--o{ tasks : contains
-    tasks ||--o{ task_comments : has
-    tasks ||--o{ task_files : has
-    
-    profiles ||--o{ user_roles : has
-    profiles ||--o{ notifications : receives
-    
-    campaigns ||--o{ campaign_comments : has
-    
-    clients {
-        uuid id PK
-        string name
-        string segment
-        string phase
-        date contract_start
-        jsonb settings
-    }
-    
-    profiles {
-        uuid id PK
-        uuid client_id FK
-        string email
-        string full_name
-        boolean ponto_focal
-        string user_type
-    }
-    
-    user_roles {
-        uuid id PK
-        uuid user_id FK
-        enum role
-    }
-    
-    projects {
-        uuid id PK
-        uuid client_id FK
-        string name
-        string status
-        date start_date
-        date end_date
-    }
-    
-    tasks {
-        uuid id PK
-        uuid project_id FK
-        string title
-        string status
-        string priority
-        date due_date
-        boolean visible_to_client
-    }
-    
-    campaigns {
-        uuid id PK
-        uuid client_id FK
-        string name
-        string status
-        string platform
-        decimal budget
-    }
-    
-    leads {
-        uuid id PK
-        uuid client_id FK
-        string name
-        string email
-        string status
-        string source
-    }
-```
+### Edge Functions Principais
 
-### Principais Entidades
+| Função | Responsabilidade |
+|---|---|
+| `assistant-chat` | Linkouzinho admin com **7 tool calls** + contexto rico |
+| `linkouzinho-chat` | Bot público da landing com SSE streaming |
+| `manage-users` | Criação/atualização de usuários via Admin API (com fallback de reassign) |
+| `notify-email` | Despachante central de e-mails mapeando eventos → templates |
+| `send-email` | Envio direto via Resend |
+| `send-push` | Web Push VAPID |
+| `meta-capi-event` | Tracking server-side Meta |
+| `tiktok-capi-event` | Tracking server-side TikTok |
+| `meta-lead-webhook` | Recebe Lead Ads do Meta com verificação HMAC |
+| `whatsapp-api` | Envio e webhook de mensagens WhatsApp |
+| `process-lead-funnels` | Cron de drip campaigns |
+| `check-task-deadlines` | Cron de alertas de prazos e reuniões |
+| `generate-capture-page` | IA para páginas de captura |
+| `generate-funnel-steps` | IA para sequências de e-mail |
+| `generate-proposal` | IA para propostas comerciais |
+| `generate-task-guide` | IA para guias de execução em Markdown |
 
-| Tabela | Descrição |
-|--------|-----------|
-| `clients` | Empresas/clientes da agência |
-| `profiles` | Usuários do sistema (extensão de auth.users) |
-| `user_roles` | Papéis dos usuários (admin, account_manager, client) |
-| `projects` | Projetos por cliente |
-| `tasks` | Tarefas com status, prioridade e prazos |
-| `campaigns` | Campanhas publicitárias |
-| `leads` | Pipeline de vendas |
-| `files` | Arquivos e documentos |
-| `notifications` | Sistema de notificações |
-| `appointments` | Agendamentos e reuniões |
-| `traffic_metrics` | Métricas de tráfego mensais |
-| `audit_logs` | Log de auditoria de ações |
+### Padrões de Segurança
+
+- **RLS estrito** em todas as tabelas; tabelas sensíveis acessadas via RPCs `SECURITY DEFINER`
+- **Roles em tabela separada** (`user_roles` + `client_users`) — nunca no `profiles`
+- **Service role** usado exclusivamente em Edge Functions
+- **JWT validado** via `/auth/v1/user` em todas as functions autenticadas
+- **HMAC** verificado em webhooks externos (Meta)
+- **Hashing SHA-256** de PII (e-mail, telefone) antes de envio para CAPIs
+
+### Identidade & UX
+
+- **Tema escuro** por padrão (fallback no `useTheme.tsx`)
+- **Modo claro** com fundo branco puro e hierarquia em cinza/roxo
+- **Tokens HSL semânticos** em `index.css` e `tailwind.config.ts` — nunca cores hardcoded
+- **PWA** completa: manifest, service worker network-first, splash screen, install prompt
+- **SEO dinâmico**: JSON-LD, Open Graph, sitemap, robots.txt, white-label rigoroso
 
 ---
 
-## 🚀 Instalação Local
+## 🔐 Roles & Permissões
+
+### Equipe Interna
+
+Identificada por `profiles.client_id IS NULL`. Acesso total ao painel `/admin/*`.
+
+### Clientes (perfis dentro de `client_users.role`)
+
+| Role | Permissões |
+|---|---|
+| **Manager** | Acesso financeiro, métricas, gestão da própria equipe (convites via `manage-users` escopados ao `client_id`) |
+| **Focal Point** | Aprovação de campanhas e entregas (`approved_by_ponto_focal`) |
+| **Operator** | Acesso operacional ao painel cliente |
+
+---
+
+## 💻 Desenvolvimento Local
 
 ### Pré-requisitos
 
-- **Node.js** 18.x ou superior (recomendado: 20.x)
-- **npm** 9.x ou **bun** 1.x
-- Conta no [Supabase](https://supabase.com)
+- Node.js 20.x
+- npm 10.x ou bun 1.x
 
-### Passo a Passo
+### Setup
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/linkou.git
-cd linkou
+# Clonar
+git clone https://github.com/<seu-usuario>/<seu-repo>.git
+cd <seu-repo>
 
-# 2. Instale as dependências
+# Instalar
 npm install
-# ou com bun (mais rápido)
-bun install
 
-# 3. Configure as variáveis de ambiente
+# Variáveis de ambiente
 cp .env.example .env
+# Edite .env com VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_PROJECT_ID
 
-# 4. Edite o arquivo .env com suas credenciais
-nano .env
-
-# 5. Inicie o servidor de desenvolvimento
+# Rodar
 npm run dev
-# ou
-bun dev
 ```
 
-O aplicativo estará disponível em `http://localhost:8080`
+App disponível em `http://localhost:8080`.
+
+### Scripts
+
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Build de produção |
+| `npm run preview` | Preview do build |
+| `npm run lint` | ESLint |
 
 ---
 
-## 🔐 Variáveis de Ambiente
+## 🔄 Integração com GitHub
 
-| Variável | Descrição | Obrigatória |
-|----------|-----------|:-----------:|
-| `VITE_SUPABASE_URL` | URL do projeto Supabase | ✅ |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave anônima (anon key) do Supabase | ✅ |
-| `VITE_SUPABASE_PROJECT_ID` | ID do projeto Supabase | ✅ |
+A plataforma usa o **sync bidirecional do Lovable com GitHub**:
 
-### Obtendo as Credenciais
+1. Em **Connectors → GitHub → Connect project** dentro do editor Lovable
+2. Autorize o app GitHub do Lovable
+3. Mudanças no Lovable → push automático no GitHub
+4. Push no GitHub → sync automático no Lovable
 
-1. Acesse o [Dashboard do Supabase](https://supabase.com/dashboard)
-2. Selecione seu projeto
-3. Vá em **Settings > API**
-4. Copie a **URL** e a **anon public key**
+Edge Functions, migrações Supabase (`supabase/migrations/`) e código do app ficam todos versionados no mesmo repositório.
 
 ---
 
-## 🖥️ Deploy em VPS
-
-Este guia cobre o deploy em um servidor VPS com Ubuntu 22.04+.
-
-### 1. Preparação do Servidor
-
-```bash
-# Atualizar sistema
-sudo apt update && sudo apt upgrade -y
-
-# Instalar dependências essenciais
-sudo apt install -y curl git build-essential
-
-# Instalar Node.js 20.x (LTS)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Verificar instalação
-node --version  # v20.x.x
-npm --version   # 10.x.x
-
-# Instalar PM2 (gerenciador de processos)
-sudo npm install -g pm2
-
-# Instalar Nginx
-sudo apt install -y nginx
-
-# Instalar Certbot (SSL)
-sudo apt install -y certbot python3-certbot-nginx
-```
-
-### 2. Configurar Firewall
-
-```bash
-# Habilitar UFW
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
-```
-
-### 3. Clonar e Buildar o Projeto
-
-```bash
-# Criar diretório da aplicação
-sudo mkdir -p /var/www/linkou
-sudo chown $USER:$USER /var/www/linkou
-
-# Clonar repositório
-cd /var/www/linkou
-git clone https://github.com/seu-usuario/linkou.git .
-
-# Instalar dependências
-npm install
-
-# Criar arquivo .env
-cp .env.example .env
-nano .env  # Adicione suas credenciais
-
-# Build de produção
-npm run build
-```
-
-### 4. Configurar Nginx
-
-```bash
-# Criar configuração do site
-sudo nano /etc/nginx/sites-available/linkou
-```
-
-Cole o seguinte conteúdo:
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name seu-dominio.com.br www.seu-dominio.com.br;
-
-    root /var/www/linkou/dist;
-    index index.html;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json;
-    gzip_disable "MSIE [1-6]\.";
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-
-    # SPA routing - todas as rotas para index.html
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Cache de assets estáticos
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    # Cache de vídeos
-    location ~* \.(mp4|webm|ogg)$ {
-        expires 1M;
-        add_header Cache-Control "public";
-    }
-
-    # Negar acesso a arquivos ocultos
-    location ~ /\. {
-        deny all;
-    }
-}
-```
-
-```bash
-# Habilitar site
-sudo ln -s /etc/nginx/sites-available/linkou /etc/nginx/sites-enabled/
-
-# Remover configuração padrão
-sudo rm /etc/nginx/sites-enabled/default
-
-# Testar configuração
-sudo nginx -t
-
-# Recarregar Nginx
-sudo systemctl reload nginx
-```
-
-### 5. Configurar SSL com Let's Encrypt
-
-```bash
-# Obter certificado SSL
-sudo certbot --nginx -d seu-dominio.com.br -d www.seu-dominio.com.br
-
-# Testar renovação automática
-sudo certbot renew --dry-run
-```
-
-### 6. Script de Deploy Automatizado
-
-Crie o arquivo `/var/www/linkou/deploy.sh`:
-
-```bash
-#!/bin/bash
-
-set -e
-
-echo "🚀 Iniciando deploy..."
-
-cd /var/www/linkou
-
-echo "📥 Atualizando código..."
-git fetch origin main
-git reset --hard origin/main
-
-echo "📦 Instalando dependências..."
-npm ci --production=false
-
-echo "🏗️ Buildando aplicação..."
-npm run build
-
-echo "🔄 Reiniciando Nginx..."
-sudo systemctl reload nginx
-
-echo "✅ Deploy concluído com sucesso!"
-```
-
-```bash
-# Dar permissão de execução
-chmod +x /var/www/linkou/deploy.sh
-```
-
-### 7. GitHub Actions (CI/CD)
-
-Crie o arquivo `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to VPS
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd /var/www/linkou
-            ./deploy.sh
-```
-
-Configure os secrets no GitHub:
-- `VPS_HOST`: IP ou domínio do servidor
-- `VPS_USER`: Usuário SSH
-- `VPS_SSH_KEY`: Chave privada SSH
-
-### 8. Configuração do Supabase em Produção
-
-#### 8.1 Executar Migrações
-
-```bash
-# Instalar Supabase CLI
-npm install -g supabase
-
-# Login no Supabase
-supabase login
-
-# Linkar projeto
-supabase link --project-ref SEU_PROJECT_REF
-
-# Executar migrações
-supabase db push
-```
-
-#### 8.2 Deploy das Edge Functions
-
-```bash
-# Deploy de todas as funções
-supabase functions deploy
-
-# Ou deploy individual
-supabase functions deploy manage-users
-supabase functions deploy check-task-deadlines
-```
-
-#### 8.3 Configurar Secrets das Edge Functions
-
-No [Dashboard do Supabase](https://supabase.com/dashboard) > **Settings > Edge Functions**:
-
-| Secret | Descrição |
-|--------|-----------|
-| `CRON_SECRET_TOKEN` | Token para autenticação do cron job |
-
-#### 8.4 Configurar Cron Job
-
-Para o check-task-deadlines, configure um cron externo (ex: [cron-job.org](https://cron-job.org)) para chamar:
-
-```
-POST https://SEU_PROJECT_REF.supabase.co/functions/v1/check-task-deadlines
-Headers: Authorization: Bearer SEU_CRON_SECRET_TOKEN
-```
-
-Frequência recomendada: A cada hora ou diariamente às 8h.
-
----
-
-## 📜 Scripts Disponíveis
-
-| Script | Comando | Descrição |
-|--------|---------|-----------|
-| **dev** | `npm run dev` | Inicia servidor de desenvolvimento na porta 8080 |
-| **build** | `npm run build` | Gera build otimizado para produção |
-| **preview** | `npm run preview` | Preview local do build de produção |
-| **lint** | `npm run lint` | Executa ESLint para verificação de código |
-
----
-
-## 🔒 Segurança
-
-### Autenticação
-
-- **Supabase Auth** com suporte a email/senha
-- Sessões JWT com refresh automático
-- Proteção de rotas no frontend
-
-### Autorização (RBAC)
-
-| Role | Permissões |
-|------|------------|
-| `admin` | Acesso total ao sistema |
-| `account_manager` | Gerenciamento de clientes atribuídos |
-| `client` | Acesso apenas ao próprio portal |
-
-### Row Level Security (RLS)
-
-Todas as tabelas possuem políticas RLS que garantem:
-- Clientes só acessam seus próprios dados
-- Admins têm acesso global
-- Account Managers acessam clientes atribuídos
-
-### Boas Práticas Implementadas
-
-- ✅ Validação de inputs com Zod
-- ✅ Sanitização de dados no banco
-- ✅ HTTPS obrigatório em produção
-- ✅ Headers de segurança no Nginx
-- ✅ Tokens JWT com expiração
-- ✅ Logs de auditoria para ações sensíveis
-
----
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
-
-### Convenção de Commits
-
-Utilizamos [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` Nova funcionalidade
-- `fix:` Correção de bug
-- `docs:` Documentação
-- `style:` Formatação
-- `refactor:` Refatoração
-- `test:` Testes
-- `chore:` Manutenção
+## 🔗 Links
+
+- 🌐 **Site oficial**: [agencialinkou.com.br](https://agencialinkou.com.br)
+- 📘 **Docs Lovable**: [docs.lovable.dev](https://docs.lovable.dev)
+- 🤖 **Lovable AI**: [docs.lovable.dev/features/ai](https://docs.lovable.dev/features/ai)
+- 🗄️ **Supabase**: [supabase.com](https://supabase.com)
 
 ---
 
 ## 📄 Licença
 
-Este projeto é proprietário e confidencial. Todos os direitos reservados.
-
-Uso não autorizado, cópia, modificação ou distribuição deste software é estritamente proibido.
-
----
-
-## 📞 Contato
-
-**Linkou - Agência de Marketing Digital**
-
-- 🌐 Website: [seu-dominio.com.br](https://seu-dominio.com.br)
-- 📧 Email: contato@seu-dominio.com.br
-- 📱 WhatsApp: (XX) XXXXX-XXXX
+Software proprietário da **Agência Linkou**. Todos os direitos reservados. Uso, cópia, modificação ou distribuição não autorizados são estritamente proibidos.
 
 ---
 
 <p align="center">
-  Desenvolvido com 💜 pela equipe Linkou
+  Construído com 💜 pela equipe Linkou
 </p>
