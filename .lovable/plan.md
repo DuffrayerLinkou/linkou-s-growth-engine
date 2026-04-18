@@ -1,75 +1,32 @@
 
 
-## Atualizar README.md com Documentação Completa da Plataforma
+## Atualizar System Prompt do Linkouzinho (Modo Admin) — Persona Estratégica
 
 ### Objetivo
-Atualizar o `README.md` do projeto (que sincroniza automaticamente com o GitHub) para refletir todas as funcionalidades atuais da plataforma Linkou, incluindo as recém-adicionadas capacidades de tool calling do Linkouzinho.
+Substituir o system prompt atual do modo admin no `assistant-chat/index.ts` pela nova persona "gestor estratégico operacional" fornecida pelo usuário, mantendo intactas todas as 7 tools (`create_appointment`, `create_task`, `upsert_traffic_metrics`, `create_campaign`, `create_project`, `create_strategic_plan`, `create_briefing`) e o contexto enriquecido (briefings, planos, métricas, campanhas).
 
-### Estrutura proposta do novo README
+### O que muda
+- **Novo prompt admin**: persona "Linkouzinho — gestor estratégico", regras (resultado > resposta), comportamento (DIAGNÓSTICO → AÇÃO → IMPACTO), formato de resposta padrão em 5 blocos.
+- **Integração com tools**: adicionar instrução curta de que ao identificar uma ação acionável (criar campanha, plano, tarefa, etc.), deve **executar via tool call** seguindo a estrutura DIAGNÓSTICO → AÇÃO → IMPACTO antes ou junto da execução.
+- **Mantém**: bloco de contexto dinâmico (cliente, briefing, plano, métricas, campanhas), regras anti-invenção de dados, modo cliente intacto.
 
-1. **Header & Identidade**
-   - Nome: Agência Linkou — Plataforma de Gestão
-   - Domínio: agencialinkou.com.br
-   - Stack: React 18, Vite, TypeScript, Tailwind, Supabase, Lovable AI Gateway (Gemini)
+### Formato de resposta forçado (admin)
+```
+1. DIAGNÓSTICO
+2. PROBLEMA PRINCIPAL
+3. AÇÃO RECOMENDADA
+4. IMPACTO ESPERADO
+5. PRÓXIMO PASSO (apenas 1)
+```
 
-2. **Visão Geral**
-   - Plataforma completa de gestão para agência de consultoria, tráfego e vendas
-   - Multi-tenant: equipe interna + clientes (Manager, Focal Point, Operator)
-
-3. **Módulos Principais**
-   - **Landing Page** institucional com Linkouzinho (bot público)
-   - **CRM de Leads** — kanban, bulk actions, conversões CAPI offline, funil de e-mails
-   - **Páginas de Captura** geradas por IA (minimalista ou VSL)
-   - **Propostas Comerciais** automatizadas em slides 16:9 com export PDF
-   - **WhatsApp** — Cloud API Meta com chat real-time e disparos em massa
-   - **Funil de E-mails** — drip campaigns com gerador IA
-   - **Onboarding de Clientes** — briefing, plano estratégico, contrato, planejamento
-   - **Projetos & Campanhas** — gestão técnica de tráfego (Meta/Google/TikTok/LinkedIn)
-   - **Métricas de Tráfego** — registro mensal e dashboards
-   - **Tarefas** — kanban com guias de execução em Markdown gerados por IA
-   - **Agendamentos** — clientes e leads, com confirmação por e-mail
-   - **Painel do Cliente** — dashboard, jornada, plano, métricas, equipe, tarefas
-
-4. **Linkouzinho — Assistente IA** (seção destacada com novidades)
-   - **Modo público** (landing): qualificação de leads, captura via WhatsApp/reunião/e-mail
-   - **Modo admin** (interno) com **7 tool calls** ativos:
-     | Tool | Ação |
-     |---|---|
-     | `create_appointment` | Agenda reuniões automaticamente |
-     | `create_task` | Cria tarefas com prioridade e prazo |
-     | `upsert_traffic_metrics` | Preenche métricas mensais (UPSERT por cliente/mês/ano) |
-     | `create_campaign` | Estrutura campanhas técnicas (targeting, copy, budget) |
-     | `create_project` | Cria projetos novos |
-     | `create_strategic_plan` | Gera planos com personas, KPIs SMART, funil, alocação |
-     | `create_briefing` | Estrutura briefings de cliente |
-   - Contexto rico: briefings, planos, métricas históricas, campanhas existentes
-   - Análise estratégica: comparações CPL/CPV, gargalos de funil, projeções
-
-5. **Arquitetura Técnica**
-   - Edge Functions Supabase (lista das principais)
-   - RLS estrito + service role apenas em edge functions
-   - Resend para e-mails transacionais (contato@agencialinkou.com.br)
-   - Meta CAPI / TikTok Events API server-side
-   - PWA com push notifications (VAPID)
-   - SEO dinâmico + JSON-LD
-
-6. **Roles & Permissões**
-   - Equipe interna: `client_id IS NULL`
-   - Manager / Focal Point / Operator (cliente)
-
-7. **Desenvolvimento Local**
-   - Comandos `npm install`, `npm run dev`
-   - Como sincronizar com GitHub (via Lovable Connectors)
-
-8. **Links**
-   - Preview, Published, Custom Domain
-   - Docs Lovable
+### Modo cliente
+Sem alteração — mantém o tom consultivo amigável existente.
 
 ### Arquivo alterado
 | Arquivo | Mudança |
 |---|---|
-| `README.md` | Reescrita completa refletindo o estado atual da plataforma |
+| `supabase/functions/assistant-chat/index.ts` | Substituir apenas o `ADMIN_SYSTEM_PROMPT` pela nova persona estratégica, preservando bloco de contexto e tools |
 
-### Observação
-O README sincroniza automaticamente para o GitHub via integração bidirecional do Lovable, então atualizar o arquivo já cumpre o pedido.
+### Sem mudanças
+- Tools, executors, tabelas, frontend, contexto fetch — tudo permanece igual.
 
