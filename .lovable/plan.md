@@ -1,85 +1,118 @@
 
 
-## Linkouzinho como Orquestrador Multi-Modo (Interno)
+## Expandir Linkouzinho: Acesso a Tarefas + Leitura de PDFs/Arquivos
 
-### Objetivo
-Evoluir o `ADMIN_SYSTEM_PROMPT` no `assistant-chat/index.ts` para que o Linkouzinho funcione como **orquestrador único** que detecta automaticamente a intenção e assume internamente um dos 3 modos (AUDITOR, ESTRATEGISTA, EXECUTOR), mantendo a interface idêntica.
+### Resposta direta às perguntas
 
-### Arquitetura proposta (sem mudanças de UI/banco)
+**1. PDFs?** ❌ Hoje **não lê**. Precisa ser adicionado.
+**2. Tarefas dos clientes?** ❌ Hoje **não vê**. O contexto tem cliente, briefing, plano, métricas e campanhas — mas **nenhuma tarefa**. Precisa ser adicionado.
+
+---
+
+### Mudanças propostas
+
+#### Parte 1 — Adicionar contexto de tarefas (ganho imediato, custo zero)
+
+No `assistant-chat/index.ts`, adicionar **2 novas queries paralelas** ao bloco `Promise.all`:
 
 ```text
-Mensagem do usuário
-        ↓
-[Camada de Roteamento — invisível]
-        ↓
-   ┌────┴────┬─────────────┐
-AUDITOR  ESTRATEGISTA  EXECUTOR
-(análise) (plano)      (ação + tools)
-        ↓
-Resposta no formato do modo escolhido
+tasks         → últimas 20 tarefas (open + done recentes)
+                campos: title, status, priority, due_date,
+                executor_type, journey_phase, description (200 chars),
+                execution_guide (300 chars), assigned_to
+files         → últimos 15 arquivos do cliente
+                campos: name, file_type, category, description, task_id,
+                created_at
 ```
 
-### Detecção automática (instruída via prompt)
+Renderizar no contexto do system prompt como:
 
-| Sinais na mensagem | Modo |
+```text
+## Tarefas Ativas (8 abertas / 12 concluídas no último mês)
+| Status | Prioridade | Título | Prazo | Executor |
+|---|---|---|---|---|
+| todo | high | Otimizar campanha Meta CBO | 2026-04-25 | internal |
+| in_progress | medium | Validar criativo carrossel | — | client |
+...
+
+## Arquivos do Cliente (últimos 15)
+- briefing-marca.pdf (briefing) — anexo da tarefa "Kickoff"
+- plano-midia-q2.xlsx (planning) — 2026-04-15
+- ...
+```
+
+**Impacto**: o Linkouzinho passa a saber se há tarefas paradas, gargalos de execução, qual o foco operacional, e referenciar arquivos por nome.
+
+#### Parte 2 — Nova tool `read_file` (leitura sob demanda de PDFs/docs)
+
+Adicionar tool ao `adminTools`:
+
+```text
+read_file
+  params: file_id (uuid) | file_name (string)
+  ação: baixa do bucket Supabase Storage 'client-files',
+        extrai texto e retorna ao modelo (máx ~8k caracteres).
+```
+
+**Implementação técnica do executor:**
+1. Busca `files` por `id` ou `name` (escopado ao `client_id`)
+2. `db.storage.from('client-files').download(file_path)` 
+3. Detecta tipo via `mime_type`:
+   - **PDF** → `pdf-parse` via esm.sh (`https://esm.sh/pdf-parse@1.1.1`)
+   - **TXT/MD/CSV/JSON** → leitura direta como texto
+   - **DOCX/XLSX** → mensagem "formato não suportado, peça conversão para PDF"
+   - **Imagem** → mensagem "use OCR via outra ferramenta"
+4. Trunca a 8.000 caracteres com aviso `[...truncado]`
+5. Retorna `{ success, file_name, content }` para o segundo passo do tool calling
+
+**Quando usar (instrução no prompt):**
+> Use `read_file` apenas quando o usuário pedir explicitamente para "analisar", "ler", "resumir" um arquivo OU quando for essencial para responder. Nunca dispare automaticamente — leitura consome tokens.
+
+#### Parte 3 — Sugestões no frontend
+
+Em `LinkouzinhoInternal.tsx`, atualizar `ADMIN_SUGGESTIONS`:
+
+```text
++ "Tarefas paradas do cliente"
++ "Resumir último briefing PDF"
++ "Próximas entregas da semana"
+```
+
+---
+
+### Como o Linkouzinho usa isso (exemplos)
+
+| Pergunta | Comportamento novo |
 |---|---|
-| "analisa", "diagnóstico", "problema", "por que caiu", "o que tá errado" | **AUDITOR** |
-| "o que fazer", "plano", "estratégia", "prioridade", "próximos passos", "como melhorar" | **ESTRATEGISTA** |
-| "cria", "agenda", "estrutura", "lança", "preenche", "ajusta" | **EXECUTOR** (dispara tool calls) |
-| Ambíguo | Assume **ESTRATEGISTA** (mais útil por padrão) |
+| "O que tá travado nesse cliente?" | **AUDITOR** lê tabela de tarefas, identifica 3 em atraso, aponta gargalo |
+| "Resume o briefing PDF que eu subi" | **EXECUTOR** chama `read_file`, retorna síntese estruturada |
+| "Cria tarefa para revisar o plano de mídia" | **EXECUTOR** já tinha; agora também referencia o arquivo `plano-midia-q2.xlsx` |
+| "Próximos passos da semana" | **ESTRATEGISTA** cruza tarefas com prazo + plano estratégico |
 
-### Formatos de saída por modo
+---
 
-**AUDITOR**
-```
-1. Diagnóstico
-2. Problema principal
-3. Evidência (dados do contexto)
-4. Impacto
-```
+### Detalhes técnicos
 
-**ESTRATEGISTA**
-```
-1. Contexto
-2. Objetivo
-3. Plano (prioritizado)
-4. Prioridade #1
-5. Próximo passo
-```
-
-**EXECUTOR**
-```
-1. Ação
-2. Como executar (+ tool call quando aplicável)
-3. Resultado esperado
-4. Próximo passo
-```
-
-### O que muda
-
-| Item | Mudança |
+| Item | Decisão |
 |---|---|
-| `ADMIN_SYSTEM_PROMPT` | Reestruturado: identidade + camada de roteamento + 3 personas internas + regras de decisão + formatos por modo |
-| Tools (7 atuais) | **Sem mudança** — continuam disponíveis, usadas principalmente no modo EXECUTOR |
-| Contexto enriquecido (briefing/plano/métricas/campanhas) | **Sem mudança** — todos os modos consomem |
-| Frontend `LinkouzinhoInternal.tsx` | **Sem mudança** — usuário não vê os modos |
-| Modo cliente (`CLIENT_SYSTEM_PROMPT`) | **Sem mudança** |
-| Banco de dados | **Sem mudança** |
+| Bucket | `client-files` (já existe, privado) |
+| Acesso | Service role no edge function (já usado) |
+| Limite de leitura | 8.000 caracteres por chamada (proteção de tokens) |
+| Limite de tarefas no contexto | 20 (10 abertas + 10 recentes) |
+| Limite de arquivos no contexto | 15 (lista de nomes, não conteúdo) |
+| Biblioteca PDF | `pdf-parse` via esm.sh (Deno-compatível) |
+| Custo extra do contexto | ~+1k tokens por chamada (aceitável) |
+| Custo de `read_file` | só dispara quando solicitado |
 
-### Regras críticas reforçadas no prompt
+---
 
-- Modo escolhido é **interno** — nunca mencionar "modo AUDITOR/ESTRATEGISTA/EXECUTOR" na resposta
-- **Uma direção por resposta** — nunca misturar análise + plano + execução longa
-- Se faltar dado essencial: pedir **uma única** informação objetiva
-- Sempre terminar com **um próximo passo claro**
-- Em EXECUTOR: chamar a tool apropriada imediatamente quando a ação for clara
-
-### Arquivo alterado
+### Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/functions/assistant-chat/index.ts` | Reescrita do `ADMIN_SYSTEM_PROMPT` com camada de roteamento + 3 personas |
+| `supabase/functions/assistant-chat/index.ts` | + 2 queries paralelas (tasks, files); + render no contexto; + tool `read_file` + executor com pdf-parse |
+| `src/components/LinkouzinhoInternal.tsx` | + 3 novas sugestões admin |
 
 ### Sem mudanças
-- Tools, executors, fetch de contexto, frontend, banco, modo cliente.
+- Banco de dados, RLS, storage policies, frontend de upload, modo cliente.
 
