@@ -264,9 +264,22 @@ export function LinkouzinhoInternal({ mode }: Props) {
     [messages, isLoading, clientId, session, mode]
   );
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setMessages([]);
-    sessionStorage.removeItem(`linkouzinho_internal_${mode}`);
+    if (!profile?.id) return;
+    try {
+      let query = (supabase as any)
+        .from("assistant_conversations")
+        .delete()
+        .eq("user_id", profile.id)
+        .eq("mode", mode);
+      if (clientId) query = query.eq("client_id", clientId);
+      else query = query.is("client_id", null);
+      await query;
+      toast.success("Conversa limpa");
+    } catch (e) {
+      console.error("Failed to delete conversation:", e);
+    }
   };
 
   const needsClientSelection = mode === "admin" && !selectedClientId;
