@@ -168,6 +168,20 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "read_file",
+      description: "Lê o conteúdo textual de um arquivo do cliente atual (PDF, TXT, MD, CSV, JSON). Use APENAS quando o usuário pedir explicitamente para analisar, ler, resumir ou extrair informações de um arquivo específico. Não dispare automaticamente — leitura consome tokens. Identifique o arquivo via file_id (preferencial) ou file_name (busca aproximada).",
+      parameters: {
+        type: "object",
+        properties: {
+          file_id: { type: "string", description: "UUID exato do arquivo (preferencial quando disponível na lista de arquivos do contexto)" },
+          file_name: { type: "string", description: "Nome ou parte do nome do arquivo (usado quando file_id não está disponível). Busca case-insensitive." },
+        },
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
