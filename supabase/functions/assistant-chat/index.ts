@@ -346,6 +346,101 @@ async function executeTool(
         return { success: true, message: `Briefing "${args.title}" criado com sucesso.` };
       }
 
+      case "read_file": {
+        const fileId = args.file_id as string | undefined;
+        const fileName = args.file_name as string | undefined;
+        if (!fileId && !fileName) {
+          return { success: false, message: "Forneça file_id ou file_name." };
+        }
+
+        // Locate file (scoped to client)
+        let fileQuery = db
+          .from("files")
+          .select("id, name, file_path, mime_type, file_type")
+          .eq("client_id", clientId);
+        if (fileId) {
+          fileQuery = fileQuery.eq("id", fileId);
+        } else if (fileName) {
+          fileQuery = fileQuery.ilike("name", `%${fileName}%`);
+        }
+        const { data: fileRow, error: fileErr } = await fileQuery
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (fileErr) throw fileErr;
+        if (!fileRow) {
+          return { success: false, message: `Arquivo não encontrado para ${fileId ? `id=${fileId}` : `nome ~ "${fileName}"`}.` };
+        }
+
+        // Download from storage
+        const { data: blob, error: dlErr } = await db.storage
+          .from("client-files")
+          .download(fileRow.file_path as string);
+        if (dlErr || !blob) {
+          return { success: false, message: `Falha ao baixar arquivo: ${dlErr?.message || "sem dados"}` };
+        }
+
+        const mime = (fileRow.mime_type as string | null)?.toLowerCase() || "";
+        const lowerName = (fileRow.name as string).toLowerCase();
+        const MAX = 8000;
+        let content = "";
+
+        try {
+          if (mime.includes("pdf") || lowerName.endsWith(".pdf")) {
+            // Parse PDF via esm.sh
+            const arrayBuf = await blob.arrayBuffer();
+            const pdfMod: any = await import("https://esm.sh/pdf-parse@1.1.1?target=deno");
+            const PDFParser = pdfMod.default || pdfMod;
+            const pdfData = await PDFParser(new Uint8Array(arrayBuf));
+            content = (pdfData?.text || "").trim();
+          } else if (
+            mime.startsWith("text/") ||
+            mime.includes("json") ||
+            mime.includes("csv") ||
+            /\.(txt|md|csv|json|log|xml|html?)$/i.test(lowerName)
+          ) {
+            content = (await blob.text()).trim();
+          } else if (
+            mime.includes("officedocument") ||
+            /\.(docx?|xlsx?|pptx?)$/i.test(lowerName)
+          ) {
+            return {
+              success: false,
+              message: `Arquivo "${fileRow.name}" está em formato Office (DOCX/XLSX/PPTX). Não consigo ler diretamente — peça ao usuário para converter para PDF ou TXT.`,
+            };
+          } else if (mime.startsWith("image/")) {
+            return {
+              success: false,
+              message: `Arquivo "${fileRow.name}" é uma imagem. Use OCR externo ou descreva o conteúdo manualmente.`,
+            };
+          } else {
+            return {
+              success: false,
+              message: `Formato não suportado para leitura: ${mime || "desconhecido"} (${fileRow.name}). Suportados: PDF, TXT, MD, CSV, JSON, HTML.`,
+            };
+          }
+        } catch (parseErr) {
+          console.error("read_file parse error:", parseErr);
+          return {
+            success: false,
+            message: `Erro ao extrair texto de "${fileRow.name}": ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
+          };
+        }
+
+        if (!content) {
+          return { success: false, message: `Arquivo "${fileRow.name}" está vazio ou não contém texto extraível.` };
+        }
+
+        const truncated = content.length > MAX;
+        const finalContent = truncated ? content.slice(0, MAX) + "\n\n[...truncado, arquivo continua]" : content;
+
+        return {
+          success: true,
+          message: `Arquivo "${fileRow.name}" lido com sucesso (${content.length} caracteres${truncated ? `, truncado em ${MAX}` : ""}).\n\n--- CONTEÚDO ---\n${finalContent}`,
+        };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
