@@ -132,6 +132,39 @@ export type Database = {
           },
         ]
       }
+      assistant_conversations: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          messages: Json
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, RotateCcw, Sparkles, Settings } from "lucide-react";
+import { X, Send, RotateCcw, Sparkles, Settings, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import linkouzinhoImg from "@/assets/linkouzinho.png";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -95,19 +96,56 @@ export function LinkouzinhoInternal({ mode }: Props) {
   const suggestions = mode === "admin" ? ADMIN_SUGGESTIONS : CLIENT_SUGGESTIONS;
   const subtitle = mode === "admin" ? "Modo Analista" : "Seu Consultor";
 
-  // Session-based storage
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(`linkouzinho_internal_${mode}`);
-      if (stored) setMessages(JSON.parse(stored));
-    } catch {}
-  }, [mode]);
+  const conversationKey = clientId || "_no_client_";
 
+  // Load persisted conversation from DB whenever user/client/mode changes
   useEffect(() => {
-    try {
-      sessionStorage.setItem(`linkouzinho_internal_${mode}`, JSON.stringify(messages));
-    } catch {}
-  }, [messages, mode]);
+    let cancelled = false;
+    const loadConversation = async () => {
+      if (!profile?.id) return;
+      try {
+        let query = (supabase as any)
+          .from("assistant_conversations")
+          .select("messages")
+          .eq("user_id", profile.id)
+          .eq("mode", mode);
+        if (clientId) query = query.eq("client_id", clientId);
+        else query = query.is("client_id", null);
+        const { data } = await query.maybeSingle();
+        if (!cancelled) {
+          setMessages(Array.isArray(data?.messages) ? (data!.messages as Message[]) : []);
+        }
+      } catch {
+        if (!cancelled) setMessages([]);
+      }
+    };
+    loadConversation();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, conversationKey, mode]);
+
+  // Persist conversation to DB (debounced)
+  useEffect(() => {
+    if (!profile?.id || messages.length === 0) return;
+    const timer = setTimeout(async () => {
+      try {
+        await (supabase as any).from("assistant_conversations").upsert(
+          {
+            user_id: profile.id,
+            client_id: clientId || null,
+            mode,
+            messages,
+            last_message_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,client_id,mode" }
+        );
+      } catch (e) {
+        console.error("Failed to persist conversation:", e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [messages, profile?.id, conversationKey, mode]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -226,9 +264,22 @@ export function LinkouzinhoInternal({ mode }: Props) {
     [messages, isLoading, clientId, session, mode]
   );
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setMessages([]);
-    sessionStorage.removeItem(`linkouzinho_internal_${mode}`);
+    if (!profile?.id) return;
+    try {
+      let query = (supabase as any)
+        .from("assistant_conversations")
+        .delete()
+        .eq("user_id", profile.id)
+        .eq("mode", mode);
+      if (clientId) query = query.eq("client_id", clientId);
+      else query = query.is("client_id", null);
+      await query;
+      toast.success("Conversa limpa");
+    } catch (e) {
+      console.error("Failed to delete conversation:", e);
+    }
   };
 
   const needsClientSelection = mode === "admin" && !selectedClientId;
