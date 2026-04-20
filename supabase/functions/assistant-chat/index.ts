@@ -609,6 +609,42 @@ serve(async (req) => {
       if (plan.budget_allocation) context += `- Alocação de Budget: ${JSON.stringify(plan.budget_allocation)}\n`;
     }
 
+    if (tasks.length > 0) {
+      const open = tasks.filter((t) => t.status !== "done");
+      const done = tasks.filter((t) => t.status === "done");
+      context += `\n## Tarefas (${open.length} abertas / ${done.length} recentes concluídas)\n`;
+      context += `| ID | Status | Prioridade | Título | Prazo | Executor | Fase |\n`;
+      context += `|---|---|---|---|---|---|---|\n`;
+      for (const t of tasks) {
+        const shortId = String(t.id).slice(0, 8);
+        context += `| ${shortId} | ${t.status || "-"} | ${t.priority || "-"} | ${(t.title || "").slice(0, 60)} | ${t.due_date || "-"} | ${t.executor_type || "-"} | ${t.journey_phase || "-"} |\n`;
+      }
+      // Add brief descriptions for top open tasks
+      const topOpen = open.slice(0, 5).filter((t) => t.description || t.execution_guide);
+      if (topOpen.length > 0) {
+        context += `\n### Detalhes das tarefas abertas prioritárias:\n`;
+        for (const t of topOpen) {
+          context += `- **${t.title}**`;
+          if (t.description) context += ` — ${String(t.description).slice(0, 200)}`;
+          if (t.execution_guide) context += `\n  Guia: ${String(t.execution_guide).slice(0, 300)}`;
+          context += `\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    if (files.length > 0) {
+      context += `## Arquivos do Cliente (últimos ${files.length} — use \`read_file\` para ler conteúdo)\n`;
+      for (const f of files) {
+        const dateStr = f.created_at ? String(f.created_at).split("T")[0] : "-";
+        const cat = f.category ? ` [${f.category}]` : "";
+        const desc = f.description ? ` — ${String(f.description).slice(0, 80)}` : "";
+        const linked = f.task_id ? ` (anexo de tarefa)` : "";
+        context += `- \`${f.id}\` **${f.name}**${cat} (${dateStr})${linked}${desc}\n`;
+      }
+      context += "\n";
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
