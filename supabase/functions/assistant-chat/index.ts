@@ -503,7 +503,7 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes] = await Promise.all([
+    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
         .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
@@ -528,6 +528,16 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      db.from("tasks")
+        .select("id, title, status, priority, due_date, executor_type, journey_phase, description, execution_guide, assigned_to")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      db.from("files")
+        .select("id, name, file_type, mime_type, category, description, task_id, created_at")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(15),
     ]);
 
     const client = clientRes.data;
@@ -535,6 +545,8 @@ serve(async (req) => {
     const metrics = metricsRes.data || [];
     const plan = plansRes.data;
     const briefing = briefingsRes.data;
+    const tasks = tasksRes.data || [];
+    const files = filesRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
