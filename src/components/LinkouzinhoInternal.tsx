@@ -23,8 +23,10 @@ interface Props {
 const ADMIN_SUGGESTIONS = [
   "Análise do último mês",
   "Comparar CPL das campanhas",
+  "Tarefas paradas do cliente",
+  "Próximas entregas da semana",
+  "Resumir último briefing PDF",
   "Agendar reunião",
-  "Criar tarefa",
   "Estruturar campanha",
   "Criar projeto",
   "Criar plano estratégico",

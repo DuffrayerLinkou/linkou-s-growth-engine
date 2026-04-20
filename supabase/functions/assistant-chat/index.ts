@@ -168,6 +168,20 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "read_file",
+      description: "Lê o conteúdo textual de um arquivo do cliente atual (PDF, TXT, MD, CSV, JSON). Use APENAS quando o usuário pedir explicitamente para analisar, ler, resumir ou extrair informações de um arquivo específico. Não dispare automaticamente — leitura consome tokens. Identifique o arquivo via file_id (preferencial) ou file_name (busca aproximada).",
+      parameters: {
+        type: "object",
+        properties: {
+          file_id: { type: "string", description: "UUID exato do arquivo (preferencial quando disponível na lista de arquivos do contexto)" },
+          file_name: { type: "string", description: "Nome ou parte do nome do arquivo (usado quando file_id não está disponível). Busca case-insensitive." },
+        },
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
@@ -332,6 +346,101 @@ async function executeTool(
         return { success: true, message: `Briefing "${args.title}" criado com sucesso.` };
       }
 
+      case "read_file": {
+        const fileId = args.file_id as string | undefined;
+        const fileName = args.file_name as string | undefined;
+        if (!fileId && !fileName) {
+          return { success: false, message: "Forneça file_id ou file_name." };
+        }
+
+        // Locate file (scoped to client)
+        let fileQuery = db
+          .from("files")
+          .select("id, name, file_path, mime_type, file_type")
+          .eq("client_id", clientId);
+        if (fileId) {
+          fileQuery = fileQuery.eq("id", fileId);
+        } else if (fileName) {
+          fileQuery = fileQuery.ilike("name", `%${fileName}%`);
+        }
+        const { data: fileRow, error: fileErr } = await fileQuery
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (fileErr) throw fileErr;
+        if (!fileRow) {
+          return { success: false, message: `Arquivo não encontrado para ${fileId ? `id=${fileId}` : `nome ~ "${fileName}"`}.` };
+        }
+
+        // Download from storage
+        const { data: blob, error: dlErr } = await db.storage
+          .from("client-files")
+          .download(fileRow.file_path as string);
+        if (dlErr || !blob) {
+          return { success: false, message: `Falha ao baixar arquivo: ${dlErr?.message || "sem dados"}` };
+        }
+
+        const mime = (fileRow.mime_type as string | null)?.toLowerCase() || "";
+        const lowerName = (fileRow.name as string).toLowerCase();
+        const MAX = 8000;
+        let content = "";
+
+        try {
+          if (mime.includes("pdf") || lowerName.endsWith(".pdf")) {
+            // Parse PDF via esm.sh
+            const arrayBuf = await blob.arrayBuffer();
+            const pdfMod: any = await import("https://esm.sh/pdf-parse@1.1.1?target=deno");
+            const PDFParser = pdfMod.default || pdfMod;
+            const pdfData = await PDFParser(new Uint8Array(arrayBuf));
+            content = (pdfData?.text || "").trim();
+          } else if (
+            mime.startsWith("text/") ||
+            mime.includes("json") ||
+            mime.includes("csv") ||
+            /\.(txt|md|csv|json|log|xml|html?)$/i.test(lowerName)
+          ) {
+            content = (await blob.text()).trim();
+          } else if (
+            mime.includes("officedocument") ||
+            /\.(docx?|xlsx?|pptx?)$/i.test(lowerName)
+          ) {
+            return {
+              success: false,
+              message: `Arquivo "${fileRow.name}" está em formato Office (DOCX/XLSX/PPTX). Não consigo ler diretamente — peça ao usuário para converter para PDF ou TXT.`,
+            };
+          } else if (mime.startsWith("image/")) {
+            return {
+              success: false,
+              message: `Arquivo "${fileRow.name}" é uma imagem. Use OCR externo ou descreva o conteúdo manualmente.`,
+            };
+          } else {
+            return {
+              success: false,
+              message: `Formato não suportado para leitura: ${mime || "desconhecido"} (${fileRow.name}). Suportados: PDF, TXT, MD, CSV, JSON, HTML.`,
+            };
+          }
+        } catch (parseErr) {
+          console.error("read_file parse error:", parseErr);
+          return {
+            success: false,
+            message: `Erro ao extrair texto de "${fileRow.name}": ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
+          };
+        }
+
+        if (!content) {
+          return { success: false, message: `Arquivo "${fileRow.name}" está vazio ou não contém texto extraível.` };
+        }
+
+        const truncated = content.length > MAX;
+        const finalContent = truncated ? content.slice(0, MAX) + "\n\n[...truncado, arquivo continua]" : content;
+
+        return {
+          success: true,
+          message: `Arquivo "${fileRow.name}" lido com sucesso (${content.length} caracteres${truncated ? `, truncado em ${MAX}` : ""}).\n\n--- CONTEÚDO ---\n${finalContent}`,
+        };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -394,7 +503,7 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes] = await Promise.all([
+    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
         .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
@@ -419,6 +528,16 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      db.from("tasks")
+        .select("id, title, status, priority, due_date, executor_type, journey_phase, description, execution_guide, assigned_to")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      db.from("files")
+        .select("id, name, file_type, mime_type, category, description, task_id, created_at")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(15),
     ]);
 
     const client = clientRes.data;
@@ -426,6 +545,8 @@ serve(async (req) => {
     const metrics = metricsRes.data || [];
     const plan = plansRes.data;
     const briefing = briefingsRes.data;
+    const tasks = tasksRes.data || [];
+    const files = filesRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -488,6 +609,42 @@ serve(async (req) => {
       if (plan.budget_allocation) context += `- Alocação de Budget: ${JSON.stringify(plan.budget_allocation)}\n`;
     }
 
+    if (tasks.length > 0) {
+      const open = tasks.filter((t) => t.status !== "done");
+      const done = tasks.filter((t) => t.status === "done");
+      context += `\n## Tarefas (${open.length} abertas / ${done.length} recentes concluídas)\n`;
+      context += `| ID | Status | Prioridade | Título | Prazo | Executor | Fase |\n`;
+      context += `|---|---|---|---|---|---|---|\n`;
+      for (const t of tasks) {
+        const shortId = String(t.id).slice(0, 8);
+        context += `| ${shortId} | ${t.status || "-"} | ${t.priority || "-"} | ${(t.title || "").slice(0, 60)} | ${t.due_date || "-"} | ${t.executor_type || "-"} | ${t.journey_phase || "-"} |\n`;
+      }
+      // Add brief descriptions for top open tasks
+      const topOpen = open.slice(0, 5).filter((t) => t.description || t.execution_guide);
+      if (topOpen.length > 0) {
+        context += `\n### Detalhes das tarefas abertas prioritárias:\n`;
+        for (const t of topOpen) {
+          context += `- **${t.title}**`;
+          if (t.description) context += ` — ${String(t.description).slice(0, 200)}`;
+          if (t.execution_guide) context += `\n  Guia: ${String(t.execution_guide).slice(0, 300)}`;
+          context += `\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    if (files.length > 0) {
+      context += `## Arquivos do Cliente (últimos ${files.length} — use \`read_file\` para ler conteúdo)\n`;
+      for (const f of files) {
+        const dateStr = f.created_at ? String(f.created_at).split("T")[0] : "-";
+        const cat = f.category ? ` [${f.category}]` : "";
+        const desc = f.description ? ` — ${String(f.description).slice(0, 80)}` : "";
+        const linked = f.task_id ? ` (anexo de tarefa)` : "";
+        context += `- \`${f.id}\` **${f.name}**${cat} (${dateStr})${linked}${desc}\n`;
+      }
+      context += "\n";
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
@@ -542,6 +699,7 @@ serve(async (req) => {
         `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
         `- **create_strategic_plan**: Gerar plano completo (personas, KPIs SMART, funil topo/meio/fundo, alocação de budget % por canal, tipos de campanha) baseado em dados reais.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## Análise estratégica (suporte ao AUDITOR e ESTRATEGISTA)\n` +
         `Compare CPL/CPV entre meses, calcule variação %, identifique gargalos no funil (impressão→clique→lead→SQL→venda), aponte canais com melhor ROAS, sugira realocação de budget e projete cenários com base em histórico.\n\n` +
         `Ao inferir datas, use ano atual (${new Date().getFullYear()}) e mês atual como referência.\n\n` +
