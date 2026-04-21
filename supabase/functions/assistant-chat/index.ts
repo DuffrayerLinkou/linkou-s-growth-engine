@@ -23,6 +23,91 @@ const adminTools = [
   {
     type: "function",
     function: {
+      name: "create_creative_demand",
+      description: "Cria uma DEMANDA CRIATIVA para o cliente atual (briefing de produção: copy de vídeo, copy estática, vídeo, arte ou enxoval de mídia). Use quando o admin pedir 'cria demanda criativa', 'novo briefing de criativo', 'pedir produção de vídeo/post/arte'. Status inicial: briefing.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da demanda (ex: 'Reel de lançamento Abril')" },
+          briefing: { type: "string", description: "Briefing detalhado (referências, tom, mensagem-chave)" },
+          objective: { type: "string", description: "Objetivo da peça (ex: gerar leads, branding, conversão)" },
+          platform: { type: "string", description: "Plataforma alvo (Instagram, TikTok, YouTube, Meta Ads, etc.)" },
+          format: { type: "string", description: "Formato (Reel, Stories, Feed, VSL, Carrossel, etc.)" },
+          deadline: { type: "string", description: "Prazo no formato YYYY-MM-DD" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"], description: "Prioridade. Padrão: medium" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_creative_deliverable",
+      description: "Cria um ENTREGÁVEL vinculado a uma demanda criativa (uma peça específica: copy de vídeo, copy estática, vídeo, imagem, enxoval). Use depois de criar/identificar a demanda. Pode incluir o conteúdo (texto/copy) já neste momento se o admin ditou.",
+      parameters: {
+        type: "object",
+        properties: {
+          demand_id: { type: "string", description: "UUID da demanda criativa pai" },
+          type: { type: "string", enum: ["video_copy", "static_copy", "video", "image", "media_kit"], description: "Tipo do entregável" },
+          title: { type: "string", description: "Título do entregável (ex: 'Roteiro Reel 30s')" },
+          content: { type: "string", description: "Conteúdo textual da peça (roteiro, copy, headline+corpo+CTA). Opcional." },
+          status: { type: "string", enum: ["in_production", "in_approval", "adjustments", "delivered"], description: "Status inicial. Padrão: in_production. NÃO use 'approved' (somente Ponto Focal via UI)." },
+        },
+        required: ["demand_id", "type", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_demand_status",
+      description: "Move o status de uma demanda criativa. Use para sinalizar que a demanda saiu do briefing, está em produção, em aprovação, em ajustes ou foi entregue. NÃO marca 'approved' — aprovação é exclusiva do Ponto Focal via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          demand_id: { type: "string", description: "UUID da demanda" },
+          status: { type: "string", enum: ["briefing", "in_production", "in_approval", "adjustments", "delivered"], description: "Novo status" },
+        },
+        required: ["demand_id", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_deliverable_status",
+      description: "Move o status de um entregável criativo. NÃO permite 'approved' — aprovação só pelo Ponto Focal via UI em /cliente/criativos.",
+      parameters: {
+        type: "object",
+        properties: {
+          deliverable_id: { type: "string", description: "UUID do entregável" },
+          status: { type: "string", enum: ["in_production", "in_approval", "adjustments", "delivered"], description: "Novo status" },
+          feedback: { type: "string", description: "Notas/feedback opcional sobre a transição" },
+        },
+        required: ["deliverable_id", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_deliverable_version",
+      description: "Adiciona uma NOVA VERSÃO de copy/texto a um entregável criativo. Incrementa current_version. Use quando o admin ditar uma copy/roteiro novo no chat ou pedir 'atualiza a copy do entregável X com isso'. Para versões de arquivo (vídeo, arte), o upload deve ser feito pela UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          deliverable_id: { type: "string", description: "UUID do entregável" },
+          content: { type: "string", description: "Texto/copy da nova versão (roteiro, headline+corpo+CTA, etc.)" },
+          notes: { type: "string", description: "Notas sobre o que mudou nessa versão (opcional)" },
+        },
+        required: ["deliverable_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_appointment",
       description: "Agenda uma reunião/compromisso para o cliente atual. Use quando o admin pedir para agendar, marcar reunião, call, etc.",
       parameters: {
@@ -408,15 +493,47 @@ const memoryTools = [
     },
   },
 ];
+
+// ── Client-mode tools (limitadas) ──────────────────────────────────────
+const clientTools = [
+  {
+    type: "function",
+    function: {
+      name: "request_creative_demand",
+      description: "Cria uma nova DEMANDA CRIATIVA em status 'briefing' para o cliente atual. Use quando o usuário cliente pedir 'quero um vídeo', 'preciso de uma copy', 'cria um post', 'monta um briefing pra produção'. Pergunte pelos campos faltantes (título, formato, prazo) ANTES de chamar se a mensagem estiver vaga.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da demanda (ex: 'Reel pro lançamento da semana que vem')" },
+          briefing: { type: "string", description: "Descrição do que o cliente quer (referências, tom, mensagem-chave)" },
+          objective: { type: "string", description: "Objetivo (ex: gerar leads, branding)" },
+          platform: { type: "string", description: "Plataforma alvo (Instagram, TikTok, etc.)" },
+          format: { type: "string", description: "Formato (Reel, Stories, Feed, Carrossel, VSL...)" },
+          deadline: { type: "string", description: "Prazo desejado (YYYY-MM-DD)" },
+          priority: { type: "string", enum: ["low", "medium", "high"], description: "Padrão: medium" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
   toolName: string,
   args: Record<string, unknown>,
   clientId: string,
-  userId: string
+  userId: string,
+  mode: string = "admin"
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // Client-mode allowlist: bloqueia qualquer tool fora do conjunto permitido
+    if (mode === "client") {
+      const allowed = new Set(["request_creative_demand", "set_conversation_state"]);
+      if (!allowed.has(toolName)) {
+        return { success: false, message: "Ação restrita à equipe interna." };
+      }
+    }
     switch (toolName) {
       case "create_appointment": {
         const { error } = await db.from("appointments").insert({
@@ -678,6 +795,134 @@ async function executeTool(
         };
       }
 
+      case "create_creative_demand":
+      case "request_creative_demand": {
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          status: "briefing",
+          requested_by: userId,
+          priority: (args.priority as string) || "medium",
+        };
+        for (const k of ["briefing", "objective", "platform", "format", "deadline"]) {
+          if (args[k] !== undefined && args[k] !== null && args[k] !== "") payload[k] = args[k];
+        }
+        const { data, error } = await db.from("creative_demands").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Demanda criativa "${args.title}" criada (id: ${String(data?.id).slice(0,8)}). Status: briefing.` };
+      }
+
+      case "create_creative_deliverable": {
+        const status = (args.status as string) || "in_production";
+        if (status === "approved") {
+          return { success: false, message: "Status 'approved' é exclusivo do Ponto Focal via UI." };
+        }
+        // Verifica que a demanda pertence ao cliente
+        const { data: demand, error: dErr } = await db
+          .from("creative_demands")
+          .select("id, client_id")
+          .eq("id", args.demand_id as string)
+          .maybeSingle();
+        if (dErr) throw dErr;
+        if (!demand || demand.client_id !== clientId) {
+          return { success: false, message: "Demanda não encontrada ou não pertence a este cliente." };
+        }
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          demand_id: args.demand_id as string,
+          type: args.type as string,
+          title: args.title as string,
+          status,
+          current_version: 1,
+          created_by: userId,
+        };
+        if (args.content) payload.content = args.content;
+        const { data: deliv, error } = await db.from("creative_deliverables").insert(payload).select("id").single();
+        if (error) throw error;
+        // Se veio conteúdo, cria também a versão 1 no histórico
+        if (args.content && deliv?.id) {
+          await db.from("creative_deliverable_versions").insert({
+            client_id: clientId,
+            deliverable_id: deliv.id,
+            version_number: 1,
+            content: args.content as string,
+            created_by: userId,
+          });
+        }
+        return { success: true, message: `Entregável "${args.title}" (${args.type}) criado com status ${status}.` };
+      }
+
+      case "update_demand_status": {
+        const status = args.status as string;
+        if (status === "approved") {
+          return { success: false, message: "Aprovação só pelo Ponto Focal via UI em /cliente/criativos." };
+        }
+        const { data: existing } = await db
+          .from("creative_demands")
+          .select("id, client_id, title")
+          .eq("id", args.demand_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Demanda não encontrada ou não pertence a este cliente." };
+        }
+        const { error } = await db
+          .from("creative_demands")
+          .update({ status })
+          .eq("id", args.demand_id as string);
+        if (error) throw error;
+        return { success: true, message: `Demanda "${existing.title}" movida para "${status}".` };
+      }
+
+      case "update_deliverable_status": {
+        const status = args.status as string;
+        if (status === "approved") {
+          return { success: false, message: "Aprovação só pelo Ponto Focal via UI em /cliente/criativos." };
+        }
+        const { data: existing } = await db
+          .from("creative_deliverables")
+          .select("id, client_id, title")
+          .eq("id", args.deliverable_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Entregável não encontrado ou não pertence a este cliente." };
+        }
+        const updatePayload: Record<string, unknown> = { status };
+        if (args.feedback) updatePayload.feedback = args.feedback;
+        const { error } = await db
+          .from("creative_deliverables")
+          .update(updatePayload)
+          .eq("id", args.deliverable_id as string);
+        if (error) throw error;
+        return { success: true, message: `Entregável "${existing.title}" movido para "${status}".` };
+      }
+
+      case "add_deliverable_version": {
+        const { data: existing } = await db
+          .from("creative_deliverables")
+          .select("id, client_id, title, current_version")
+          .eq("id", args.deliverable_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Entregável não encontrado ou não pertence a este cliente." };
+        }
+        const newVersion = ((existing.current_version as number) || 0) + 1;
+        const { error: vErr } = await db.from("creative_deliverable_versions").insert({
+          client_id: clientId,
+          deliverable_id: args.deliverable_id as string,
+          version_number: newVersion,
+          content: args.content as string,
+          notes: (args.notes as string) || null,
+          created_by: userId,
+        });
+        if (vErr) throw vErr;
+        const { error: uErr } = await db
+          .from("creative_deliverables")
+          .update({ current_version: newVersion, content: args.content as string })
+          .eq("id", args.deliverable_id as string);
+        if (uErr) throw uErr;
+        return { success: true, message: `Versão v${newVersion} adicionada ao entregável "${existing.title}".` };
+      }
+
       case "log_decision": {
         const { data, error } = await db.from("client_decisions").insert({
           client_id: clientId,
@@ -846,7 +1091,7 @@ serve(async (req) => {
     const [
       clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
-      convRes,
+      convRes, creativeDemandsRes, creativeDeliverablesRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -912,6 +1157,17 @@ serve(async (req) => {
         .select("id, current_topic, current_objective, last_recommendation, last_action, pending_items")
         .eq("user_id", userId).eq("mode", mode).eq("client_id", client_id)
         .maybeSingle(),
+      db.from("creative_demands")
+        .select("id, title, status, platform, format, deadline, priority, objective")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(15),
+      db.from("creative_deliverables")
+        .select("id, demand_id, title, type, status, current_version, approved_by_ponto_focal")
+        .eq("client_id", client_id)
+        .neq("status", "delivered")
+        .order("created_at", { ascending: false })
+        .limit(40),
     ]);
 
     const client = clientRes.data;
@@ -929,6 +1185,8 @@ serve(async (req) => {
     const recentActions = actionsRes.data || [];
     const openInsights = insightsRes.data || [];
     const conversationState = convRes.data;
+    const creativeDemands = creativeDemandsRes.data || [];
+    const creativeDeliverables = creativeDeliverablesRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1091,6 +1349,27 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (creativeDemands.length > 0) {
+      context += `## 🎨 Demandas Criativas (${creativeDemands.length})\n`;
+      for (const d of creativeDemands) {
+        const dlv = creativeDeliverables.filter((x) => x.demand_id === d.id);
+        const meta: string[] = [];
+        if (d.format) meta.push(d.format as string);
+        if (d.platform) meta.push(d.platform as string);
+        if (d.deadline) meta.push(`prazo ${d.deadline}`);
+        if (d.priority) meta.push(`prio: ${d.priority}`);
+        const metaStr = meta.length ? ` (${meta.join(", ")})` : "";
+        context += `- \`${String(d.id).slice(0,8)}\` [${d.status}] **${d.title}**${metaStr}\n`;
+        if (dlv.length > 0) {
+          for (const x of dlv) {
+            const appr = x.approved_by_ponto_focal ? " ✅" : "";
+            context += `   └ \`${String(x.id).slice(0,8)}\` [${x.status}] ${x.title} (${x.type}, v${x.current_version})${appr}\n`;
+          }
+        }
+      }
+      context += "\n";
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
@@ -1161,6 +1440,12 @@ serve(async (req) => {
         `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
         `- **create_strategic_plan**: Gera plano estratégico EDITORIAL e PROFUNDO. NÃO crie planos rasos. Mínimo OBRIGATÓRIO: sumário executivo, diagnóstico (situação + 3 oportunidades + 3 riscos + concorrência), 3+ personas profundas (demografia, dores, desejos, objeções, canais, mensagem-chave), 5+ objetivos SMART numéricos com baseline/meta/prazo, 6+ KPIs categorizados (aquisição/conversão/retenção), funil estruturado em topo/meio/fundo (goal, canais, criativos, KPI, % budget), alocação de budget por canal e por etapa, plano de execução com 3 ondas (90 dias, entregas e marcos) e governança (cadência, relatórios, ferramentas). Use SEMPRE briefing, métricas históricas, segmento e contexto real. Linguagem profissional de consultoria sênior.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## 🎨 Demandas Criativas (orquestração de produção)\n` +
+        `- **create_creative_demand**: Cria a demanda (briefing pai). Use ao iniciar uma produção (vídeo, copy, arte, enxoval).\n` +
+        `- **create_creative_deliverable**: Cria entregáveis vinculados (video_copy, static_copy, video, image, media_kit). Pode já incluir o conteúdo textual.\n` +
+        `- **update_demand_status** / **update_deliverable_status**: Move pelo fluxo briefing → in_production → in_approval → adjustments → delivered.\n` +
+        `- **add_deliverable_version**: Quando o admin ditar uma copy/roteiro novo no chat, persista como versão (incrementa current_version).\n` +
+        `- ⚠️ NUNCA marque status 'approved' — aprovação é exclusiva do Ponto Focal pela UI em /cliente/criativos.\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
         `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
@@ -1181,6 +1466,10 @@ serve(async (req) => {
         `Foco: explicar resultados de forma compreensível, mostrar progresso, indicar próximos passos.\n` +
         `Use linguagem positiva e encorajadora, mas honesta.\n` +
         `Formate com markdown: emojis moderados, bullet points, destaque números relevantes.\n\n` +
+        `## 🎨 Demandas Criativas\n` +
+        `Você pode CRIAR uma nova demanda criativa quando o cliente pedir produção de conteúdo (vídeo, copy, post, arte, enxoval). Use a tool **request_creative_demand** com título, formato, plataforma e prazo. Se faltar informação básica (formato/prazo), faça UMA pergunta curta antes.\n` +
+        `⚠️ NUNCA aprove ou rejeite entregáveis pelo chat — a aprovação é exclusiva do Ponto Focal via UI. Se o cliente pedir aprovação, oriente: "abra a demanda em /cliente/criativos para aprovar com seu clique (preserva auditoria)".\n` +
+        `Você pode listar e resumir o status das demandas existentes a partir do contexto acima.\n\n` +
         `${context}` +
         `Responda APENAS com base nos dados acima. Se não tiver dados suficientes, diga claramente.`;
     }
@@ -1191,9 +1480,11 @@ serve(async (req) => {
     ];
 
     // ── Decide: tool calling (admin) or direct streaming ───────────────
-    const isAdminMode = mode === "admin";
+    const activeTools = mode === "admin"
+      ? [...adminTools, ...memoryTools]
+      : clientTools;
 
-    if (isAdminMode) {
+    {
       // Step 1: Non-streaming call with tools to check for tool_calls
       const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -1204,7 +1495,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
-          tools: [...adminTools, ...memoryTools],
+          tools: activeTools,
           tool_choice: "auto",
           stream: false,
         }),
@@ -1236,7 +1527,7 @@ serve(async (req) => {
             fnArgs = {};
           }
 
-          const result = await executeTool(db, fnName, fnArgs, client_id, userId);
+          const result = await executeTool(db, fnName, fnArgs, client_id, userId, mode);
           toolMessages.push({
             role: "tool",
             tool_call_id: tc.id,
@@ -1335,32 +1626,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
     }
-
-    // ── Client mode: direct streaming (no tools) ───────────────────────
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: allMessages,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }, 429);
-      if (response.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return json({ error: "Erro ao processar com IA" }, 500);
-    }
-
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
   } catch (e) {
     console.error("assistant-chat error:", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
