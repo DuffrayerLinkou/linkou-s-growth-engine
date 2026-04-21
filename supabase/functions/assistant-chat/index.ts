@@ -778,6 +778,86 @@ serve(async (req) => {
       context += "\n";
     }
 
+    // ── Memória operacional ──────────────────────────────────────────
+    if (goals.length > 0) {
+      context += `## 🎯 Objetivos Ativos do Cliente\n`;
+      for (const g of goals) {
+        const tgt = g.target_metric ? ` (meta: ${g.target_metric}=${g.target_value || "?"})` : "";
+        const dl = g.deadline ? ` • prazo ${g.deadline}` : "";
+        context += `- [${g.priority}] **${g.title}**${tgt}${dl}\n`;
+        if (g.description) context += `  ${String(g.description).slice(0,200)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (offers.length > 0) {
+      context += `## 💼 Ofertas Ativas\n`;
+      for (const o of offers) {
+        context += `- **${o.name}**${o.price ? ` — R$${o.price}` : ""}${o.target_audience ? ` • público: ${o.target_audience}` : ""}\n`;
+        if (o.description) context += `  ${String(o.description).slice(0,200)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (channels.length > 0) {
+      context += `## 📡 Canais Ativos\n`;
+      for (const c of channels) {
+        const bd = c.monthly_budget ? ` • R$${c.monthly_budget}/mês` : "";
+        context += `- ${c.channel}${c.account_id ? ` (${c.account_id})` : ""}${bd}${c.notes ? ` — ${c.notes}` : ""}\n`;
+      }
+      context += "\n";
+    }
+
+    if (constraints.length > 0) {
+      context += `## 🚫 Restrições/Regras a RESPEITAR (obrigatório)\n`;
+      for (const r of constraints) {
+        context += `- [${r.severity}/${r.type}] ${r.description}\n`;
+      }
+      context += `\n⚠️ Recuse qualquer ação que viole as regras acima e cite a restrição.\n\n`;
+    }
+
+    if (decisions.length > 0) {
+      context += `## 🧠 Decisões Recentes (memória)\n`;
+      for (const d of decisions) {
+        const date = d.decided_at ? String(d.decided_at).split("T")[0] : "-";
+        context += `- (${date}) **${d.title}**: ${d.decision}${d.rationale ? ` — _${d.rationale}_` : ""}\n`;
+      }
+      context += "\n";
+    }
+
+    if (recentActions.length > 0) {
+      context += `## ⚡ Últimas Ações Executadas\n`;
+      for (const a of recentActions.slice(0, 6)) {
+        const date = a.executed_at ? String(a.executed_at).split("T")[0] : "-";
+        context += `- (${date}) ${a.action_type} [${a.status}]\n`;
+      }
+      context += "\n";
+    }
+
+    if (openInsights.length > 0) {
+      context += `## 💡 Insights Abertos (gerados anteriormente)\n`;
+      for (const i of openInsights) {
+        context += `- [${i.urgency}/${i.category}] **${i.title}** — ${String(i.body).slice(0,180)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (conversationState) {
+      const stateBits: string[] = [];
+      if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
+      if (conversationState.current_objective) stateBits.push(`objetivo: ${conversationState.current_objective}`);
+      const pend = Array.isArray(conversationState.pending_items) ? conversationState.pending_items : [];
+      if (pend.length > 0) stateBits.push(`pendências: ${pend.length}`);
+      if (stateBits.length > 0) {
+        context += `## 🧭 Estado da Conversa\n${stateBits.join(" • ")}\n`;
+        if (conversationState.last_recommendation) {
+          const lr = conversationState.last_recommendation as Record<string, unknown>;
+          if (lr?.title) context += `Última recomendação: ${lr.title}\n`;
+        }
+        context += "\n";
+      }
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
