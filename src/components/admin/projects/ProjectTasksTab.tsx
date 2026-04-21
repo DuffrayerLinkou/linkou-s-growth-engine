@@ -10,7 +10,8 @@ interface Task {
   title: string;
   status: string | null;
   due_date: string | null;
-  assignee?: { full_name: string | null } | null;
+  assigned_to: string | null;
+  assigneeName?: string | null;
 }
 
 const statusLabel: Record<string, string> = {
@@ -37,10 +38,17 @@ export function ProjectTasksTab({ projectId }: { projectId: string }) {
     (async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("id, title, status, due_date, assignee:profiles!tasks_assigned_to_fkey(full_name)")
+        .select("id, title, status, due_date, assigned_to")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
-      setTasks((data as any) || []);
+      const rows = (data as any) || [];
+      const assigneeIds = Array.from(new Set(rows.map((r: any) => r.assigned_to).filter(Boolean)));
+      let nameMap: Record<string, string> = {};
+      if (assigneeIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", assigneeIds as string[]);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.full_name]));
+      }
+      setTasks(rows.map((r: any) => ({ ...r, assigneeName: r.assigned_to ? nameMap[r.assigned_to] : null })));
       setLoading(false);
     })();
   }, [projectId]);
@@ -69,10 +77,10 @@ export function ProjectTasksTab({ projectId }: { projectId: string }) {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm truncate">{t.title}</p>
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-              {t.assignee?.full_name && (
+              {t.assigneeName && (
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  {t.assignee.full_name}
+                  {t.assigneeName}
                 </span>
               )}
               {t.due_date && <span>Prazo: {format(new Date(t.due_date), "dd/MM/yy", { locale: ptBR })}</span>}
