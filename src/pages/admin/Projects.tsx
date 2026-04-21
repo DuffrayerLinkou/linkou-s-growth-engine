@@ -511,14 +511,14 @@ export default function AdminProjects() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Hipótese / Objetivo</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Descreva o projeto..."
+                placeholder="Qual hipótese este projeto valida? Qual resultado esperado?"
                 rows={3}
               />
             </div>
