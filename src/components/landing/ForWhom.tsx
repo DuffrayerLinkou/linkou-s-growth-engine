@@ -68,7 +68,7 @@ export function ForWhom() {
         </motion.div>
 
         {/* Audiences Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {audiences.map((audience, index) => (
             <motion.div
               key={index}
@@ -77,6 +77,7 @@ export function ForWhom() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.15 }}
               whileHover={{ y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+              className={index === audiences.length - 1 ? "sm:col-span-2 lg:col-span-1" : ""}
             >
               <Card className="h-full hover:shadow-xl transition-shadow duration-300 border-border bg-card shadow-sm card-gradient-border card-glow">
                 <CardContent className="p-5 md:p-6">

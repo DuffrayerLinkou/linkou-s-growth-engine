@@ -77,8 +77,8 @@ export function Method() {
           Antes de otimizar, você precisa entender o que está acontecendo. Nossa auditoria revela onde o dinheiro está indo — e nossa consultoria <span className="text-foreground font-medium">organiza o caminho pra frente</span>.
         </motion.p>
 
-        {/* Desktop Timeline - Horizontal */}
-        <div className="hidden lg:block">
+        {/* Tablet+ Timeline - Horizontal */}
+        <div className="hidden md:block">
           {/* Timeline Track */}
           <div className="relative mb-12">
             {/* Background Line */}
@@ -121,8 +121,8 @@ export function Method() {
             </div>
           </div>
 
-          {/* Desktop Cards Grid */}
-          <div className="grid lg:grid-cols-4 gap-6 mt-8">
+          {/* Cards Grid: 2x2 tablet, 1x4 desktop */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
             {phases.map((phase, index) => (
               <PhaseCard key={index} phase={phase} index={index} />
             ))}
@@ -130,7 +130,7 @@ export function Method() {
         </div>
 
         {/* Mobile Timeline - Vertical */}
-        <div className="lg:hidden space-y-0">
+        <div className="md:hidden space-y-0">
           {phases.map((phase, index) => (
             <motion.div
               key={index}
