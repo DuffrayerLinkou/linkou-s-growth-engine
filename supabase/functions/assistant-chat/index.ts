@@ -953,7 +953,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
-          tools: adminTools,
+          tools: [...adminTools, ...memoryTools],
           tool_choice: "auto",
           stream: false,
         }),
@@ -973,6 +973,8 @@ serve(async (req) => {
       if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
         // Execute each tool call
         const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
+        const stateUpdates: Record<string, unknown> = {};
+        let lastActionForState: Record<string, unknown> | null = null;
 
         for (const tc of choice.message.tool_calls) {
           const fnName = tc.function.name;
@@ -989,6 +991,58 @@ serve(async (req) => {
             tool_call_id: tc.id,
             content: JSON.stringify(result),
           });
+
+          // Persist action log (skip pure state updates to avoid noise)
+          if (fnName !== "set_conversation_state") {
+            try {
+              await db.from("client_actions").insert({
+                client_id,
+                action_type: fnName,
+                payload: fnArgs,
+                executed_by: userId,
+                status: result.success ? "success" : "failed",
+                error_message: result.success ? null : result.message.slice(0, 500),
+              });
+            } catch (e) {
+              console.error("Failed to log client_action:", e);
+            }
+          }
+
+          // Track state changes
+          if (fnName === "set_conversation_state") {
+            if (fnArgs.current_topic) stateUpdates.current_topic = fnArgs.current_topic;
+            if (fnArgs.current_objective) stateUpdates.current_objective = fnArgs.current_objective;
+            if (fnArgs.pending_items) stateUpdates.pending_items = fnArgs.pending_items;
+          }
+          if (result.success) {
+            lastActionForState = {
+              tool: fnName,
+              params: fnArgs,
+              result: result.message,
+              created_at: new Date().toISOString(),
+            };
+          }
+        }
+
+        // Upsert conversation state
+        if (Object.keys(stateUpdates).length > 0 || lastActionForState) {
+          try {
+            const upsertPayload: Record<string, unknown> = {
+              user_id: userId,
+              client_id,
+              mode,
+              current_client_id: client_id,
+              state_updated_at: new Date().toISOString(),
+              ...stateUpdates,
+            };
+            if (lastActionForState) upsertPayload.last_action = lastActionForState;
+            await db.from("assistant_conversations").upsert(
+              upsertPayload,
+              { onConflict: "user_id,client_id,mode" }
+            );
+          } catch (e) {
+            console.error("Failed to upsert conversation state:", e);
+          }
         }
 
         // Step 2: Stream the final response with tool results
