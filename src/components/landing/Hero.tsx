@@ -45,9 +45,9 @@ function HeroComponent() {
 
         {/* Decorative blob on the right */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[45%] h-[70%] hidden lg:block pointer-events-none">
-          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/15 via-primary/8 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
-          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/10 to-accent/15 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
-          <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/10" />
+          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/30 via-primary/20 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
+          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/20 to-accent/25 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
+          <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/20" />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -121,12 +121,25 @@ function HeroComponent() {
             </div>
 
             {/* Right: Empty space for blob on desktop, hidden on mobile */}
-            <div className="hidden lg:flex items-center justify-center relative">
+            <div className="hidden lg:flex items-center justify-center relative min-h-[500px]">
+              {/* Radial glow halo */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(circle at 50% 45%, hsl(var(--primary) / 0.25) 0%, transparent 60%)",
+                  filter: "blur(40px)",
+                }}
+              />
+              {/* Ground shadow ellipse */}
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[60%] h-8 rounded-[50%] bg-primary/25 blur-2xl pointer-events-none" />
+
               <m.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className="relative z-10"
+                style={{ filter: "drop-shadow(0 25px 60px hsl(var(--primary) / 0.4))" }}
               >
                 <m.img
                   src={linkouzinhoHero}
@@ -134,9 +147,9 @@ function HeroComponent() {
                   loading="eager"
                   // @ts-expect-error fetchpriority is a valid HTML attribute not yet in React types
                   fetchpriority="high"
-                  className="w-full max-w-[420px] drop-shadow-2xl select-none"
+                  className="w-full max-w-[560px] xl:max-w-[620px] select-none"
                   draggable={false}
-                  animate={{ y: [0, -12, 0] }}
+                  animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 />
               </m.div>
