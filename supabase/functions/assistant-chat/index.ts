@@ -496,6 +496,42 @@ async function executeTool(
         };
       }
 
+      case "log_decision": {
+        const { data, error } = await db.from("client_decisions").insert({
+          client_id: clientId,
+          title: args.title as string,
+          decision: args.decision as string,
+          rationale: (args.rationale as string) || null,
+          decided_by: userId,
+          related_entity_type: (args.related_entity_type as string) || null,
+          related_entity_id: (args.related_entity_id as string) || null,
+        }).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Decisão "${args.title}" registrada (id: ${data?.id?.slice(0,8)}).` };
+      }
+
+      case "record_insight": {
+        const { data, error } = await db.from("insights").insert({
+          client_id: clientId,
+          title: args.title as string,
+          body: args.body as string,
+          category: (args.category as string) || "audit",
+          urgency: (args.urgency as string) || "medium",
+          evidence: (args.evidence as Record<string, unknown>) || {},
+          generated_by: "bot",
+          status: "new",
+          created_by: userId,
+        }).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Insight "${args.title}" registrado para validação (id: ${data?.id?.slice(0,8)}).` };
+      }
+
+      case "set_conversation_state": {
+        // Handled at outer scope by caller (it has access to conversation row).
+        // Here we just acknowledge — actual upsert happens after tool loop.
+        return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
