@@ -142,7 +142,7 @@ export function KeywordTable({ keywords, onEdit, onDelete, onViewHistory }: Prop
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(k)} title="Editar">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-500" onClick={() => onDelete(k)} title="Excluir">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(k)} title="Excluir">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
