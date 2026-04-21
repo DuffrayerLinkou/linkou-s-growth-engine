@@ -231,17 +231,17 @@ function HeroComponent() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-10 md:mt-12 pt-6 md:pt-8 border-t border-primary/15"
           >
-            {/* Mobile: 1 col stack with divider lines / sm: 2x2 cards / md+: hidden (uses desktop row below) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4 md:hidden divide-y sm:divide-y-0 divide-primary/10">
+            {/* Mobile/tablet: 2x2 grid of structured cards / md+: hidden */}
+            <div className="grid grid-cols-2 gap-3 md:hidden">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-4 py-4 sm:py-5 sm:px-4 sm:rounded-xl sm:bg-primary/5 sm:border sm:border-primary/10 sm:flex-col sm:items-center sm:text-center"
+                  className="flex flex-col items-start gap-2 p-4 rounded-xl bg-primary/5 border border-primary/15 backdrop-blur-sm min-h-[140px]"
                 >
-                  <div className="text-2xl sm:text-3xl font-bold text-primary shrink-0 min-w-[80px] sm:min-w-0">
+                  <div className="text-2xl font-bold text-primary leading-none">
                     {stat.value}
                   </div>
-                  <div className="text-sm sm:text-xs text-foreground/70 leading-snug">
+                  <div className="text-[11px] text-foreground/70 leading-snug">
                     {stat.label}
                   </div>
                 </div>
