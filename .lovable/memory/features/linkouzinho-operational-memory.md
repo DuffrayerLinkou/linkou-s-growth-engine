@@ -23,4 +23,11 @@ Carrega 15 fontes em paralelo (cliente + campanhas + métricas 6mo + plano + bri
 
 **Tools de memória admin** (além das de execução): `log_decision`, `record_insight`, `set_conversation_state`.
 
-Sprint 2 (RAG documental com pgvector + tool `search_documents`) e Sprint 3 (UI `/admin/insights` + botão "tornar pesquisável" em Arquivos) pendentes.
+**Sprint 2 — Memória Documental (RAG)** implementado:
+- Extensão `pgvector` + tabelas `document_chunks` (file_id, client_id, content, chunk_index, page_number, token_count), `document_embeddings` (vector(768), modelo `google/text-embedding-004`, índice ivfflat cosine), `document_permissions` (file_id, can_be_used_by_ai, role, user_id).
+- Função SQL `match_document_chunks(query_embedding, target_client_id, match_count, similarity_threshold)` SECURITY DEFINER com validação `user_has_client_access` + filtro de permissão IA.
+- Edge function `supabase/functions/ingest-document/index.ts`: baixa do bucket `client-files`, extrai texto (PDF via `pdf-parse`, DOCX via `mammoth`, TXT/MD/CSV/JSON/HTML direto), chunka em ~600 tokens com overlap 80, gera embeddings via Lovable AI Gateway `/v1/embeddings` `google/text-embedding-004`, persiste idempotente (delete + insert). Loga em `client_actions` (`action_type: ingest_document`).
+- Tool nova `search_documents(query, top_k)` no `assistant-chat`: gera embedding da query, chama RPC `match_document_chunks` (similarity_threshold=0.4), retorna trechos formatados com nome do arquivo + página + similaridade.
+- UI em `src/pages/cliente/Arquivos.tsx`: botão "🧠 Tornar pesquisável pelo Linkouzinho" por arquivo (apenas formatos indexáveis: PDF/TXT/MD/CSV/JSON/HTML/DOCX), badge "Indexado · re-indexar" quando já tem chunks, query `indexed-files` lista IDs com chunks.
+
+Sprint 3 (UI `/admin/insights` listando insights com aprovação + notificações de alta urgência + UI de toggle `can_be_used_by_ai` por arquivo) ainda pendente.
