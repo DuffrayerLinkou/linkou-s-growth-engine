@@ -87,6 +87,7 @@ interface PlanningTabProps { clientId?: string; }
 // Helper para listas string editáveis
 function StringListEditor({ items, onChange, placeholder }: { items: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [draft, setDraft] = useState("");
+  const safeItems = Array.isArray(items) ? items : [];
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
