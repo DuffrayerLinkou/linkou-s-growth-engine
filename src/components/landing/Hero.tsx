@@ -45,9 +45,9 @@ function HeroComponent() {
 
         {/* Decorative blob on the right */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[45%] h-[70%] hidden lg:block pointer-events-none">
-          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/15 via-primary/8 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
-          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/10 to-accent/15 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
-          <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/10" />
+          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/30 via-primary/20 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
+          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/20 to-accent/25 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
+          <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/20" />
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
