@@ -1284,6 +1284,7 @@ serve(async (req) => {
       clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
       convRes, creativeDemandsRes, creativeDeliverablesRes,
+      projectsRes, learningsRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -1360,6 +1361,16 @@ serve(async (req) => {
         .neq("status", "delivered")
         .order("created_at", { ascending: false })
         .limit(40),
+      db.from("projects")
+        .select("id, name, status, start_date, end_date, budget, description")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      db.from("learnings")
+        .select("id, title, impact, category, project_id, approved_by_ponto_focal, created_at")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(8),
     ]);
 
     const client = clientRes.data;
@@ -1379,6 +1390,8 @@ serve(async (req) => {
     const conversationState = convRes.data;
     const creativeDemands = creativeDemandsRes.data || [];
     const creativeDeliverables = creativeDeliverablesRes.data || [];
+    const projects = projectsRes.data || [];
+    const learnings = learningsRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
