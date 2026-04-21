@@ -1666,6 +1666,8 @@ serve(async (req) => {
     const creativeDeliverables = creativeDeliverablesRes.data || [];
     const projects = projectsRes.data || [];
     const learnings = learningsRes.data || [];
+    const keywords = keywordsRes.data || [];
+    const keywordClusters = keywordClustersRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1878,6 +1880,29 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (keywords.length > 0 || keywordClusters.length > 0) {
+      context += `## 🔑 Palavras-chave & SEO\n`;
+      if (keywords.length > 0) {
+        const top = keywords.slice(0, 10) as Array<Record<string, unknown>>;
+        context += `Top ${top.length} keywords ativas (de ${keywords.length}):\n`;
+        for (const k of top) {
+          const sid = String(k.id).slice(0, 8);
+          const vol = k.search_volume ?? "?";
+          const dif = k.difficulty ?? "?";
+          const pos = k.current_position ?? "—";
+          context += `- \`${sid}\` **${k.term}** [${k.intent}] vol=${vol} dif=${dif} pos=${pos} • ${k.status}\n`;
+        }
+      }
+      if (keywordClusters.length > 0) {
+        context += `\nClusters (${keywordClusters.length}):\n`;
+        for (const c of keywordClusters) {
+          const count = (keywords as Array<Record<string, unknown>>).filter((k) => k.cluster_id === c.id).length;
+          context += `- \`${String(c.id).slice(0,8)}\` **${c.name}**${c.intent ? ` [${c.intent}]` : ""} → ${count} keyword(s)\n`;
+        }
+      }
+      context += `\nStatus: target / ranking / opportunity / archived\n\n`;
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
@@ -1960,6 +1985,13 @@ serve(async (req) => {
         `- **update_demand_status** / **update_deliverable_status**: Move pelo fluxo briefing → in_production → in_approval → adjustments → delivered.\n` +
         `- **add_deliverable_version**: Quando o admin ditar uma copy/roteiro novo no chat, persista como versão (incrementa current_version).\n` +
         `- ⚠️ NUNCA marque status 'approved' — aprovação é exclusiva do Ponto Focal pela UI em /cliente/criativos.\n\n` +
+        `## 🔑 Palavras-chave & SEO\n` +
+        `- **list_keywords**: lê keywords + clusters do cliente (use ANTES de update/record_ranking pra obter o UUID).\n` +
+        `- **create_keyword** / **update_keyword**: gerencia termo, intenção, posição, vínculos com cluster/campanha/tarefa.\n` +
+        `- **create_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
+        `- **record_keyword_ranking**: registra ponto histórico de posição (alimenta sparkline) E atualiza current_position.\n` +
+        `- **analyze_keyword_opportunities**: cruza volume × dificuldade × posição → quick wins, candidatas a artigo, candidatas a Ads, gaps por cluster.\n` +
+        `- ⚠️ NUNCA invente volume/dificuldade/CPC — se o admin não informar, deixe nulo e oriente importar de Semrush/Ahrefs/Keyword Planner via /admin/keywords.\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
         `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
