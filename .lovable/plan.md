@@ -1,74 +1,85 @@
 
 
-## Repaginar a sessão "Projetos" — sair do CRUD genérico
+## Linkouzinho ganha autonomia total sobre Projetos + verificação de consistência por papel
 
-A página `/admin/projects` hoje é uma tabela CRUD pura (nome, status, datas, budget). "Plano" e "Campanhas" foram repaginados como visões ricas e contextuais da agência — "Projetos" precisa do mesmo tratamento.
+Hoje o Linkouzinho admin já tem `create_project`, mas só isso — não consegue atualizar status, mover datas/budget, vincular tarefas/campanhas, registrar aprendizados nem listar/buscar projetos pra agir em cima deles. Vou destravar o controle completo da nova seção de Projetos e validar que o que ele faz aparece corretamente para admin, account_manager e cliente (ponto focal / manager / operador).
 
-### Conceito novo
+### 1. Novas tools no `assistant-chat` (admin only)
 
-Um projeto na Linkou é uma **onda de execução** dentro do plano estratégico do cliente: tem hipótese, entregas, métricas de impacto, e gera **aprendizados** (já existe a tabela `learnings`). Vamos parar de exibir o projeto como linha de tabela e passar a exibi-lo como **card de execução** com tudo conectado em um único drill-down.
+Adicionar à lista `adminTools` em `supabase/functions/assistant-chat/index.ts`:
 
-### O que muda em `/admin/projects`
+| Tool | O que faz |
+|---|---|
+| `list_projects` | Lista projetos do cliente atual (id curto, nome, status, datas, budget) para o bot referenciar nas próximas tools |
+| `update_project` | Atualiza nome, descrição (hipótese), datas, budget, status (`planning`/`active`/`paused`/`completed`) |
+| `link_task_to_project` | Define `project_id` de uma task existente (recebe `task_id` + `project_id`) |
+| `link_campaign_to_project` | Define `project_id` de uma campaign existente |
+| `create_learning` | Insere em `learnings` (title, description, impact, category, tags[]) já vinculado ao `project_id` e `client_id`. Status `approved_by_ponto_focal=false` |
+| `update_learning` | Edita um aprendizado (campos texto + tags). Não toca em `approved_by_ponto_focal` (só ponto focal aprova via UI) |
 
-**1. Header com KPIs reais (não cards de status secos)**
-- Projetos ativos · Budget total alocado · Entregas em andamento · Aprendizados registrados (últimos 30d)
+Estendo `create_project` para também aceitar `description` rotulada como "hipótese/objetivo" (já aceita, só reforço no prompt).
 
-**2. Substituir tabela por grade de cards de projeto**
-Cada card mostra:
-- Nome + cliente + badge de status
-- Barra de progresso por **% de tarefas concluídas** (consulta `tasks` por `project_id`)
-- Mini-stats: nº de campanhas vinculadas, nº de entregas criativas, nº de aprendizados
-- Período + budget formatado
-- Faixa lateral colorida pelo status
+### 2. Contexto enriquecido no system prompt
 
-**3. Filtros contextuais**
-- Busca + filtro de status (mantém)
-- Adicionar filtro por **cliente** e por **período ativo**
-- Adicionar toggle "Apenas com aprendizados pendentes"
+Hoje o prompt carrega 17 fontes em paralelo, mas **não traz projetos nem learnings**. Vou adicionar 2 fetches paralelos no `Promise.all`:
 
-**4. Drill-down rico (substitui o dialog "Visualizar" atual)**
-Abrir um projeto leva a um dialog grande (max-w-4xl) com abas:
+- `projects` do cliente (id, name, status, start_date, end_date, budget, description) — últimos 10
+- `learnings` do cliente últimas 8 (title, impact, category, project_id, approved_by_ponto_focal)
 
-- **Visão geral**: cliente, descrição, período, budget, status, progresso de tarefas, contagens (campanhas/criativos/arquivos/aprendizados), data de criação
-- **Tarefas vinculadas**: lista das tasks deste `project_id` com status colorido e responsável
-- **Campanhas vinculadas**: cards compactos das campaigns deste `project_id` com plataforma, status, budget
-- **Aprendizados**: lista da tabela `learnings` deste projeto (título, impacto, categoria, tags, aprovado por ponto focal). Mostrar empty state convidando a registrar.
-- **Arquivos**: arquivos em `files` com `project_id`, com link de download
-
-**5. Form de criação/edição**
-- Manter campos atuais
-- Adicionar campo **hipótese / objetivo** (usa `description` mas com label e placeholder orientados: "Qual hipótese este projeto valida? Qual resultado esperado?")
-
-### Estrutura técnica
-
-**Arquivos novos**
+E renderizar dois novos blocos no contexto:
 ```text
-src/components/admin/projects/ProjectCard.tsx          → card visual de projeto na grade
-src/components/admin/projects/ProjectDetailDialog.tsx  → dialog com 4 abas
-src/components/admin/projects/ProjectTasksTab.tsx
-src/components/admin/projects/ProjectCampaignsTab.tsx
-src/components/admin/projects/ProjectLearningsTab.tsx
-src/components/admin/projects/ProjectFilesTab.tsx
+## 📦 Projetos Ativos
+- `abc12345` [active] Lançamento Q2 — R$15.000 (01/04 → 30/06)
+   └ tarefas vinculadas: 8 (3 concluídas)
+   └ campanhas vinculadas: 4
+
+## 🎓 Aprendizados Recentes
+- (12/04) [hipótese/oferta] **CTA "Quero falar com humano" gerou +32% CTR** ✅ aprovado
 ```
 
+Isso permite o bot referenciar projetos por id curto em todas as tools novas e raciocinar com a "memória do que já foi aprendido" naquela conta.
+
+### 3. Atualização do system prompt admin
+
+Adicionar uma seção dedicada:
+```text
+## 📦 Projetos & Aprendizados
+- list_projects / update_project: ondas de execução (hipótese, escopo, status, budget)
+- link_task_to_project / link_campaign_to_project: amarra entrega a uma onda
+- create_learning: registra hipótese validada (impacto + categoria + tags)
+- update_learning: edita texto/tags. NUNCA marque como aprovado — só o Ponto Focal pela UI.
+```
+
+### 4. Verificação de consistência (objetivo "as mudanças foram consistentes para todos os usuários")
+
+Como tudo passa pelas mesmas tabelas (`projects`, `tasks`, `campaigns`, `learnings`) que JÁ são lidas pela nova UI de `/admin/projetos` e respeitam RLS, qualquer mudança feita pelo bot via service role aparece automaticamente para:
+
+- **Admin / Account Manager** — full access via RLS existente; verão na grade de cards e em todas as 4 abas do `ProjectDetailDialog`
+- **Cliente (Manager / Ponto Focal / Operador)** — em `/cliente/tarefas`, `/cliente/campanhas` e nos drill-downs do plano; a tabela `learnings` já tem RLS que mostra para o cliente os registros do próprio `client_id`
+
+Para garantir que isto realmente funciona, vou:
+
+1. **Auditar a RLS de `learnings`** com SQL `SELECT polname, polcmd, polqual FROM pg_policy WHERE polrelid='public.learnings'::regclass` e, se NÃO existir uma policy SELECT para o cliente daquele `client_id`, criar via migração:
+   ```sql
+   CREATE POLICY "Client users view own learnings"
+     ON public.learnings FOR SELECT
+     USING (client_id = get_user_client_id(auth.uid()));
+   ```
+2. **Verificar que `projects` tem SELECT para o cliente daquele client_id** (a aba Projetos do cliente, se vier no futuro, e o `ProjectDetailDialog` que admin abre carrega via service role do bot mas o cliente lê direto). Se faltar, adicionar policy idêntica.
+3. Confirmar que o log em `client_actions` (já automático após cada tool) vai registrar `update_project`, `create_learning`, etc. — assim aparece no card "⚡ Últimas Ações Executadas" e fica auditável.
+
+### 5. Estrutura técnica resumida
+
 **Arquivo editado**
-- `src/pages/admin/Projects.tsx` — substituir tabela por grade de cards + KPIs no topo + filtros. Manter dialog de form atual (apenas reabilitando descrição com label "Hipótese / Objetivo"). Trocar dialog "Visualizar" pelo novo `ProjectDetailDialog`.
+- `supabase/functions/assistant-chat/index.ts` — adicionar 6 tools, 2 fetches no Promise.all, 2 blocos de contexto, seção no system prompt, 6 cases no `executeTool`
 
-**Dados (já existem, sem migração)**
-- `projects` — base
-- `tasks.project_id` — para progresso e aba tarefas
-- `campaigns.project_id` — para aba campanhas
-- `learnings.project_id` — para aba aprendizados (tabela já existe e é rica: title, description, impact, category, tags, approved_by_ponto_focal)
-- `files.project_id` — para aba arquivos
+**Migração SQL (somente se a auditoria mostrar policies faltando)**
+- Policies SELECT em `learnings` e/ou `projects` para clientes do mesmo `client_id`
 
-Cada aba do detalhe faz seu próprio fetch lazy ao abrir, evitando carregar tudo de uma vez na listagem.
+**Sem mudança de UI** — a página `/admin/projetos` revamp já consome `projects`/`tasks`/`campaigns`/`learnings`/`files` por `project_id`, então tudo que o bot fizer aparecerá na grade e nas 4 abas do detalhe automaticamente.
 
-**Componentes UI reaproveitados**
-- `Card`, `Badge`, `Progress`, `Tabs`, `Dialog`, `Button` (todos já existem)
-- Status colors já vêm de `status-config.ts` (`projectStatusLabels` / `projectStatusColors`)
-
-### Fora do escopo (ficam para depois se quiser)
-- Criar/editar aprendizados pelo dialog (por enquanto só leitura, igual fizemos com Plano)
-- Linkouzinho com tools de projeto
-- Tab "Projetos" dentro de `ClientDetail` (a página global cobre o caso)
+### Fora de escopo (próximo passo se quiser)
+- Tools de DELETE de projeto/learning (mais arriscado, peço aprovação separada)
+- Tool de aprovação de learning (proibido por design — fica com o Ponto Focal via UI)
+- Linkouzinho do cliente com tools de projeto (manter cliente só com `request_creative_demand`)
 
