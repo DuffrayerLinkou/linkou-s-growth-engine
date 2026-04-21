@@ -224,24 +224,24 @@ function HeroComponent() {
             </div>
           </div>
 
-          {/* Stats - grid 2x2 mobile, horizontal desktop */}
+          {/* Stats - structured cards mobile, horizontal desktop */}
           <m.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-12 pt-8 border-t border-primary/15"
+            className="mt-10 md:mt-12 pt-6 md:pt-8 border-t border-primary/15"
           >
-            {/* Mobile: 2x2 grid / Tablet (sm+): 4 cols */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:hidden">
+            {/* Mobile: 1 col stack with divider lines / sm: 2x2 cards / md+: hidden (uses desktop row below) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4 md:hidden divide-y sm:divide-y-0 divide-primary/10">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="px-3 py-3 flex flex-col items-center justify-center min-h-[120px]"
+                  className="flex items-start gap-4 py-4 sm:py-5 sm:px-4 sm:rounded-xl sm:bg-primary/5 sm:border sm:border-primary/10 sm:flex-col sm:items-center sm:text-center"
                 >
-                  <div className="text-xl sm:text-2xl font-bold text-primary mb-1">
+                  <div className="text-2xl sm:text-3xl font-bold text-primary shrink-0 min-w-[80px] sm:min-w-0">
                     {stat.value}
                   </div>
-                  <div className="text-xs text-foreground/60 leading-tight text-center">
+                  <div className="text-sm sm:text-xs text-foreground/70 leading-snug">
                     {stat.label}
                   </div>
                 </div>
@@ -269,13 +269,13 @@ function HeroComponent() {
           </m.div>
         </div>
 
-        {/* Scroll indicator */}
+        {/* Scroll indicator — hidden on mobile (natural scroll via stats) */}
         <m.button
           onClick={() => scrollToSection("#servicos")}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-foreground/50 hover:text-primary transition-colors"
+          className="hidden md:flex absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-1 text-foreground/50 hover:text-primary transition-colors"
           aria-label="Rolar para baixo"
         >
           <span className="text-xs uppercase tracking-widest">Explorar</span>
