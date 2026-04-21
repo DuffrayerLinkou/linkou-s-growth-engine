@@ -184,24 +184,30 @@ function HeroComponent() {
 
             {/* Right: Empty space for blob on desktop, hidden on mobile */}
             <div className="hidden lg:flex items-center justify-center relative min-h-[500px]">
-              {/* Radial glow halo */}
+              {/* Radial glow halo — intensified purple aura */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   background:
-                    "radial-gradient(circle at 50% 45%, hsl(var(--primary) / 0.25) 0%, transparent 60%)",
-                  filter: "blur(40px)",
+                    "radial-gradient(circle at 50% 45%, hsl(var(--primary) / 0.45) 0%, hsl(var(--primary) / 0.15) 35%, transparent 65%)",
+                }}
+              />
+              {/* Secondary outer glow */}
+              <div
+                className="absolute inset-0 pointer-events-none motion-safe:animate-[pulse_6s_ease-in-out_infinite]"
+                style={{
+                  background:
+                    "radial-gradient(circle at 50% 45%, hsl(var(--primary) / 0.25) 0%, transparent 50%)",
                 }}
               />
               {/* Ground shadow ellipse */}
-              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[60%] h-8 rounded-[50%] bg-primary/25 blur-2xl pointer-events-none" />
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[60%] h-8 rounded-[50%] bg-primary/30 blur-2xl pointer-events-none" />
 
               <m.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className="relative z-10"
-                style={{ filter: "drop-shadow(0 20px 40px hsl(var(--primary) / 0.35))" }}
               >
                 <m.img
                   src={linkouzinhoHero}
@@ -223,19 +229,19 @@ function HeroComponent() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-12 pt-8 border-t border-border/50"
+            className="mt-12 pt-8 border-t border-primary/15"
           >
             {/* Mobile: 2x2 grid */}
             <div className="grid grid-cols-2 gap-2 md:hidden">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="rounded-lg bg-card/20 backdrop-blur-sm border border-border/20 px-3 py-3 flex flex-col items-center justify-center min-h-[100px]"
+                  className="px-3 py-3 flex flex-col items-center justify-center min-h-[100px]"
                 >
                   <div className="text-2xl font-bold text-primary mb-1">
                     {stat.value}
                   </div>
-                  <div className="text-[10px] text-muted-foreground leading-tight text-center">
+                  <div className="text-[10px] text-foreground/60 leading-tight text-center">
                     {stat.label}
                   </div>
                 </div>
@@ -250,12 +256,12 @@ function HeroComponent() {
                     <div className="text-3xl font-bold text-primary mb-1">
                       {stat.value}
                     </div>
-                    <div className="text-sm text-muted-foreground max-w-[180px]">
+                    <div className="text-sm text-foreground/60 max-w-[180px]">
                       {stat.label}
                     </div>
                   </div>
                   {index < stats.length - 1 && (
-                    <div className="w-px h-12 bg-border/50" />
+                    <div className="w-px h-12 bg-primary/20" />
                   )}
                 </div>
               ))}
@@ -269,7 +275,7 @@ function HeroComponent() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-foreground/50 hover:text-primary transition-colors"
           aria-label="Rolar para baixo"
         >
           <span className="text-xs uppercase tracking-widest">Explorar</span>
