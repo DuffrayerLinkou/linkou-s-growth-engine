@@ -276,7 +276,6 @@ export default function ClienteProjetos() {
         }
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
-        onEdit={() => setIsViewOpen(false)}
       />
     </div>
   );
