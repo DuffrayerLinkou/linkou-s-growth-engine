@@ -1,134 +1,92 @@
 
 
-## Demandas Criativas — Módulo Colaborativo de Produção de Conteúdo
+## Linkouzinho — autonomia sobre Demandas Criativas
 
-Nova área operacional para gerenciar o ciclo recorrente de produção de **criativos, copies de vídeo, posts estáticos e enxoval de mídia** em colaboração entre **time interno** e **cliente (Ponto Focal)**. Cada demanda é uma unidade de trabalho com briefing → produção → aprovação → entrega.
-
----
-
-### Conceito
-
-Cada **Demanda Criativa** representa um pedido de produção. Pode conter múltiplos **entregáveis** (copies, vídeos, posts, artes). O fluxo segue um Kanban com aprovação obrigatória do Ponto Focal antes de publicar.
-
-```text
-Briefing → Em Produção → Em Aprovação → Ajustes → Aprovado → Entregue
-   ↑           ↑              ↑            ↑          ↑          ↑
- cliente    interno       cliente      interno    cliente    interno
-```
+Estender o `assistant-chat` para que o Linkouzinho **leia, crie e movimente** demandas criativas e entregáveis, no modo admin (orquestração) e no modo cliente (consulta + solicitação).
 
 ---
 
-### Funcionalidades
+### O que o bot vai poder fazer
 
-**Para o cliente (`/cliente/criativos`)**
-- Solicitar nova demanda preenchendo briefing (objetivo, formato, plataforma, prazo, referências, copy bruta)
-- Anexar arquivos de referência (logos, vídeos brutos, fotos)
-- Visualizar entregáveis em produção com preview
-- **Aprovar ou solicitar ajustes** (Ponto Focal apenas) com comentários
-- Histórico completo de versões e revisões
+**Modo admin (equipe interna)** — orquestração completa
+- Listar demandas em aberto e seu status
+- **Criar demanda criativa** para um cliente (briefing + objetivo + plataforma + formato + prazo + prioridade)
+- **Criar entregável** vinculado a uma demanda (copy de vídeo, copy estática, vídeo, arte, enxoval)
+- **Mover status** de demanda ou entregável (briefing → em produção → em aprovação → ajustes → aprovado → entregue)
+- **Adicionar versão de copy** a um entregável (texto direto via tool, sem upload de arquivo)
+- Resumir backlog: o que está atrasado, o que está aguardando aprovação do Ponto Focal, taxa de ajustes
 
-**Para o admin (`/admin/criativos`)**
-- Kanban com todas demandas filtradas por cliente/status/prazo
-- Criar entregáveis vinculados a uma demanda (copy, vídeo, arte, roteiro)
-- Upload de arquivos de produção (versão 1, 2, 3...) via Supabase Storage
-- Marcar como "Pronto para aprovação" → notifica Ponto Focal
-- Visualizar feedback do cliente e atualizar versão
-- Métricas: demandas por status, tempo médio de aprovação, taxa de ajustes
-
-**Detalhe de uma demanda (compartilhada cliente + admin)**
-- Briefing fixo no topo
-- Lista de entregáveis com preview, status, versão atual
-- Thread de comentários por entregável (reaproveita tabela `comments`)
-- Botão de aprovação destacado para Ponto Focal
-- Histórico de versões clicável
+**Modo cliente** — consulta + solicitação leve
+- Listar minhas demandas em aberto e seu status
+- **Solicitar nova demanda** (briefing curto via chat, criada em status `briefing`)
+- Mostrar o que está aguardando minha aprovação (se Ponto Focal)
+- **Não** aprova/rejeita pelo bot — aprovação obrigatoriamente via UI (preserva a regra "só Ponto Focal aprova" e a auditoria por clique)
 
 ---
 
-### Tipos de entregáveis suportados
+### Mudanças no `supabase/functions/assistant-chat/index.ts`
 
-| Tipo | Conteúdo principal | Preview |
-|---|---|---|
-| Copy de vídeo | Roteiro/legenda em texto rico | Markdown render |
-| Copy de post estático | Headline + corpo + CTA | Texto formatado |
-| Vídeo editado | Arquivo .mp4 | Player inline |
-| Arte/imagem | .png / .jpg | Imagem responsiva |
-| Enxoval de mídia | Pacote (múltiplos arquivos) | Galeria |
+**1. Carregar demandas no contexto** (paralelo com as outras 15 fontes)
+- Buscar últimas 15 demandas do cliente + entregáveis abertos
+- Renderizar no system prompt em seção `## 🎨 Demandas Criativas`:
+  ```text
+  - [in_approval] Vídeo lançamento Abril (Reel/Instagram, prazo 25/04, prio: alta)
+    └ entregáveis: 2 em aprovação, 1 em produção
+  ```
 
----
+**2. Novas tools (admin)**
 
-### Dados (novas tabelas)
+| Tool | Função |
+|---|---|
+| `create_creative_demand` | Cria demanda (title, briefing, objective, platform, format, deadline, priority) |
+| `create_creative_deliverable` | Cria entregável vinculado (demand_id, type, title, content opcional) |
+| `update_demand_status` | Move status da demanda |
+| `update_deliverable_status` | Move status do entregável (não permite "approved" — só Ponto Focal via UI) |
+| `add_deliverable_version` | Adiciona versão de copy (text content) ao entregável; incrementa `current_version` |
 
-**`creative_demands`** — a demanda em si
-- `id, client_id, title, briefing, objective, platform, format, deadline`
-- `status` (briefing, in_production, in_approval, adjustments, approved, delivered)
-- `priority, requested_by, assigned_to, created_at, updated_at`
+**3. Novas tools (cliente)** — primeiro conjunto de tools no modo cliente
+- `request_creative_demand` — cria demanda em status `briefing` no client_id do próprio usuário
+- Sem tools de aprovação (proteção arquitetural)
 
-**`creative_deliverables`** — entregáveis vinculados a uma demanda
-- `id, demand_id, type, title, content (text), current_version`
-- `status, approved_by_ponto_focal, approved_at`
-
-**`creative_deliverable_versions`** — histórico de versões
-- `id, deliverable_id, version_number, content, file_url, notes, created_by, created_at`
-
-**RLS**
-- Admin/Account Manager: gerenciam tudo
-- Cliente: vê apenas demandas do próprio `client_id`
-- Apenas Ponto Focal pode aprovar (reuso da função `is_ponto_focal`)
-- Comentários reaproveitam tabela `comments` com `entity_type='creative_deliverable'`
-
-**Storage** — reuso do bucket `client-files`, pasta `creative-deliverables/{client_id}/`
+**4. Reforços no system prompt**
+- Admin: incluir Criativos na lista de ferramentas do EXECUTOR; instruir a usar `add_deliverable_version` quando o admin ditar a copy diretamente no chat
+- Cliente: nova seção "Você pode solicitar uma nova demanda criativa descrevendo o que precisa — copy de vídeo, post, arte ou enxoval. Aprovação só via UI."
+- Restrição explícita: bot **nunca** marca como `approved` — sempre devolve "abra a demanda em /cliente/criativos para aprovar".
 
 ---
 
-### Notificações automáticas (reuso do `notify-email`)
-
-- Cliente cria demanda → notifica admin
-- Entregável "Pronto para aprovação" → notifica Ponto Focal
-- Cliente aprova → notifica admin
-- Cliente solicita ajustes → notifica admin com comentário
+### Camada de memória/auditoria (já existente, reaproveitada)
+- Toda execução de tool é logada em `client_actions` (status sucesso/falha)
+- Demandas e versões geradas pelo bot ficam visíveis na UI normal — sem fluxo paralelo
+- `set_conversation_state` pode marcar tópico = "Demanda Criativa: <título>"
 
 ---
 
-### Navegação
+### Permissões (sem migration)
+- Modo admin já roda com service role + verificação de `admin`/`account_manager`
+- Modo cliente já valida `profile.client_id === client_id`
+- RLS das tabelas `creative_demands` / `creative_deliverables` / `creative_deliverable_versions` é bypassada pela service role no edge function — segurança garantida pela checagem de papel feita antes de executar a tool
 
-**Cliente:** novo item no sidebar **"Criativos"** (ícone `Sparkles`) entre **Campanhas** e **Arquivos**
-
-**Admin:** novo item **"Criativos"** no grupo **Operacional** entre **Campanhas** e **Métricas**
-
----
-
-### Arquivos a criar/alterar
-
-**Migrations:**
-- 3 novas tabelas + RLS + índices
-
-**Cliente:**
-- `src/pages/cliente/Criativos.tsx` — lista + kanban próprio
-- `src/components/cliente/CreativeDemandDialog.tsx` — criar nova demanda
-- `src/components/cliente/CreativeDeliverableViewer.tsx` — preview + aprovação
-
-**Admin:**
-- `src/pages/admin/Criativos.tsx` — kanban com filtros
-- `src/components/admin/criativos/CreativeDemandDetail.tsx` — detalhe completo
-- `src/components/admin/criativos/CreativeDeliverableEditor.tsx` — editor + upload de versão
-- `src/components/admin/criativos/CreativeDemandKanban.tsx` — board
-
-**Compartilhado:**
-- `src/lib/creative-config.ts` — tipos, statusConfig, formatConfig
-- `src/components/shared/CreativeVersionHistory.tsx` — timeline de versões
-
-**Roteamento:**
-- `src/App.tsx` — 2 novas rotas
-- `src/layouts/ClientLayout.tsx` — item de menu
-- `src/layouts/AdminLayout.tsx` — item de menu
+### Bloqueio explícito no executor cliente
+- Mesmo que o LLM tente, o switch do `executeTool` no modo cliente só registra `request_creative_demand`. Outras tools criativas retornam `{ success: false, message: "Ação restrita ao admin." }`.
 
 ---
 
-### Antes de começar — confirmações
+### Arquivos alterados
 
-1. **Quem pode solicitar nova demanda no painel do cliente?** Sugestão: qualquer usuário do cliente (operadores incluídos), mas só Ponto Focal aprova.
-2. **Aprovação por entregável ou pela demanda inteira?** Sugestão: por entregável — assim cliente aprova roteiro de vídeo enquanto arte ainda está em produção.
-3. **Versionamento automático ao subir novo arquivo?** Sugestão: sim, cada upload incrementa `current_version` e mantém versão anterior visível no histórico.
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/assistant-chat/index.ts` | +5 tools admin, +1 tool cliente, +contexto de demandas, +instruções de prompt |
 
-Se concordar com as sugestões padrão, posso seguir direto. Caso queira ajustar algo, me diga antes de aprovar.
+Sem novos arquivos, sem migrations, sem novos secrets.
+
+---
+
+### Fluxos de teste sugeridos (após implementação)
+
+1. **Admin**: "Cria uma demanda de Reel para o cliente X com prazo dia 30, copy de vídeo + arte" → bot cria demanda + 2 entregáveis
+2. **Admin**: "Adiciona essa copy no entregável Y: [texto]" → bot chama `add_deliverable_version`, incrementa versão
+3. **Admin**: "Move o entregável Y para aprovação" → status = `in_approval`
+4. **Cliente Ponto Focal**: "Quero um vídeo curto pro lançamento da semana que vem" → bot cria demanda em `briefing`
+5. **Cliente**: "Aprova esse roteiro pra mim" → bot recusa e instrui ir até /cliente/criativos
 
