@@ -352,29 +352,16 @@ export default function AdminProjects() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {Object.entries(statusLabels).map(([status, label]) => {
-          const count = projects.filter((p) => p.status === status).length;
-          return (
-            <Card
-              key={status}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() =>
-                setStatusFilter(status === statusFilter ? "all" : status)
-              }
-            >
-              <CardHeader className="pb-2">
-                <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl">{count}</CardTitle>
-              </CardHeader>
-            </Card>
-          );
-        })}
+      {/* KPIs */}
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Projetos ativos" value={kpis.active.toString()} />
+        <KpiCard icon={<DollarSign className="h-4 w-4" />} label="Budget alocado" value={formatCurrency(kpis.totalBudget)} />
+        <KpiCard icon={<Sparkles className="h-4 w-4" />} label="Entregas em andamento" value={kpis.ongoingDeliveries.toString()} />
+        <KpiCard icon={<Lightbulb className="h-4 w-4" />} label="Aprendizados" value={kpis.recentLearnings.toString()} />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -385,158 +372,89 @@ export default function AdminProjects() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full lg:w-[170px]">
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar status" />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos status</SelectItem>
             {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
+              <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Select value={clientFilter} onValueChange={setClientFilter}>
+          <SelectTrigger className="w-full lg:w-[200px]">
+            <Building2 className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Cliente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos clientes</SelectItem>
+            {clients.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 px-3 rounded-md border h-10">
+          <Switch id="active-period" checked={activePeriodOnly} onCheckedChange={setActivePeriodOnly} />
+          <Label htmlFor="active-period" className="text-sm cursor-pointer whitespace-nowrap">
+            Período ativo
+          </Label>
+        </div>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Building2 className="h-12 w-12 mb-4 opacity-50" />
-              <p>Crie um cliente primeiro</p>
-              <p className="text-sm">Projetos precisam estar vinculados a um cliente.</p>
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FolderKanban className="h-12 w-12 mb-4 opacity-50" />
-              <p>Nenhum projeto encontrado</p>
-              <Button variant="link" onClick={() => openForm()}>
-                Criar primeiro projeto
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Período</TableHead>
-                  <TableHead className="hidden sm:table-cell">Budget</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project, index) => (
-                  <motion.tr
-                    key={project.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group"
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{project.name}</div>
-                        {project.description && (
-                          <div className="text-sm text-muted-foreground line-clamp-1">
-                            {project.description}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {project.clients?.name || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={statusColors[project.status || "planning"]}
-                      >
-                        {statusLabels[project.status || "planning"]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {project.start_date ? (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(project.start_date), "dd/MM/yy", {
-                            locale: ptBR,
-                          })}
-                          {project.end_date && (
-                            <>
-                              {" - "}
-                              {format(new Date(project.end_date), "dd/MM/yy", {
-                                locale: ptBR,
-                              })}
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {project.budget ? (
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3 text-muted-foreground" />
-                          {formatCurrency(project.budget)}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedProject(project);
-                              setIsViewOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openForm(project)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedProject(project);
-                              setIsDeleteOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Grid de projetos */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : clients.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Building2 className="h-12 w-12 mb-4 opacity-50" />
+            <p>Crie um cliente primeiro</p>
+            <p className="text-sm">Projetos precisam estar vinculados a um cliente.</p>
+          </CardContent>
+        </Card>
+      ) : filteredProjects.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <FolderKanban className="h-12 w-12 mb-4 opacity-50" />
+            <p>Nenhum projeto encontrado</p>
+            <Button variant="link" onClick={() => openForm()}>
+              Criar primeiro projeto
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredProjects.map((project, index) => (
+            <ProjectCard
+              key={project.id}
+              index={index}
+              project={{
+                id: project.id,
+                name: project.name,
+                description: project.description,
+                status: project.status,
+                start_date: project.start_date,
+                end_date: project.end_date,
+                budget: project.budget,
+                client_name: project.clients?.name || null,
+                tasksTotal: project.tasksTotal,
+                tasksDone: project.tasksDone,
+                campaignsCount: project.campaignsCount,
+                deliverablesCount: project.deliverablesCount,
+                learningsCount: project.learningsCount,
+              }}
+              onOpen={() => {
+                setSelectedProject(project);
+                setIsViewOpen(true);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
