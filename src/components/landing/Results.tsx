@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { TrendingUp, Target, DollarSign, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { RevealText } from "./RevealText";
 
 const clipReveal = {
   hidden: { clipPath: "inset(100% 0 0 0)", opacity: 0 },
@@ -55,12 +54,9 @@ export function Results() {
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             O problema
           </span>
-          <RevealText
-            as="h2"
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6 block"
-          >
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
             Por que uma auditoria de tráfego é urgente
-          </RevealText>
+          </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Esses são dados de mercado sobre os problemas mais comuns em contas de mídia paga. Se algum deles parece familiar, <span className="text-foreground font-medium">vale uma conversa</span>.
           </p>

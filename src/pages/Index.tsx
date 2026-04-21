@@ -7,7 +7,6 @@ import { Services } from "@/components/landing/Services";
 import { Results } from "@/components/landing/Results";
 import { Method } from "@/components/landing/Method";
 import { ForWhom } from "@/components/landing/ForWhom";
-import { OversizedDivider } from "@/components/landing/OversizedDivider";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
 import { ContactForm } from "@/components/landing/ContactForm";
@@ -60,11 +59,6 @@ const Index = () => {
         <Services />
         <Results />
         <Method />
-        <OversizedDivider
-          topLine="Manifesto Linkou"
-          bottomLine="Não gerenciamos contas. Construímos ecossistemas."
-          highlight="ecossistemas."
-        />
         <ForWhom />
         <Testimonials />
         <FAQ />

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { AnimatedCTA } from "./AnimatedCTA";
-import { RevealText } from "./RevealText";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -205,12 +204,9 @@ export function ContactForm() {
               <span className="text-primary font-semibold text-sm uppercase tracking-wider">
                 Contato
               </span>
-              <RevealText
-                as="h2"
-                className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6 block"
-              >
-                Fale com a Agência Linkou
-              </RevealText>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
+                Fale com a <span className="text-primary">Agência Linkou</span>
+              </h2>
               <p className="text-muted-foreground text-lg mb-8">
                 Preencha o formulário e conte o que você precisa. O primeiro passo é entender seu cenário — <span className="text-foreground font-medium">sem compromisso</span>.
               </p>

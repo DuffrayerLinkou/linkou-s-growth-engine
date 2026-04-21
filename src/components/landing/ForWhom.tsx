@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Building2, Home, Briefcase, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { RevealText } from "./RevealText";
 
 const clipReveal = {
   hidden: { clipPath: "inset(100% 0 0 0)", opacity: 0 },
@@ -60,12 +59,9 @@ export function ForWhom() {
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Para Quem
           </span>
-          <RevealText
-            as="h2"
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6 block"
-          >
-            Auditoria e Consultoria para quem depende de tráfego para vender
-          </RevealText>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-4 mb-6">
+            <span className="text-primary">Auditoria e Consultoria</span> para quem depende de tráfego para vender
+          </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Trabalhamos com negócios que investem em mídia paga e precisam de <span className="text-foreground font-medium">clareza sobre o que funciona</span>. Se você se identifica, vale conversar.
           </p>

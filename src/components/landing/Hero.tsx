@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { LazyMotion, domAnimation, m } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { AnimatedCTA } from "./AnimatedCTA";
 import linkouzinhoHero from "@/assets/linkouzinho-hero.png";
 
@@ -275,31 +275,16 @@ function HeroComponent() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-foreground/60 hover:text-primary transition-colors group"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-foreground/50 hover:text-primary transition-colors"
           aria-label="Rolar para baixo"
         >
-          <span className="flex items-center gap-[0.35em] text-[10px] uppercase font-medium tracking-[0.4em]">
-            {"SCROLL".split("").map((letter, i) => (
-              <m.span
-                key={i}
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{
-                  duration: 1.8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * 0.15,
-                }}
-              >
-                {letter}
-              </m.span>
-            ))}
-          </span>
-          <m.span
-            className="block w-px h-8 bg-gradient-to-b from-primary/60 to-transparent"
-            animate={{ scaleY: [0.4, 1, 0.4], opacity: [0.4, 1, 0.4] }}
+          <span className="text-xs uppercase tracking-widest">Explorar</span>
+          <m.div
+            animate={{ y: [0, 6, 0] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-            style={{ transformOrigin: "top" }}
-          />
+          >
+            <ChevronDown className="h-5 w-5" />
+          </m.div>
         </m.button>
       </section>
     </LazyMotion>
