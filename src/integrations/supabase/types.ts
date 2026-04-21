@@ -995,6 +995,188 @@ export type Database = {
         }
         Relationships: []
       }
+      creative_deliverable_versions: {
+        Row: {
+          client_id: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          deliverable_id: string
+          file_path: string | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          version_number: number
+        }
+        Insert: {
+          client_id: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          deliverable_id: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          version_number: number
+        }
+        Update: {
+          client_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          deliverable_id?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_deliverable_versions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_deliverable_versions_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "creative_deliverables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_deliverables: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_ponto_focal: boolean
+          client_id: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          current_version: number
+          demand_id: string
+          feedback: string | null
+          id: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean
+          client_id: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          demand_id: string
+          feedback?: string | null
+          id?: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_ponto_focal?: boolean
+          client_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          demand_id?: string
+          feedback?: string | null
+          id?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_deliverables_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_deliverables_demand_id_fkey"
+            columns: ["demand_id"]
+            isOneToOne: false
+            referencedRelation: "creative_demands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_demands: {
+        Row: {
+          assigned_to: string | null
+          briefing: string | null
+          client_id: string
+          created_at: string
+          deadline: string | null
+          format: string | null
+          id: string
+          objective: string | null
+          platform: string | null
+          priority: string
+          requested_by: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          briefing?: string | null
+          client_id: string
+          created_at?: string
+          deadline?: string | null
+          format?: string | null
+          id?: string
+          objective?: string | null
+          platform?: string | null
+          priority?: string
+          requested_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          briefing?: string | null
+          client_id?: string
+          created_at?: string
+          deadline?: string | null
+          format?: string | null
+          id?: string
+          objective?: string | null
+          platform?: string | null
+          priority?: string
+          requested_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_demands_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_chunks: {
         Row: {
           chunk_index: number

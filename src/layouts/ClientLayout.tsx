@@ -15,6 +15,7 @@ import {
   Star,
   BookOpen,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ const navItems: { href: string; icon: typeof LayoutDashboard; label: string; per
   { href: "/cliente/tarefas", icon: CheckSquare, label: "Tarefas" },
   { href: "/cliente/metricas-trafego", icon: BarChart3, label: "Métricas de Tráfego", permission: "canViewFinancials" },
   { href: "/cliente/campanhas", icon: Megaphone, label: "Campanhas" },
+  { href: "/cliente/criativos", icon: Sparkles, label: "Criativos" },
   { href: "/cliente/arquivos", icon: FileDown, label: "Arquivos" },
   { href: "/cliente/base-conhecimento", icon: BookOpen, label: "Base de Conhecimento" },
   { href: "/cliente/agendamentos", icon: Calendar, label: "Agendamentos" },

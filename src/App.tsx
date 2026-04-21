@@ -37,6 +37,7 @@ const ClienteArquivos = lazy(() => import("./pages/cliente/Arquivos"));
 const ClienteBaseConhecimento = lazy(() => import("./pages/cliente/BaseConhecimento"));
 const ClienteMinhaEquipe = lazy(() => import("./pages/cliente/MinhaEquipe"));
 const ClientePlanoEstrategico = lazy(() => import("./pages/cliente/PlanoEstrategico"));
+const ClienteCriativos = lazy(() => import("./pages/cliente/Criativos"));
 
 // Admin pages - loaded on demand
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -57,6 +58,7 @@ const AdminProposals = lazy(() => import("./pages/admin/Proposals"));
 const AdminEmailFunnel = lazy(() => import("./pages/admin/EmailFunnel"));
 const AdminEmailComposer = lazy(() => import("./pages/admin/EmailComposer"));
 const AdminMetrics = lazy(() => import("./pages/admin/Metrics"));
+const AdminCriativos = lazy(() => import("./pages/admin/Criativos"));
 const CapturePage = lazy(() => import("./pages/CapturePage"));
 const CaptureThankYou = lazy(() => import("./pages/CaptureThankYou"));
 
@@ -125,6 +127,7 @@ const App = () => (
                 <Route path="tarefas" element={<Suspense fallback={<PageLoader />}><ClienteTarefas /></Suspense>} />
                 <Route path="metricas-trafego" element={<Suspense fallback={<PageLoader />}><ClienteMetricasTrafego /></Suspense>} />
                 <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><ClienteCampanhas /></Suspense>} />
+                <Route path="criativos" element={<Suspense fallback={<PageLoader />}><ClienteCriativos /></Suspense>} />
                 <Route path="arquivos" element={<Suspense fallback={<PageLoader />}><ClienteArquivos /></Suspense>} />
                 <Route path="base-conhecimento" element={<Suspense fallback={<PageLoader />}><ClienteBaseConhecimento /></Suspense>} />
                 <Route path="agendamentos" element={<Suspense fallback={<PageLoader />}><ClienteAgendamentos /></Suspense>} />
@@ -146,6 +149,7 @@ const App = () => (
                 <Route path="clientes" element={<Suspense fallback={<PageLoader />}><AdminClients /></Suspense>} />
                 <Route path="clientes/:id" element={<Suspense fallback={<PageLoader />}><AdminClientDetail /></Suspense>} />
                 <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><AdminCampaigns /></Suspense>} />
+                <Route path="criativos" element={<Suspense fallback={<PageLoader />}><AdminCriativos /></Suspense>} />
                 <Route path="onboarding" element={<Suspense fallback={<PageLoader />}><AdminOnboarding /></Suspense>} />
                 <Route path="landing" element={<Suspense fallback={<PageLoader />}><AdminLandingPage /></Suspense>} />
                 <Route path="tarefas" element={<Suspense fallback={<PageLoader />}><AdminTasks /></Suspense>} />
