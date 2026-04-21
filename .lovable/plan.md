@@ -1,92 +1,74 @@
 
 
-## Linkouzinho — autonomia sobre Demandas Criativas
+## Repaginar a sessão "Projetos" — sair do CRUD genérico
 
-Estender o `assistant-chat` para que o Linkouzinho **leia, crie e movimente** demandas criativas e entregáveis, no modo admin (orquestração) e no modo cliente (consulta + solicitação).
+A página `/admin/projects` hoje é uma tabela CRUD pura (nome, status, datas, budget). "Plano" e "Campanhas" foram repaginados como visões ricas e contextuais da agência — "Projetos" precisa do mesmo tratamento.
 
----
+### Conceito novo
 
-### O que o bot vai poder fazer
+Um projeto na Linkou é uma **onda de execução** dentro do plano estratégico do cliente: tem hipótese, entregas, métricas de impacto, e gera **aprendizados** (já existe a tabela `learnings`). Vamos parar de exibir o projeto como linha de tabela e passar a exibi-lo como **card de execução** com tudo conectado em um único drill-down.
 
-**Modo admin (equipe interna)** — orquestração completa
-- Listar demandas em aberto e seu status
-- **Criar demanda criativa** para um cliente (briefing + objetivo + plataforma + formato + prazo + prioridade)
-- **Criar entregável** vinculado a uma demanda (copy de vídeo, copy estática, vídeo, arte, enxoval)
-- **Mover status** de demanda ou entregável (briefing → em produção → em aprovação → ajustes → aprovado → entregue)
-- **Adicionar versão de copy** a um entregável (texto direto via tool, sem upload de arquivo)
-- Resumir backlog: o que está atrasado, o que está aguardando aprovação do Ponto Focal, taxa de ajustes
+### O que muda em `/admin/projects`
 
-**Modo cliente** — consulta + solicitação leve
-- Listar minhas demandas em aberto e seu status
-- **Solicitar nova demanda** (briefing curto via chat, criada em status `briefing`)
-- Mostrar o que está aguardando minha aprovação (se Ponto Focal)
-- **Não** aprova/rejeita pelo bot — aprovação obrigatoriamente via UI (preserva a regra "só Ponto Focal aprova" e a auditoria por clique)
+**1. Header com KPIs reais (não cards de status secos)**
+- Projetos ativos · Budget total alocado · Entregas em andamento · Aprendizados registrados (últimos 30d)
 
----
+**2. Substituir tabela por grade de cards de projeto**
+Cada card mostra:
+- Nome + cliente + badge de status
+- Barra de progresso por **% de tarefas concluídas** (consulta `tasks` por `project_id`)
+- Mini-stats: nº de campanhas vinculadas, nº de entregas criativas, nº de aprendizados
+- Período + budget formatado
+- Faixa lateral colorida pelo status
 
-### Mudanças no `supabase/functions/assistant-chat/index.ts`
+**3. Filtros contextuais**
+- Busca + filtro de status (mantém)
+- Adicionar filtro por **cliente** e por **período ativo**
+- Adicionar toggle "Apenas com aprendizados pendentes"
 
-**1. Carregar demandas no contexto** (paralelo com as outras 15 fontes)
-- Buscar últimas 15 demandas do cliente + entregáveis abertos
-- Renderizar no system prompt em seção `## 🎨 Demandas Criativas`:
-  ```text
-  - [in_approval] Vídeo lançamento Abril (Reel/Instagram, prazo 25/04, prio: alta)
-    └ entregáveis: 2 em aprovação, 1 em produção
-  ```
+**4. Drill-down rico (substitui o dialog "Visualizar" atual)**
+Abrir um projeto leva a um dialog grande (max-w-4xl) com abas:
 
-**2. Novas tools (admin)**
+- **Visão geral**: cliente, descrição, período, budget, status, progresso de tarefas, contagens (campanhas/criativos/arquivos/aprendizados), data de criação
+- **Tarefas vinculadas**: lista das tasks deste `project_id` com status colorido e responsável
+- **Campanhas vinculadas**: cards compactos das campaigns deste `project_id` com plataforma, status, budget
+- **Aprendizados**: lista da tabela `learnings` deste projeto (título, impacto, categoria, tags, aprovado por ponto focal). Mostrar empty state convidando a registrar.
+- **Arquivos**: arquivos em `files` com `project_id`, com link de download
 
-| Tool | Função |
-|---|---|
-| `create_creative_demand` | Cria demanda (title, briefing, objective, platform, format, deadline, priority) |
-| `create_creative_deliverable` | Cria entregável vinculado (demand_id, type, title, content opcional) |
-| `update_demand_status` | Move status da demanda |
-| `update_deliverable_status` | Move status do entregável (não permite "approved" — só Ponto Focal via UI) |
-| `add_deliverable_version` | Adiciona versão de copy (text content) ao entregável; incrementa `current_version` |
+**5. Form de criação/edição**
+- Manter campos atuais
+- Adicionar campo **hipótese / objetivo** (usa `description` mas com label e placeholder orientados: "Qual hipótese este projeto valida? Qual resultado esperado?")
 
-**3. Novas tools (cliente)** — primeiro conjunto de tools no modo cliente
-- `request_creative_demand` — cria demanda em status `briefing` no client_id do próprio usuário
-- Sem tools de aprovação (proteção arquitetural)
+### Estrutura técnica
 
-**4. Reforços no system prompt**
-- Admin: incluir Criativos na lista de ferramentas do EXECUTOR; instruir a usar `add_deliverable_version` quando o admin ditar a copy diretamente no chat
-- Cliente: nova seção "Você pode solicitar uma nova demanda criativa descrevendo o que precisa — copy de vídeo, post, arte ou enxoval. Aprovação só via UI."
-- Restrição explícita: bot **nunca** marca como `approved` — sempre devolve "abra a demanda em /cliente/criativos para aprovar".
+**Arquivos novos**
+```text
+src/components/admin/projects/ProjectCard.tsx          → card visual de projeto na grade
+src/components/admin/projects/ProjectDetailDialog.tsx  → dialog com 4 abas
+src/components/admin/projects/ProjectTasksTab.tsx
+src/components/admin/projects/ProjectCampaignsTab.tsx
+src/components/admin/projects/ProjectLearningsTab.tsx
+src/components/admin/projects/ProjectFilesTab.tsx
+```
 
----
+**Arquivo editado**
+- `src/pages/admin/Projects.tsx` — substituir tabela por grade de cards + KPIs no topo + filtros. Manter dialog de form atual (apenas reabilitando descrição com label "Hipótese / Objetivo"). Trocar dialog "Visualizar" pelo novo `ProjectDetailDialog`.
 
-### Camada de memória/auditoria (já existente, reaproveitada)
-- Toda execução de tool é logada em `client_actions` (status sucesso/falha)
-- Demandas e versões geradas pelo bot ficam visíveis na UI normal — sem fluxo paralelo
-- `set_conversation_state` pode marcar tópico = "Demanda Criativa: <título>"
+**Dados (já existem, sem migração)**
+- `projects` — base
+- `tasks.project_id` — para progresso e aba tarefas
+- `campaigns.project_id` — para aba campanhas
+- `learnings.project_id` — para aba aprendizados (tabela já existe e é rica: title, description, impact, category, tags, approved_by_ponto_focal)
+- `files.project_id` — para aba arquivos
 
----
+Cada aba do detalhe faz seu próprio fetch lazy ao abrir, evitando carregar tudo de uma vez na listagem.
 
-### Permissões (sem migration)
-- Modo admin já roda com service role + verificação de `admin`/`account_manager`
-- Modo cliente já valida `profile.client_id === client_id`
-- RLS das tabelas `creative_demands` / `creative_deliverables` / `creative_deliverable_versions` é bypassada pela service role no edge function — segurança garantida pela checagem de papel feita antes de executar a tool
+**Componentes UI reaproveitados**
+- `Card`, `Badge`, `Progress`, `Tabs`, `Dialog`, `Button` (todos já existem)
+- Status colors já vêm de `status-config.ts` (`projectStatusLabels` / `projectStatusColors`)
 
-### Bloqueio explícito no executor cliente
-- Mesmo que o LLM tente, o switch do `executeTool` no modo cliente só registra `request_creative_demand`. Outras tools criativas retornam `{ success: false, message: "Ação restrita ao admin." }`.
-
----
-
-### Arquivos alterados
-
-| Arquivo | Mudança |
-|---|---|
-| `supabase/functions/assistant-chat/index.ts` | +5 tools admin, +1 tool cliente, +contexto de demandas, +instruções de prompt |
-
-Sem novos arquivos, sem migrations, sem novos secrets.
-
----
-
-### Fluxos de teste sugeridos (após implementação)
-
-1. **Admin**: "Cria uma demanda de Reel para o cliente X com prazo dia 30, copy de vídeo + arte" → bot cria demanda + 2 entregáveis
-2. **Admin**: "Adiciona essa copy no entregável Y: [texto]" → bot chama `add_deliverable_version`, incrementa versão
-3. **Admin**: "Move o entregável Y para aprovação" → status = `in_approval`
-4. **Cliente Ponto Focal**: "Quero um vídeo curto pro lançamento da semana que vem" → bot cria demanda em `briefing`
-5. **Cliente**: "Aprova esse roteiro pra mim" → bot recusa e instrui ir até /cliente/criativos
+### Fora do escopo (ficam para depois se quiser)
+- Criar/editar aprendizados pelo dialog (por enquanto só leitura, igual fizemos com Plano)
+- Linkouzinho com tools de projeto
+- Tab "Projetos" dentro de `ClientDetail` (a página global cobre o caso)
 
