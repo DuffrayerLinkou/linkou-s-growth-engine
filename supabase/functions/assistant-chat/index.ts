@@ -547,6 +547,73 @@ async function executeTool(
         return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
       }
 
+      case "search_documents": {
+        const query = (args.query as string)?.trim();
+        if (!query) return { success: false, message: "Forneça uma query para buscar." };
+        const topK = Math.min(Math.max(Number(args.top_k) || 5, 1), 10);
+
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY) return { success: false, message: "LOVABLE_API_KEY não configurada." };
+
+        // Generate query embedding
+        let embedding: number[];
+        try {
+          const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/text-embedding-004",
+              input: query,
+            }),
+          });
+          if (!embRes.ok) {
+            const t = await embRes.text();
+            return { success: false, message: `Falha ao gerar embedding: ${embRes.status} ${t.slice(0,200)}` };
+          }
+          const embData = await embRes.json();
+          embedding = embData?.data?.[0]?.embedding;
+          if (!Array.isArray(embedding)) return { success: false, message: "Resposta de embedding inválida." };
+        } catch (e) {
+          return { success: false, message: `Erro de embedding: ${e instanceof Error ? e.message : String(e)}` };
+        }
+
+        // Call match_document_chunks RPC
+        const { data: matches, error: matchErr } = await db.rpc("match_document_chunks", {
+          query_embedding: JSON.stringify(embedding),
+          target_client_id: clientId,
+          match_count: topK,
+          similarity_threshold: 0.4,
+        });
+
+        if (matchErr) {
+          return { success: false, message: `Erro na busca vetorial: ${matchErr.message}` };
+        }
+
+        const results = (matches || []) as Array<{
+          chunk_id: string;
+          file_id: string;
+          file_name: string;
+          content: string;
+          page_number: number | null;
+          similarity: number;
+        }>;
+
+        if (results.length === 0) {
+          return { success: true, message: `Nenhum trecho relevante encontrado para "${query}". Os arquivos podem não ter sido indexados — peça ao usuário para clicar em "Tornar pesquisável" nos arquivos relevantes.` };
+        }
+
+        let formatted = `Encontrados ${results.length} trecho(s) relevantes para "${query}":\n\n`;
+        for (const r of results) {
+          const sim = (r.similarity * 100).toFixed(1);
+          const pg = r.page_number ? ` (pág ${r.page_number})` : "";
+          formatted += `**${r.file_name}**${pg} — ${sim}% similaridade\n${r.content.slice(0, 1200)}\n\n---\n\n`;
+        }
+        return { success: true, message: formatted };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
