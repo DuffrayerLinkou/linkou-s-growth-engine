@@ -544,12 +544,24 @@ async function executeTool(
           created_by: userId,
           status: "draft",
         };
-        for (const key of ["objectives", "kpis", "personas", "funnel_strategy", "campaign_types", "timeline_start", "timeline_end", "budget_allocation"]) {
+        for (const key of [
+          "executive_summary",
+          "objectives",
+          "kpis",
+          "personas",
+          "funnel_strategy",
+          "campaign_types",
+          "timeline_start",
+          "timeline_end",
+          "budget_allocation",
+          "diagnostic",
+          "execution_plan",
+        ]) {
           if (args[key] !== undefined && args[key] !== null) planPayload[key] = args[key];
         }
         const { error } = await db.from("strategic_plans").insert(planPayload);
         if (error) throw error;
-        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho. Revise na seção Plano Estratégico.` };
+        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho com diagnóstico, ${(asArr(args.personas)).length} personas, ${(asArr(args.objectives)).length} objetivos SMART e ${(asArr(args.kpis)).length} KPIs. Revise na seção Plano Estratégico.` };
       }
 
       case "create_briefing": {
