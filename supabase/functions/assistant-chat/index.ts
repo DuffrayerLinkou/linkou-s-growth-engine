@@ -1440,6 +1440,12 @@ serve(async (req) => {
         `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
         `- **create_strategic_plan**: Gera plano estratégico EDITORIAL e PROFUNDO. NÃO crie planos rasos. Mínimo OBRIGATÓRIO: sumário executivo, diagnóstico (situação + 3 oportunidades + 3 riscos + concorrência), 3+ personas profundas (demografia, dores, desejos, objeções, canais, mensagem-chave), 5+ objetivos SMART numéricos com baseline/meta/prazo, 6+ KPIs categorizados (aquisição/conversão/retenção), funil estruturado em topo/meio/fundo (goal, canais, criativos, KPI, % budget), alocação de budget por canal e por etapa, plano de execução com 3 ondas (90 dias, entregas e marcos) e governança (cadência, relatórios, ferramentas). Use SEMPRE briefing, métricas históricas, segmento e contexto real. Linguagem profissional de consultoria sênior.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## 🎨 Demandas Criativas (orquestração de produção)\n` +
+        `- **create_creative_demand**: Cria a demanda (briefing pai). Use ao iniciar uma produção (vídeo, copy, arte, enxoval).\n` +
+        `- **create_creative_deliverable**: Cria entregáveis vinculados (video_copy, static_copy, video, image, media_kit). Pode já incluir o conteúdo textual.\n` +
+        `- **update_demand_status** / **update_deliverable_status**: Move pelo fluxo briefing → in_production → in_approval → adjustments → delivered.\n` +
+        `- **add_deliverable_version**: Quando o admin ditar uma copy/roteiro novo no chat, persista como versão (incrementa current_version).\n` +
+        `- ⚠️ NUNCA marque status 'approved' — aprovação é exclusiva do Ponto Focal pela UI em /cliente/criativos.\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
         `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
