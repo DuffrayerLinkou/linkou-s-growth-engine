@@ -1671,9 +1671,15 @@ serve(async (req) => {
         `- **create_task**: Criar tarefas com prioridade e prazo.\n` +
         `- **upsert_traffic_metrics**: Registrar/atualizar métricas mensais.\n` +
         `- **create_campaign**: Estruturar campanhas técnicas (use briefing + plano + métricas para targeting, budget, copy, bidding). Nomenclatura: [Plataforma] Objetivo - Público - Período. Status: draft.\n` +
-        `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
+        `- **create_project**: Criar projetos como ONDAS DE EXECUÇÃO (description = HIPÓTESE/OBJETIVO).\n` +
         `- **create_strategic_plan**: Gera plano estratégico EDITORIAL e PROFUNDO. NÃO crie planos rasos. Mínimo OBRIGATÓRIO: sumário executivo, diagnóstico (situação + 3 oportunidades + 3 riscos + concorrência), 3+ personas profundas (demografia, dores, desejos, objeções, canais, mensagem-chave), 5+ objetivos SMART numéricos com baseline/meta/prazo, 6+ KPIs categorizados (aquisição/conversão/retenção), funil estruturado em topo/meio/fundo (goal, canais, criativos, KPI, % budget), alocação de budget por canal e por etapa, plano de execução com 3 ondas (90 dias, entregas e marcos) e governança (cadência, relatórios, ferramentas). Use SEMPRE briefing, métricas históricas, segmento e contexto real. Linguagem profissional de consultoria sênior.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## 📦 Projetos & Aprendizados (ondas de execução do plano)\n` +
+        `- **list_projects**: liste antes de agir para obter o UUID correto.\n` +
+        `- **update_project**: mover status (planning/active/paused/completed), refinar hipótese (description), ajustar datas/budget.\n` +
+        `- **link_task_to_project** / **link_campaign_to_project**: amarra entregas (tasks/campaigns) à onda certa. Use IDs do contexto.\n` +
+        `- **create_learning**: registra hipótese validada/invalidada com impacto + categoria + tags. Sempre vinculado a um project_id.\n` +
+        `- **update_learning**: edita texto/tags. NUNCA marque como aprovado — só o Ponto Focal aprova pela UI em /admin/projetos.\n\n` +
         `## 🎨 Demandas Criativas (orquestração de produção)\n` +
         `- **create_creative_demand**: Cria a demanda (briefing pai). Use ao iniciar uma produção (vídeo, copy, arte, enxoval).\n` +
         `- **create_creative_deliverable**: Cria entregáveis vinculados (video_copy, static_copy, video, image, media_kit). Pode já incluir o conteúdo textual.\n` +
