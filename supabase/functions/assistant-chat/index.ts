@@ -754,6 +754,102 @@ async function executeTool(
         return { success: true, message: `Projeto "${args.name}" criado com sucesso em status "${projectPayload.status}".` };
       }
 
+      case "list_projects": {
+        const limit = Math.min(Number(args.limit) || 20, 50);
+        const { data, error } = await db
+          .from("projects")
+          .select("id, name, status, start_date, end_date, budget, description")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        const list = (data || []).map((p: any) =>
+          `- \`${p.id}\` [${p.status || "—"}] ${p.name}${p.budget ? ` — R$${Number(p.budget).toLocaleString("pt-BR")}` : ""}${p.start_date ? ` (${p.start_date}${p.end_date ? ` → ${p.end_date}` : ""})` : ""}`
+        ).join("\n");
+        return { success: true, message: data && data.length ? `Projetos do cliente:\n${list}` : "Nenhum projeto encontrado para este cliente." };
+      }
+
+      case "update_project": {
+        const projectId = args.project_id as string;
+        if (!projectId) return { success: false, message: "project_id é obrigatório." };
+        // Scope check
+        const { data: existing, error: chkErr } = await db
+          .from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (chkErr) throw chkErr;
+        if (!existing) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const update: Record<string, unknown> = {};
+        for (const key of ["name", "description", "start_date", "end_date", "budget", "status"]) {
+          if (args[key] !== undefined && args[key] !== null) update[key] = args[key];
+        }
+        if (Object.keys(update).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("projects").update(update).eq("id", projectId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Projeto "${existing.name}" atualizado (${Object.keys(update).join(", ")}).` };
+      }
+
+      case "link_task_to_project": {
+        const taskId = args.task_id as string;
+        const projectId = args.project_id as string;
+        if (!taskId || !projectId) return { success: false, message: "task_id e project_id são obrigatórios." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const { data: task } = await db.from("tasks").select("id, title").eq("id", taskId).eq("client_id", clientId).maybeSingle();
+        if (!task) return { success: false, message: "Tarefa não encontrada para este cliente." };
+        const { error } = await db.from("tasks").update({ project_id: projectId }).eq("id", taskId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Tarefa "${task.title}" vinculada ao projeto "${proj.name}".` };
+      }
+
+      case "link_campaign_to_project": {
+        const campaignId = args.campaign_id as string;
+        const projectId = args.project_id as string;
+        if (!campaignId || !projectId) return { success: false, message: "campaign_id e project_id são obrigatórios." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const { data: camp } = await db.from("campaigns").select("id, name").eq("id", campaignId).eq("client_id", clientId).maybeSingle();
+        if (!camp) return { success: false, message: "Campanha não encontrada para este cliente." };
+        const { error } = await db.from("campaigns").update({ project_id: projectId }).eq("id", campaignId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Campanha "${camp.name}" vinculada ao projeto "${proj.name}".` };
+      }
+
+      case "create_learning": {
+        const projectId = args.project_id as string;
+        if (!projectId) return { success: false, message: "project_id é obrigatório." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          project_id: projectId,
+          title: args.title as string,
+          created_by: userId,
+          approved_by_ponto_focal: false,
+        };
+        for (const key of ["description", "impact", "category"]) {
+          if (args[key] !== undefined && args[key] !== null) payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        const { error } = await db.from("learnings").insert(payload);
+        if (error) throw error;
+        return { success: true, message: `Aprendizado "${args.title}" registrado no projeto "${proj.name}". Aguardando aprovação do Ponto Focal via UI.` };
+      }
+
+      case "update_learning": {
+        const learningId = args.learning_id as string;
+        if (!learningId) return { success: false, message: "learning_id é obrigatório." };
+        const { data: existing } = await db.from("learnings").select("id, title").eq("id", learningId).eq("client_id", clientId).maybeSingle();
+        if (!existing) return { success: false, message: "Aprendizado não encontrado para este cliente." };
+        const update: Record<string, unknown> = {};
+        for (const key of ["title", "description", "impact", "category"]) {
+          if (args[key] !== undefined && args[key] !== null) update[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) update.tags = args.tags;
+        if (Object.keys(update).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("learnings").update(update).eq("id", learningId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Aprendizado "${existing.title}" atualizado (${Object.keys(update).join(", ")}).` };
+      }
+
       case "create_strategic_plan": {
         const planPayload: Record<string, unknown> = {
           client_id: clientId,
