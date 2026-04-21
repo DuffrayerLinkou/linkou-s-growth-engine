@@ -119,7 +119,7 @@ export function KeywordFormDialog({ open, onClose, clientId, clusters, editing, 
       };
 
       if (editing) {
-        const { error } = await supabase.from("keywords").update(payload).eq("id", editing.id);
+        const { error } = await supabase.from("keywords").update(payload as any).eq("id", editing.id);
         if (error) throw error;
         // If position changed, snapshot in history
         const newPos = payload.current_position as number | null;

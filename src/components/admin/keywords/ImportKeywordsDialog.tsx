@@ -78,7 +78,7 @@ export function ImportKeywordsDialog({ open, onClose, clientId, onImported }: Pr
 
     setImporting(true);
     try {
-      const { error } = await supabase.from("keywords").insert(rows);
+      const { error } = await supabase.from("keywords").insert(rows as any);
       if (error) throw error;
       toast({ title: `${rows.length} palavras-chave importadas` });
       setCsv("");
