@@ -217,6 +217,102 @@ const adminTools = [
   {
     type: "function",
     function: {
+      name: "list_projects",
+      description: "Lista os projetos do cliente atual (id, nome, status, datas, budget). Use para obter o UUID antes de chamar update_project, link_task_to_project, link_campaign_to_project, create_learning ou update_learning.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Máx. de projetos. Padrão 20." } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_project",
+      description: "Atualiza um projeto existente do cliente atual: status (planning/active/paused/completed), hipótese (description), datas ou budget.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_id: { type: "string", description: "UUID do projeto" },
+          name: { type: "string" },
+          description: { type: "string", description: "HIPÓTESE/OBJETIVO refinado" },
+          start_date: { type: "string", description: "YYYY-MM-DD" },
+          end_date: { type: "string", description: "YYYY-MM-DD" },
+          budget: { type: "number" },
+          status: { type: "string", enum: ["planning", "active", "paused", "completed"] },
+        },
+        required: ["project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_task_to_project",
+      description: "Vincula uma tarefa existente a um projeto (define task.project_id). Ambos devem pertencer ao cliente atual.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "UUID da tarefa" },
+          project_id: { type: "string", description: "UUID do projeto" },
+        },
+        required: ["task_id", "project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_campaign_to_project",
+      description: "Vincula uma campanha existente a um projeto (define campaign.project_id). Ambos devem pertencer ao cliente atual.",
+      parameters: {
+        type: "object",
+        properties: {
+          campaign_id: { type: "string", description: "UUID da campanha" },
+          project_id: { type: "string", description: "UUID do projeto" },
+        },
+        required: ["campaign_id", "project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_learning",
+      description: "Registra um APRENDIZADO (hipótese validada/invalidada) vinculado a um projeto. NUNCA marque como aprovado — aprovação é exclusiva do Ponto Focal via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_id: { type: "string", description: "UUID do projeto fonte do aprendizado" },
+          title: { type: "string", description: "Título curto do aprendizado" },
+          description: { type: "string", description: "Detalhes do que foi testado, dados e contexto" },
+          impact: { type: "string", description: "Impacto observado (qualitativo + numérico)" },
+          category: { type: "string", description: "Categoria (ex: oferta, copy, criativo, público, funil, canal)" },
+          tags: { type: "array", items: { type: "string" }, description: "Tags para busca posterior" },
+        },
+        required: ["project_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_learning",
+      description: "Edita um aprendizado existente (texto, impacto, categoria, tags). NÃO altera approved_by_ponto_focal — só Ponto Focal aprova via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          learning_id: { type: "string", description: "UUID do aprendizado" },
+          title: { type: "string" },
+          description: { type: "string" },
+          impact: { type: "string" },
+          category: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["learning_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_strategic_plan",
       description: "Cria um plano estratégico PROFUNDO e EDITORIAL para o cliente atual. NÃO crie nada raso: gere ao menos 3 personas detalhadas, 5+ objetivos SMART numéricos, 6+ KPIs categorizados, funil topo/meio/fundo estruturado, diagnóstico (oportunidades + riscos + concorrência), alocação de budget por canal e por etapa, e plano de execução com 3 ondas (90 dias) + governança. Baseie-se em briefing, métricas históricas, segmento e contexto real do cliente.",
       parameters: {
