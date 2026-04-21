@@ -995,6 +995,134 @@ export type Database = {
         }
         Relationships: []
       }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          client_id: string
+          content: string
+          created_at: string
+          file_id: string
+          id: string
+          metadata: Json
+          page_number: number | null
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          client_id: string
+          content: string
+          created_at?: string
+          file_id: string
+          id?: string
+          metadata?: Json
+          page_number?: number | null
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          client_id?: string
+          content?: string
+          created_at?: string
+          file_id?: string
+          id?: string
+          metadata?: Json
+          page_number?: number | null
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_chunks_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_embeddings: {
+        Row: {
+          chunk_id: string
+          client_id: string
+          created_at: string
+          embedding: string
+          id: string
+          model: string
+        }
+        Insert: {
+          chunk_id: string
+          client_id: string
+          created_at?: string
+          embedding: string
+          id?: string
+          model?: string
+        }
+        Update: {
+          chunk_id?: string
+          client_id?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          model?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_embeddings_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "document_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_embeddings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_permissions: {
+        Row: {
+          can_be_used_by_ai: boolean
+          created_at: string
+          file_id: string
+          id: string
+          role: string | null
+          user_id: string | null
+        }
+        Insert: {
+          can_be_used_by_ai?: boolean
+          created_at?: string
+          file_id: string
+          id?: string
+          role?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          can_be_used_by_ai?: boolean
+          created_at?: string
+          file_id?: string
+          id?: string
+          role?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_permissions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_funnel_steps: {
         Row: {
           created_at: string
@@ -2325,6 +2453,22 @@ export type Database = {
           _to_phase: string
         }
         Returns: string
+      }
+      match_document_chunks: {
+        Args: {
+          match_count?: number
+          query_embedding: string
+          similarity_threshold?: number
+          target_client_id: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          file_id: string
+          file_name: string
+          page_number: number
+          similarity: number
+        }[]
       }
       set_ponto_focal: {
         Args: { _client_id: string; _user_id: string }

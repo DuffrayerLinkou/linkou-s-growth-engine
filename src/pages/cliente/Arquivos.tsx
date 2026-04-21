@@ -16,6 +16,9 @@ import {
   User,
   Users,
   Video,
+  Brain,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,6 +115,7 @@ export default function ClienteArquivos() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadDescription, setUploadDescription] = useState("");
+  const [ingestingFileId, setIngestingFileId] = useState<string | null>(null);
 
   // Permissions are derived from profile but using the centralized hook pattern
   const canUploadFiles = profile?.ponto_focal === true || profile?.user_type === "manager";
@@ -133,6 +137,24 @@ export default function ClienteArquivos() {
 
       if (error) throw error;
       return data as FileRecord[];
+    },
+    enabled: !!clientInfo?.id,
+  });
+
+  // Fetch indexed file IDs (which files have document_chunks)
+  const { data: indexedFileIds = new Set<string>() } = useQuery({
+    queryKey: ["indexed-files", clientInfo?.id],
+    queryFn: async () => {
+      if (!clientInfo?.id) return new Set<string>();
+      const { data, error } = await supabase
+        .from("document_chunks")
+        .select("file_id")
+        .eq("client_id", clientInfo.id);
+      if (error) {
+        console.error("Error fetching indexed files:", error);
+        return new Set<string>();
+      }
+      return new Set((data || []).map((d) => d.file_id));
     },
     enabled: !!clientInfo?.id,
   });
@@ -207,6 +229,35 @@ export default function ClienteArquivos() {
     } catch {
       toast.error("Erro ao visualizar arquivo");
     }
+  };
+
+  const handleIngest = async (file: FileRecord) => {
+    setIngestingFileId(file.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("ingest-document", {
+        body: { file_id: file.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(
+        `"${file.name}" indexado: ${data?.chunks_created || 0} trecho(s) pesquisáveis pelo Linkouzinho.`
+      );
+      queryClient.invalidateQueries({ queryKey: ["indexed-files", clientInfo?.id] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro desconhecido";
+      toast.error(`Falha ao indexar: ${msg}`);
+    } finally {
+      setIngestingFileId(null);
+    }
+  };
+
+  const isIndexable = (file: FileRecord): boolean => {
+    const ext = getFileExtension(file.name);
+    const mime = (file.mime_type || "").toLowerCase();
+    if (mime.includes("pdf") || ext === "pdf") return true;
+    if (mime.startsWith("text/") || ["txt", "md", "csv", "json", "log", "xml", "html", "htm"].includes(ext)) return true;
+    if (ext === "docx" || mime.includes("wordprocessingml")) return true;
+    return false;
   };
 
   // Stats
@@ -532,6 +583,41 @@ export default function ClienteArquivos() {
                         Baixar
                       </Button>
                     </div>
+                    {isIndexable(file) && (
+                      <div className="mt-2">
+                        {indexedFileIds.has(file.id) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs gap-1 text-green-600 hover:text-green-700"
+                            onClick={() => handleIngest(file)}
+                            disabled={ingestingFileId === file.id}
+                          >
+                            {ingestingFileId === file.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            )}
+                            Indexado · re-indexar
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs gap-1"
+                            onClick={() => handleIngest(file)}
+                            disabled={ingestingFileId === file.id}
+                          >
+                            {ingestingFileId === file.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Brain className="h-3.5 w-3.5" />
+                            )}
+                            {ingestingFileId === file.id ? "Indexando..." : "Tornar pesquisável pelo Linkouzinho"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

@@ -182,6 +182,21 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_documents",
+      description: "Busca semântica nos arquivos JÁ INDEXADOS do cliente atual via similaridade vetorial. Use quando o usuário perguntar sobre conteúdo de documentos, briefings, contratos, ou pedir resumo de um tópico que pode estar em arquivos. Mais econômico que read_file: retorna apenas os trechos relevantes. NÃO chame se a resposta já está no contexto operacional carregado.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Pergunta ou tópico para busca semântica (ex: 'qual o público-alvo do produto X', 'cláusulas de rescisão')" },
+          top_k: { type: "number", description: "Número máximo de trechos a retornar. Padrão: 5, máximo: 10" },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 
 // Memory & state management tools (admin only)
@@ -530,6 +545,73 @@ async function executeTool(
         // Handled at outer scope by caller (it has access to conversation row).
         // Here we just acknowledge — actual upsert happens after tool loop.
         return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
+      }
+
+      case "search_documents": {
+        const query = (args.query as string)?.trim();
+        if (!query) return { success: false, message: "Forneça uma query para buscar." };
+        const topK = Math.min(Math.max(Number(args.top_k) || 5, 1), 10);
+
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (!LOVABLE_API_KEY) return { success: false, message: "LOVABLE_API_KEY não configurada." };
+
+        // Generate query embedding
+        let embedding: number[];
+        try {
+          const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/text-embedding-004",
+              input: query,
+            }),
+          });
+          if (!embRes.ok) {
+            const t = await embRes.text();
+            return { success: false, message: `Falha ao gerar embedding: ${embRes.status} ${t.slice(0,200)}` };
+          }
+          const embData = await embRes.json();
+          embedding = embData?.data?.[0]?.embedding;
+          if (!Array.isArray(embedding)) return { success: false, message: "Resposta de embedding inválida." };
+        } catch (e) {
+          return { success: false, message: `Erro de embedding: ${e instanceof Error ? e.message : String(e)}` };
+        }
+
+        // Call match_document_chunks RPC
+        const { data: matches, error: matchErr } = await db.rpc("match_document_chunks", {
+          query_embedding: JSON.stringify(embedding),
+          target_client_id: clientId,
+          match_count: topK,
+          similarity_threshold: 0.4,
+        });
+
+        if (matchErr) {
+          return { success: false, message: `Erro na busca vetorial: ${matchErr.message}` };
+        }
+
+        const results = (matches || []) as Array<{
+          chunk_id: string;
+          file_id: string;
+          file_name: string;
+          content: string;
+          page_number: number | null;
+          similarity: number;
+        }>;
+
+        if (results.length === 0) {
+          return { success: true, message: `Nenhum trecho relevante encontrado para "${query}". Os arquivos podem não ter sido indexados — peça ao usuário para clicar em "Tornar pesquisável" nos arquivos relevantes.` };
+        }
+
+        let formatted = `Encontrados ${results.length} trecho(s) relevantes para "${query}":\n\n`;
+        for (const r of results) {
+          const sim = (r.similarity * 100).toFixed(1);
+          const pg = r.page_number ? ` (pág ${r.page_number})` : "";
+          formatted += `**${r.file_name}**${pg} — ${sim}% similaridade\n${r.content.slice(0, 1200)}\n\n---\n\n`;
+        }
+        return { success: true, message: formatted };
       }
 
       default:
@@ -913,6 +995,8 @@ serve(async (req) => {
         `- **create_strategic_plan**: Gerar plano completo (personas, KPIs SMART, funil topo/meio/fundo, alocação de budget % por canal, tipos de campanha) baseado em dados reais.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
+        `## 🔍 Busca documental (RAG)\n` +
+        `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
         `## Memória de longo prazo (use com critério)\n` +
         `- **log_decision**: registre quando o usuário FECHAR uma decisão relevante (não use em conversas casuais).\n` +
         `- **record_insight**: no MODO AUDITOR, ao identificar oportunidade/risco/diagnóstico com evidência real, persista para validação posterior.\n` +
