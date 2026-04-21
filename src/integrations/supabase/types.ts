@@ -1512,6 +1512,180 @@ export type Database = {
           },
         ]
       }
+      keyword_clusters: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          intent: string | null
+          name: string
+          pillar_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          intent?: string | null
+          name: string
+          pillar_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          intent?: string | null
+          name?: string
+          pillar_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keyword_clusters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      keyword_rankings: {
+        Row: {
+          checked_at: string
+          client_id: string
+          id: string
+          keyword_id: string
+          notes: string | null
+          position: number
+          source: string
+        }
+        Insert: {
+          checked_at?: string
+          client_id: string
+          id?: string
+          keyword_id: string
+          notes?: string | null
+          position: number
+          source?: string
+        }
+        Update: {
+          checked_at?: string
+          client_id?: string
+          id?: string
+          keyword_id?: string
+          notes?: string | null
+          position?: number
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keyword_rankings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keyword_rankings_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "keywords"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      keywords: {
+        Row: {
+          campaign_id: string | null
+          client_id: string
+          cluster_id: string | null
+          cpc: number | null
+          created_at: string
+          created_by: string | null
+          current_position: number | null
+          difficulty: number | null
+          id: string
+          intent: string | null
+          notes: string | null
+          search_volume: number | null
+          status: string
+          tags: string[]
+          target_url: string | null
+          task_id: string | null
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id: string
+          cluster_id?: string | null
+          cpc?: number | null
+          created_at?: string
+          created_by?: string | null
+          current_position?: number | null
+          difficulty?: number | null
+          id?: string
+          intent?: string | null
+          notes?: string | null
+          search_volume?: number | null
+          status?: string
+          tags?: string[]
+          target_url?: string | null
+          task_id?: string | null
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string
+          cluster_id?: string | null
+          cpc?: number | null
+          created_at?: string
+          created_by?: string | null
+          current_position?: number | null
+          difficulty?: number | null
+          id?: string
+          intent?: string | null
+          notes?: string | null
+          search_volume?: number | null
+          status?: string
+          tags?: string[]
+          target_url?: string | null
+          task_id?: string | null
+          term?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "keywords_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keywords_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keywords_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "keyword_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_settings: {
         Row: {
           body_scripts: string | null
