@@ -231,17 +231,17 @@ function HeroComponent() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-12 pt-8 border-t border-primary/15"
           >
-            {/* Mobile: 2x2 grid */}
-            <div className="grid grid-cols-2 gap-2 md:hidden">
+            {/* Mobile: 2x2 grid / Tablet (sm+): 4 cols */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:hidden">
               {stats.map((stat, index) => (
                 <div
                   key={index}
-                  className="px-3 py-3 flex flex-col items-center justify-center min-h-[100px]"
+                  className="px-3 py-3 flex flex-col items-center justify-center min-h-[120px]"
                 >
-                  <div className="text-2xl font-bold text-primary mb-1">
+                  <div className="text-xl sm:text-2xl font-bold text-primary mb-1">
                     {stat.value}
                   </div>
-                  <div className="text-[10px] text-foreground/60 leading-tight text-center">
+                  <div className="text-xs text-foreground/60 leading-tight text-center">
                     {stat.label}
                   </div>
                 </div>

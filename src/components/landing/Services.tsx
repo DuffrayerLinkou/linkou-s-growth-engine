@@ -45,7 +45,7 @@ export function Services() {
         </motion.div>
 
         {/* Services Grid */}
-        <div className="grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
           {services.map((service, index) => (
             <motion.div
               key={service.id}
@@ -93,7 +93,7 @@ export function Services() {
                   <p className="text-muted-foreground text-sm md:text-base mb-4">
                     {service.description}
                   </p>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                     {service.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
