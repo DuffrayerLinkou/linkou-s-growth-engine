@@ -177,7 +177,7 @@ export default function AdminProjects() {
     fetchData();
   }, []);
 
-  const openForm = (project?: Project) => {
+  const openForm = (project?: ProjectWithStats | null) => {
     if (project) {
       setSelectedProject(project);
       setFormData({
