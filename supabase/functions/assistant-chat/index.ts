@@ -183,6 +183,61 @@ const adminTools = [
     },
   },
 ];
+
+// Memory & state management tools (admin only)
+const memoryTools = [
+  {
+    type: "function",
+    function: {
+      name: "log_decision",
+      description: "Registra uma decisão estratégica/operacional importante tomada (com ou sem o bot) na memória de longo prazo do cliente. Use quando o usuário fechar uma escolha relevante: 'vamos pausar a campanha X', 'decidimos focar em Meta', 'aprovamos a alocação 60/40'. Não use para conversas casuais.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da decisão (ex: 'Pausar campanha PMax Q2')" },
+          decision: { type: "string", description: "A decisão em si, em 1-2 frases" },
+          rationale: { type: "string", description: "Justificativa/motivo (opcional, mas recomendado)" },
+          related_entity_type: { type: "string", description: "Tipo de entidade relacionada (ex: campaign, plan, task)" },
+          related_entity_id: { type: "string", description: "UUID da entidade relacionada (opcional)" },
+        },
+        required: ["title", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "record_insight",
+      description: "Registra um insight/conclusão da análise feita agora para que fique disponível depois e possa ser validado pelo time. Use no MODO AUDITOR ao identificar oportunidade, risco ou diagnóstico relevante baseado em evidências reais.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto do insight" },
+          body: { type: "string", description: "Corpo do insight com a análise completa" },
+          category: { type: "string", enum: ["audit", "opportunity", "risk", "performance"], description: "Categoria" },
+          urgency: { type: "string", enum: ["low", "medium", "high"], description: "Urgência. Padrão: medium" },
+          evidence: { type: "object", description: "Evidências em JSON (ex: { metric: 'CPL', from: 12, to: 28, period: 'Mar/26' })" },
+        },
+        required: ["title", "body", "category"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_conversation_state",
+      description: "Atualiza o estado contextual da conversa atual (tópico em foco, objetivo, pendências). Use quando o foco da conversa mudar de assunto ou quando o usuário definir um objetivo para a interação.",
+      parameters: {
+        type: "object",
+        properties: {
+          current_topic: { type: "string", description: "Tópico em foco (ex: 'Campanha Black Friday')" },
+          current_objective: { type: "string", description: "Objetivo desta conversa (ex: 'reduzir CPL Meta em 20%')" },
+          pending_items: { type: "array", items: { type: "object" }, description: "Pendências [{type, description, due}]" },
+        },
+      },
+    },
+  },
+];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
@@ -441,6 +496,42 @@ async function executeTool(
         };
       }
 
+      case "log_decision": {
+        const { data, error } = await db.from("client_decisions").insert({
+          client_id: clientId,
+          title: args.title as string,
+          decision: args.decision as string,
+          rationale: (args.rationale as string) || null,
+          decided_by: userId,
+          related_entity_type: (args.related_entity_type as string) || null,
+          related_entity_id: (args.related_entity_id as string) || null,
+        }).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Decisão "${args.title}" registrada (id: ${data?.id?.slice(0,8)}).` };
+      }
+
+      case "record_insight": {
+        const { data, error } = await db.from("insights").insert({
+          client_id: clientId,
+          title: args.title as string,
+          body: args.body as string,
+          category: (args.category as string) || "audit",
+          urgency: (args.urgency as string) || "medium",
+          evidence: (args.evidence as Record<string, unknown>) || {},
+          generated_by: "bot",
+          status: "new",
+          created_by: userId,
+        }).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Insight "${args.title}" registrado para validação (id: ${data?.id?.slice(0,8)}).` };
+      }
+
+      case "set_conversation_state": {
+        // Handled at outer scope by caller (it has access to conversation row).
+        // Here we just acknowledge — actual upsert happens after tool loop.
+        return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -503,7 +594,11 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes] = await Promise.all([
+    const [
+      clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
+      goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
+      convRes,
+    ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
         .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
@@ -538,6 +633,36 @@ serve(async (req) => {
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(15),
+      db.from("client_goals")
+        .select("title, description, target_metric, target_value, deadline, priority, status")
+        .eq("client_id", client_id).eq("status", "active")
+        .order("priority", { ascending: false }).limit(10),
+      db.from("client_offers")
+        .select("name, description, price, target_audience, differentiators")
+        .eq("client_id", client_id).eq("status", "active").limit(10),
+      db.from("client_channels")
+        .select("channel, account_id, status, monthly_budget, notes, last_activity_at")
+        .eq("client_id", client_id).eq("status", "active").limit(10),
+      db.from("client_constraints")
+        .select("type, description, severity")
+        .eq("client_id", client_id).eq("active", true).limit(20),
+      db.from("client_decisions")
+        .select("title, decision, rationale, decided_at, related_entity_type")
+        .eq("client_id", client_id)
+        .order("decided_at", { ascending: false }).limit(8),
+      db.from("client_actions")
+        .select("action_type, payload, executed_at, status")
+        .eq("client_id", client_id)
+        .order("executed_at", { ascending: false }).limit(10),
+      db.from("insights")
+        .select("title, body, category, urgency, status, created_at")
+        .eq("client_id", client_id)
+        .in("status", ["new", "acknowledged"])
+        .order("created_at", { ascending: false }).limit(8),
+      db.from("assistant_conversations")
+        .select("id, current_topic, current_objective, last_recommendation, last_action, pending_items")
+        .eq("user_id", userId).eq("mode", mode).eq("client_id", client_id)
+        .maybeSingle(),
     ]);
 
     const client = clientRes.data;
@@ -547,6 +672,14 @@ serve(async (req) => {
     const briefing = briefingsRes.data;
     const tasks = tasksRes.data || [];
     const files = filesRes.data || [];
+    const goals = goalsRes.data || [];
+    const offers = offersRes.data || [];
+    const channels = channelsRes.data || [];
+    const constraints = constraintsRes.data || [];
+    const decisions = decisionsRes.data || [];
+    const recentActions = actionsRes.data || [];
+    const openInsights = insightsRes.data || [];
+    const conversationState = convRes.data;
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -645,6 +778,86 @@ serve(async (req) => {
       context += "\n";
     }
 
+    // ── Memória operacional ──────────────────────────────────────────
+    if (goals.length > 0) {
+      context += `## 🎯 Objetivos Ativos do Cliente\n`;
+      for (const g of goals) {
+        const tgt = g.target_metric ? ` (meta: ${g.target_metric}=${g.target_value || "?"})` : "";
+        const dl = g.deadline ? ` • prazo ${g.deadline}` : "";
+        context += `- [${g.priority}] **${g.title}**${tgt}${dl}\n`;
+        if (g.description) context += `  ${String(g.description).slice(0,200)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (offers.length > 0) {
+      context += `## 💼 Ofertas Ativas\n`;
+      for (const o of offers) {
+        context += `- **${o.name}**${o.price ? ` — R$${o.price}` : ""}${o.target_audience ? ` • público: ${o.target_audience}` : ""}\n`;
+        if (o.description) context += `  ${String(o.description).slice(0,200)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (channels.length > 0) {
+      context += `## 📡 Canais Ativos\n`;
+      for (const c of channels) {
+        const bd = c.monthly_budget ? ` • R$${c.monthly_budget}/mês` : "";
+        context += `- ${c.channel}${c.account_id ? ` (${c.account_id})` : ""}${bd}${c.notes ? ` — ${c.notes}` : ""}\n`;
+      }
+      context += "\n";
+    }
+
+    if (constraints.length > 0) {
+      context += `## 🚫 Restrições/Regras a RESPEITAR (obrigatório)\n`;
+      for (const r of constraints) {
+        context += `- [${r.severity}/${r.type}] ${r.description}\n`;
+      }
+      context += `\n⚠️ Recuse qualquer ação que viole as regras acima e cite a restrição.\n\n`;
+    }
+
+    if (decisions.length > 0) {
+      context += `## 🧠 Decisões Recentes (memória)\n`;
+      for (const d of decisions) {
+        const date = d.decided_at ? String(d.decided_at).split("T")[0] : "-";
+        context += `- (${date}) **${d.title}**: ${d.decision}${d.rationale ? ` — _${d.rationale}_` : ""}\n`;
+      }
+      context += "\n";
+    }
+
+    if (recentActions.length > 0) {
+      context += `## ⚡ Últimas Ações Executadas\n`;
+      for (const a of recentActions.slice(0, 6)) {
+        const date = a.executed_at ? String(a.executed_at).split("T")[0] : "-";
+        context += `- (${date}) ${a.action_type} [${a.status}]\n`;
+      }
+      context += "\n";
+    }
+
+    if (openInsights.length > 0) {
+      context += `## 💡 Insights Abertos (gerados anteriormente)\n`;
+      for (const i of openInsights) {
+        context += `- [${i.urgency}/${i.category}] **${i.title}** — ${String(i.body).slice(0,180)}\n`;
+      }
+      context += "\n";
+    }
+
+    if (conversationState) {
+      const stateBits: string[] = [];
+      if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
+      if (conversationState.current_objective) stateBits.push(`objetivo: ${conversationState.current_objective}`);
+      const pend = Array.isArray(conversationState.pending_items) ? conversationState.pending_items : [];
+      if (pend.length > 0) stateBits.push(`pendências: ${pend.length}`);
+      if (stateBits.length > 0) {
+        context += `## 🧭 Estado da Conversa\n${stateBits.join(" • ")}\n`;
+        if (conversationState.last_recommendation) {
+          const lr = conversationState.last_recommendation as Record<string, unknown>;
+          if (lr?.title) context += `Última recomendação: ${lr.title}\n`;
+        }
+        context += "\n";
+      }
+    }
+
     // System prompt by mode
     const baseIdentity = `Você é o Linkouzinho 🤖, assistente inteligente da Agência Linkou — agência de consultoria, tráfego e vendas.\nData atual: ${new Date().toISOString().split("T")[0]}\n\n`;
 
@@ -700,6 +913,10 @@ serve(async (req) => {
         `- **create_strategic_plan**: Gerar plano completo (personas, KPIs SMART, funil topo/meio/fundo, alocação de budget % por canal, tipos de campanha) baseado em dados reais.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
+        `## Memória de longo prazo (use com critério)\n` +
+        `- **log_decision**: registre quando o usuário FECHAR uma decisão relevante (não use em conversas casuais).\n` +
+        `- **record_insight**: no MODO AUDITOR, ao identificar oportunidade/risco/diagnóstico com evidência real, persista para validação posterior.\n` +
+        `- **set_conversation_state**: atualize tópico/objetivo/pendências quando o foco mudar.\n\n` +
         `## Análise estratégica (suporte ao AUDITOR e ESTRATEGISTA)\n` +
         `Compare CPL/CPV entre meses, calcule variação %, identifique gargalos no funil (impressão→clique→lead→SQL→venda), aponte canais com melhor ROAS, sugira realocação de budget e projete cenários com base em histórico.\n\n` +
         `Ao inferir datas, use ano atual (${new Date().getFullYear()}) e mês atual como referência.\n\n` +
@@ -736,7 +953,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
-          tools: adminTools,
+          tools: [...adminTools, ...memoryTools],
           tool_choice: "auto",
           stream: false,
         }),
@@ -756,6 +973,8 @@ serve(async (req) => {
       if (choice?.message?.tool_calls && choice.message.tool_calls.length > 0) {
         // Execute each tool call
         const toolMessages: Array<{ role: string; tool_call_id: string; content: string }> = [];
+        const stateUpdates: Record<string, unknown> = {};
+        let lastActionForState: Record<string, unknown> | null = null;
 
         for (const tc of choice.message.tool_calls) {
           const fnName = tc.function.name;
@@ -772,6 +991,58 @@ serve(async (req) => {
             tool_call_id: tc.id,
             content: JSON.stringify(result),
           });
+
+          // Persist action log (skip pure state updates to avoid noise)
+          if (fnName !== "set_conversation_state") {
+            try {
+              await db.from("client_actions").insert({
+                client_id,
+                action_type: fnName,
+                payload: fnArgs,
+                executed_by: userId,
+                status: result.success ? "success" : "failed",
+                error_message: result.success ? null : result.message.slice(0, 500),
+              });
+            } catch (e) {
+              console.error("Failed to log client_action:", e);
+            }
+          }
+
+          // Track state changes
+          if (fnName === "set_conversation_state") {
+            if (fnArgs.current_topic) stateUpdates.current_topic = fnArgs.current_topic;
+            if (fnArgs.current_objective) stateUpdates.current_objective = fnArgs.current_objective;
+            if (fnArgs.pending_items) stateUpdates.pending_items = fnArgs.pending_items;
+          }
+          if (result.success) {
+            lastActionForState = {
+              tool: fnName,
+              params: fnArgs,
+              result: result.message,
+              created_at: new Date().toISOString(),
+            };
+          }
+        }
+
+        // Upsert conversation state
+        if (Object.keys(stateUpdates).length > 0 || lastActionForState) {
+          try {
+            const upsertPayload: Record<string, unknown> = {
+              user_id: userId,
+              client_id,
+              mode,
+              current_client_id: client_id,
+              state_updated_at: new Date().toISOString(),
+              ...stateUpdates,
+            };
+            if (lastActionForState) upsertPayload.last_action = lastActionForState;
+            await db.from("assistant_conversations").upsert(
+              upsertPayload,
+              { onConflict: "user_id,client_id,mode" }
+            );
+          } catch (e) {
+            console.error("Failed to upsert conversation state:", e);
+          }
         }
 
         // Step 2: Stream the final response with tool results
