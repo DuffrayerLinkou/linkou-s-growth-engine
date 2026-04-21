@@ -274,6 +274,32 @@
   animation: marquee 30s linear infinite;
 }
 
+/* ── Hero cosmos: twinkle & constellation pulse ── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.4); }
+}
+
+@keyframes constellation-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.6; }
+}
+
+.hero-constellation {
+  animation: constellation-pulse 6s ease-in-out infinite;
+}
+
+.hero-particle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-constellation,
+  .hero-particle {
+    animation: none !important;
+  }
+}
+
 /* ── PWA Splash Screen ── */
 .splash-overlay {
   position: fixed;
