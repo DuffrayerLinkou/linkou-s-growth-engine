@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +12,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2, Eye, Download, X, Users, TrendingUp, Layers, DollarSign, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Target, Clock, FileText, CheckCircle, Edit, Trash2, Eye, Download, X, Users, TrendingUp, TrendingDown, Layers, DollarSign, Calendar as CalendarIcon } from "lucide-react";
 import { safeFormatDate } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { generateStrategicPlanPDF } from "@/lib/pdf-generator";
 
 const statusConfig = {
   draft: { label: "Rascunho", color: "bg-muted text-muted-foreground", icon: FileText },
@@ -145,10 +144,6 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
   const [form, setForm] = useState<PlanForm>(initialForm);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (clientId && !editingPlan) setForm(prev => ({ ...prev, client_id: clientId }));
-  }, [clientId, editingPlan]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -284,7 +279,8 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
   const updateStage = (key: keyof FunnelStrategy, patch: Partial<FunnelStage>) => setForm(f => ({ ...f, funnel_strategy: { ...f.funnel_strategy, [key]: { ...(f.funnel_strategy[key] || emptyStage), ...patch } } }));
   const updateWave = (i: number, patch: Partial<Wave>) => setForm(f => ({ ...f, execution_plan: { ...f.execution_plan, waves: (f.execution_plan.waves || []).map((w, idx) => idx === i ? { ...w, ...patch } : w) } }));
 
-  const exportPDF = (plan: any) => {
+  const exportPDF = async (plan: any) => {
+    const { generateStrategicPlanPDF } = await import("@/lib/pdf-generator");
     generateStrategicPlanPDF(normalizeFromDB(plan) as any, getClientName(plan.client_id));
   };
 
@@ -457,7 +453,7 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
                   <StringListEditor items={form.diagnostic.opportunities || []} onChange={(v) => setForm({ ...form, diagnostic: { ...form.diagnostic, opportunities: v } })} placeholder="Ex: Demanda crescente em..." />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs flex items-center gap-1"><TrendingUp className="h-3 w-3 text-destructive rotate-180" />Riscos</Label>
+                  <Label className="text-xs flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" />Riscos</Label>
                   <StringListEditor items={form.diagnostic.risks || []} onChange={(v) => setForm({ ...form, diagnostic: { ...form.diagnostic, risks: v } })} placeholder="Ex: Sazonalidade no Q3..." />
                 </div>
               </div>

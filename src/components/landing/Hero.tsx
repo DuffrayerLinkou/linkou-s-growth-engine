@@ -17,6 +17,7 @@ const clipReveal = {
 };
 
 function HeroComponent() {
+  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
     if (element) {
@@ -45,8 +46,8 @@ function HeroComponent() {
 
         {/* Decorative blob on the right */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[45%] h-[70%] hidden lg:block pointer-events-none">
-          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/30 via-primary/20 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
-          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/20 to-accent/25 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
+          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/30 via-primary/20 to-transparent blur-xl motion-safe:animate-[pulse_6s_ease-in-out_infinite]" />
+          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/20 to-accent/25 blur-lg motion-safe:animate-[pulse_8s_ease-in-out_infinite_1s]" />
           <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/20" />
         </div>
 
@@ -139,7 +140,7 @@ function HeroComponent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className="relative z-10"
-                style={{ filter: "drop-shadow(0 25px 60px hsl(var(--primary) / 0.4))" }}
+                style={{ filter: "drop-shadow(0 20px 40px hsl(var(--primary) / 0.35))" }}
               >
                 <m.img
                   src={linkouzinhoHero}
@@ -149,8 +150,8 @@ function HeroComponent() {
                   fetchpriority="high"
                   className="w-full max-w-[560px] xl:max-w-[620px] select-none"
                   draggable={false}
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  animate={prefersReducedMotion ? undefined : { y: [0, -10, 0] }}
+                  transition={prefersReducedMotion ? undefined : { duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 />
               </m.div>
             </div>

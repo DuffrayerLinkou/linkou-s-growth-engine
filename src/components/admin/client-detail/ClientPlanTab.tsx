@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { generateStrategicPlanPDF } from "@/lib/pdf-generator";
 import type { Json } from "@/integrations/supabase/types";
 
 interface StrategicPlan {
@@ -37,6 +36,7 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
   const [plan, setPlan] = useState<StrategicPlan | null>(null);
   const [clientName, setClientName] = useState("Cliente");
   const [isLoading, setIsLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +54,17 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
   }, [clientId]);
 
   if (isLoading) return <p className="text-muted-foreground text-sm py-8 text-center">Carregando...</p>;
+
+  const downloadPDF = async () => {
+    if (!plan) return;
+    setDownloading(true);
+    try {
+      const { generateStrategicPlanPDF } = await import("@/lib/pdf-generator");
+      generateStrategicPlanPDF(plan as any, clientName);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (!plan) {
     return (
@@ -95,8 +106,8 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => generateStrategicPlanPDF(plan as any, clientName)}>
-            <Download className="h-4 w-4 mr-1" /> PDF
+          <Button variant="outline" size="sm" onClick={downloadPDF} disabled={downloading}>
+            <Download className="h-4 w-4 mr-1" /> {downloading ? "..." : "PDF"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate("/admin/onboarding")}>
             <ExternalLink className="h-4 w-4 mr-1" /> Editar
@@ -208,6 +219,7 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
         )}
       </div>
 
+      <section className="space-y-4">
       {funnel && (
           <Card>
             <CardHeader className="pb-2">
@@ -304,6 +316,7 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
           </CardContent>
         </Card>
       )}
+      </section>
     </div>
   );
 }

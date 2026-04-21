@@ -235,11 +235,13 @@ function drawTable(pdf: PDF, headers: string[], rows: string[][], y: number, add
   // Rows
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(8.5);
+  const rowHeights: number[] = [];
   rows.forEach((row, ri) => {
     // Wrap each cell to compute row height
     const cellLines = row.map((cell, i) => pdf.splitTextToSize(String(cell ?? ''), widths[i] - 4));
     const maxLines = Math.max(...cellLines.map(l => l.length), 1);
     const dynH = Math.max(rowH, maxLines * 4.2 + 2.5);
+    rowHeights.push(dynH);
 
     y = ensureSpace(pdf, y, dynH, addFooter);
 
@@ -262,15 +264,8 @@ function drawTable(pdf: PDF, headers: string[], rows: string[][], y: number, add
 
   setDraw(pdf, BORDER);
   pdf.setLineWidth(0.2);
-  pdf.rect(MARGIN, y - rows.reduce((acc, _, ri) => {
-    const cellLines = rows[ri].map((cell, i) => pdf.splitTextToSize(String(cell ?? ''), widths[i] - 4));
-    const maxLines = Math.max(...cellLines.map(l => l.length), 1);
-    return acc + Math.max(rowH, maxLines * 4.2 + 2.5);
-  }, 0) - headerH, CONTENT_W, rows.reduce((acc, _, ri) => {
-    const cellLines = rows[ri].map((cell, i) => pdf.splitTextToSize(String(cell ?? ''), widths[i] - 4));
-    const maxLines = Math.max(...cellLines.map(l => l.length), 1);
-    return acc + Math.max(rowH, maxLines * 4.2 + 2.5);
-  }, 0) + headerH);
+  const totalRowsH = rowHeights.reduce((a, b) => a + b, 0);
+  pdf.rect(MARGIN, y - totalRowsH - headerH, CONTENT_W, totalRowsH + headerH);
 
   return y + 4;
 }
