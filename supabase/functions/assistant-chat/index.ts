@@ -1626,32 +1626,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
     }
-
-    // ── Client mode: direct streaming (no tools) ───────────────────────
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: allMessages,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }, 429);
-      if (response.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return json({ error: "Erro ao processar com IA" }, 500);
-    }
-
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
   } catch (e) {
     console.error("assistant-chat error:", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
