@@ -11,7 +11,7 @@ export function useClientPermissions() {
     isPontoFocal,
     canApprove: isPontoFocal,
     canUploadFiles: isPontoFocal || userType === "manager",
-    canViewFinancials: userType === "manager",
+    canViewFinancials: userType === "manager" || isPontoFocal,
     canEditMetrics: isPontoFocal,
     canCreateTasks: isPontoFocal || userType === "manager",
     canRequestCampaigns: isPontoFocal || userType === "manager",
