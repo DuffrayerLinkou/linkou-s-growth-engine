@@ -1091,7 +1091,7 @@ serve(async (req) => {
     const [
       clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
-      convRes,
+      convRes, creativeDemandsRes, creativeDeliverablesRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -1157,6 +1157,17 @@ serve(async (req) => {
         .select("id, current_topic, current_objective, last_recommendation, last_action, pending_items")
         .eq("user_id", userId).eq("mode", mode).eq("client_id", client_id)
         .maybeSingle(),
+      db.from("creative_demands")
+        .select("id, title, status, platform, format, deadline, priority, objective")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(15),
+      db.from("creative_deliverables")
+        .select("id, demand_id, title, type, status, current_version, approved_by_ponto_focal")
+        .eq("client_id", client_id)
+        .neq("status", "delivered")
+        .order("created_at", { ascending: false })
+        .limit(40),
     ]);
 
     const client = clientRes.data;
@@ -1174,6 +1185,8 @@ serve(async (req) => {
     const recentActions = actionsRes.data || [];
     const openInsights = insightsRes.data || [];
     const conversationState = convRes.data;
+    const creativeDemands = creativeDemandsRes.data || [];
+    const creativeDeliverables = creativeDeliverablesRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
