@@ -2613,7 +2613,141 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      landing_settings_safe: {
+        Row: {
+          body_scripts: string | null
+          chat_widget_enabled: boolean | null
+          chat_widget_script: string | null
+          created_at: string | null
+          favicon_url: string | null
+          ga4_enabled: boolean | null
+          ga4_measurement_id: string | null
+          google_ads_conversion_id: string | null
+          google_ads_enabled: boolean | null
+          google_ads_id: string | null
+          gtm_enabled: boolean | null
+          gtm_id: string | null
+          head_scripts: string | null
+          hotjar_enabled: boolean | null
+          hotjar_id: string | null
+          id: string | null
+          linkedin_enabled: boolean | null
+          linkedin_partner_id: string | null
+          meta_app_secret_configured: boolean | null
+          meta_capi_access_token_configured: boolean | null
+          meta_capi_crm_events_enabled: boolean | null
+          meta_capi_enabled: boolean | null
+          meta_capi_test_event_code: string | null
+          meta_page_access_token_configured: boolean | null
+          meta_pixel_enabled: boolean | null
+          meta_pixel_id: string | null
+          meta_webhook_verify_token_configured: boolean | null
+          og_image_url: string | null
+          robots_txt: string | null
+          search_console_verification: string | null
+          search_console_verified: boolean | null
+          site_description: string | null
+          site_title: string | null
+          tiktok_access_token_configured: boolean | null
+          tiktok_capi_enabled: boolean | null
+          tiktok_pixel_enabled: boolean | null
+          tiktok_pixel_id: string | null
+          tiktok_test_event_code: string | null
+          updated_at: string | null
+          updated_by: string | null
+          whatsapp_message: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          body_scripts?: string | null
+          chat_widget_enabled?: boolean | null
+          chat_widget_script?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          google_ads_conversion_id?: string | null
+          google_ads_enabled?: boolean | null
+          google_ads_id?: string | null
+          gtm_enabled?: boolean | null
+          gtm_id?: string | null
+          head_scripts?: string | null
+          hotjar_enabled?: boolean | null
+          hotjar_id?: string | null
+          id?: string | null
+          linkedin_enabled?: boolean | null
+          linkedin_partner_id?: string | null
+          meta_app_secret_configured?: never
+          meta_capi_access_token_configured?: never
+          meta_capi_crm_events_enabled?: boolean | null
+          meta_capi_enabled?: boolean | null
+          meta_capi_test_event_code?: string | null
+          meta_page_access_token_configured?: never
+          meta_pixel_enabled?: boolean | null
+          meta_pixel_id?: string | null
+          meta_webhook_verify_token_configured?: never
+          og_image_url?: string | null
+          robots_txt?: string | null
+          search_console_verification?: string | null
+          search_console_verified?: boolean | null
+          site_description?: string | null
+          site_title?: string | null
+          tiktok_access_token_configured?: never
+          tiktok_capi_enabled?: boolean | null
+          tiktok_pixel_enabled?: boolean | null
+          tiktok_pixel_id?: string | null
+          tiktok_test_event_code?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          body_scripts?: string | null
+          chat_widget_enabled?: boolean | null
+          chat_widget_script?: string | null
+          created_at?: string | null
+          favicon_url?: string | null
+          ga4_enabled?: boolean | null
+          ga4_measurement_id?: string | null
+          google_ads_conversion_id?: string | null
+          google_ads_enabled?: boolean | null
+          google_ads_id?: string | null
+          gtm_enabled?: boolean | null
+          gtm_id?: string | null
+          head_scripts?: string | null
+          hotjar_enabled?: boolean | null
+          hotjar_id?: string | null
+          id?: string | null
+          linkedin_enabled?: boolean | null
+          linkedin_partner_id?: string | null
+          meta_app_secret_configured?: never
+          meta_capi_access_token_configured?: never
+          meta_capi_crm_events_enabled?: boolean | null
+          meta_capi_enabled?: boolean | null
+          meta_capi_test_event_code?: string | null
+          meta_page_access_token_configured?: never
+          meta_pixel_enabled?: boolean | null
+          meta_pixel_id?: string | null
+          meta_webhook_verify_token_configured?: never
+          og_image_url?: string | null
+          robots_txt?: string | null
+          search_console_verification?: string | null
+          search_console_verified?: boolean | null
+          site_description?: string | null
+          site_title?: string | null
+          tiktok_access_token_configured?: never
+          tiktok_capi_enabled?: boolean | null
+          tiktok_pixel_enabled?: boolean | null
+          tiktok_pixel_id?: string | null
+          tiktok_test_event_code?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_upload_files: {
