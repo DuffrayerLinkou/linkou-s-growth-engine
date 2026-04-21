@@ -133,7 +133,7 @@ export function KeywordFormDialog({ open, onClose, clientId, clusters, editing, 
         }
         toast({ title: "Palavra-chave atualizada" });
       } else {
-        const { data, error } = await supabase.from("keywords").insert(payload).select("id").single();
+        const { data, error } = await supabase.from("keywords").insert(payload as any).select("id").single();
         if (error) throw error;
         // Snapshot initial position
         if (payload.current_position != null && data) {
