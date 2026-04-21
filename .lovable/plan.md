@@ -1,199 +1,154 @@
 
 
-## Linkouzinho como Operador Contextual Multi-Cliente
+## Sprint 2 — Memória Documental (RAG por cliente)
 
-Plano para evoluir o Linkouzinho em **4 camadas** (memória operacional, documental, estado da conversa, motor de decisão) sem alterar a interface do chat.
-
----
-
-### Diagnóstico do que já existe
-
-| Camada | Já existe | Falta |
-|---|---|---|
-| Operacional | `clients`, `campaigns`, `tasks`, `appointments`, `briefings`, `strategic_plans`, `traffic_metrics`, `learnings`, `payments` | `client_goals`, `client_offers`, `client_channels`, `client_constraints`, `client_decisions`, `client_actions`, `insights` |
-| Documental | `files` (storage `client-files`) + tool `read_file` | `document_chunks`, `document_embeddings`, `document_permissions` (RAG) |
-| Estado da conversa | `assistant_conversations` (messages, mode) | Campos de estado: cliente atual, assunto, objetivo, última ação, pendências |
-| Motor de decisão | Roteamento implícito via prompt (AUDITOR/ESTRATEGISTA/EXECUTOR) | Pipeline determinístico no edge function + log de decisões |
+Adicionar busca semântica em arquivos do cliente (PDFs, TXT, MD, CSV) sem inflar o prompt. O Linkouzinho passa a recuperar trechos relevantes sob demanda via cosine similarity.
 
 ---
 
-### Camada 1 — Memória Operacional (novas tabelas)
+### Mudanças no banco
 
-Criar 7 tabelas, todas com `client_id NOT NULL`, RLS por cliente + admin/account_manager.
-
-```text
-client_goals          → objetivos atuais (qualitativos + KPIs alvo)
-                        campos: title, description, target_metric, target_value,
-                        deadline, priority, status (active/achieved/abandoned)
-
-client_offers         → ofertas/produtos ativos do cliente
-                        campos: name, description, price, target_audience,
-                        differentiators jsonb, status
-
-client_channels       → canais ativos (Meta/Google/TikTok/Orgânico/E-mail/WPP)
-                        campos: channel, account_id, status,
-                        monthly_budget, notes, last_activity_at
-
-client_constraints    → restrições/regras (ex: "não usar criativo agressivo",
-                        "evitar palavra X", "horário comercial apenas")
-                        campos: type, description, severity, active
-
-client_decisions      → decisões tomadas (com ou sem o bot)
-                        campos: title, decision, rationale, decided_by,
-                        decided_at, related_entity_type, related_entity_id
-
-client_actions        → ações executadas pelo bot ou usuário
-                        campos: action_type, payload jsonb, executed_by,
-                        executed_at, status (success/failed),
-                        triggered_by_message_id (referência opcional)
-
-insights              → conclusões da IA validadas/persistidas
-                        campos: title, body, category (audit/opportunity/risk),
-                        evidence jsonb, generated_by (bot/manual),
-                        status (new/acknowledged/dismissed), acknowledged_by
+**1. Habilitar extensão pgvector**
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-**RLS padrão para todas:**
+**2. Três novas tabelas**
+
+```text
+document_chunks
+  id uuid PK
+  file_id uuid (FK files.id ON DELETE CASCADE)
+  client_id uuid NOT NULL
+  chunk_index int
+  content text
+  token_count int
+  page_number int (nullable)
+  metadata jsonb default '{}'
+  created_at timestamptz
+
+document_embeddings
+  id uuid PK
+  chunk_id uuid (FK document_chunks.id ON DELETE CASCADE)
+  client_id uuid NOT NULL  (denormalizado p/ filtro RLS rápido)
+  embedding vector(768)
+  model text default 'google/text-embedding-004'
+  created_at timestamptz
+  INDEX ivfflat (embedding vector_cosine_ops) WITH (lists=100)
+
+document_permissions
+  id uuid PK
+  file_id uuid (FK files.id ON DELETE CASCADE)
+  can_be_used_by_ai boolean default true
+  role text (manager|focal|operator|null=any)
+  user_id uuid (nullable)
+  created_at timestamptz
+  UNIQUE(file_id, role, user_id)
+```
+
+**3. RLS** (mesmo padrão das outras tabelas)
 - Admin/account_manager: ALL
 - Client users: SELECT onde `client_id = get_user_client_id(auth.uid())`
-- INSERT pelo bot: via service role no edge function
+- Service role (edge functions) faz INSERT/UPDATE/DELETE
+
+**4. Função SQL `match_document_chunks`** (busca vetorial escopada)
+```sql
+match_document_chunks(
+  query_embedding vector(768),
+  target_client_id uuid,
+  match_count int default 5,
+  similarity_threshold float default 0.5
+) RETURNS TABLE (chunk_id, file_id, file_name, content, page_number, similarity)
+```
+Inclui filtro `document_permissions.can_be_used_by_ai = true` (default true se sem registro).
 
 ---
 
-### Camada 2 — Memória Documental (RAG por cliente)
+### Nova edge function `ingest-document`
 
-```text
-document_chunks       → trechos de 500-800 tokens extraídos de cada arquivo
-                        campos: file_id (FK files.id), client_id, chunk_index,
-                        content text, token_count, page_number, metadata jsonb
+Pipeline:
+1. Recebe `{ file_id }` + JWT do usuário
+2. Valida permissão (mesmo client_id)
+3. Baixa do bucket `client-files` via `file_path`
+4. Detecta MIME e extrai texto:
+   - **PDF**: `pdf-parse` (Deno-compatível via esm.sh)
+   - **TXT/MD/CSV**: leitura direta
+   - **DOCX**: `mammoth` (best-effort)
+5. Chunking: 600 tokens com overlap de 80 (split por parágrafos preservando contexto)
+6. Para cada chunk: chama Lovable AI Gateway `google/text-embedding-004`
+7. Persiste em `document_chunks` + `document_embeddings` (deleta versões anteriores antes — re-ingestão idempotente)
+8. Retorna `{ chunks_created, tokens_processed }`
 
-document_embeddings   → vetores (pgvector extension)
-                        campos: chunk_id (FK), embedding vector(768),
-                        model text default 'gemini-embedding-001'
+Trigger opcional: `files` insert → enfileira ingestão (Sprint 3 cuida da UI).
 
-document_permissions  → granularidade extra além de RLS por cliente
-                        campos: file_id, role (manager/focal/operator),
-                        user_id (opcional), can_read bool, can_be_used_by_ai bool
+---
+
+### Tool nova `search_documents` no `assistant-chat`
+
+```typescript
+{
+  name: "search_documents",
+  description: "Busca trechos relevantes nos arquivos do cliente atual via similaridade semântica",
+  parameters: {
+    query: string,           // pergunta ou tópico
+    top_k: number = 5
+  }
+}
 ```
 
-**Pipeline de ingestão (edge function `ingest-document`):**
-1. Trigger ao criar registro em `files` (ou manual)
-2. Baixa do bucket `client-files`
-3. Extrai texto (pdf-parse, leitura direta para txt/md/csv)
-4. Divide em chunks (500-800 tokens, overlap 80)
-5. Gera embeddings via Lovable AI Gateway (`google/gemini-embedding-001`)
-6. Persiste em `document_chunks` + `document_embeddings`
+Executor:
+1. Gera embedding da query
+2. Chama `match_document_chunks(embedding, current_client_id, top_k)`
+3. Retorna lista `[{file_name, page, content, similarity}]`
+4. Loga em `client_actions` (tipo `search_documents`)
 
-**Tool nova `search_documents`** (substitui parte do `read_file`):
-- Input: `query` (string), `top_k` (default 5)
-- Gera embedding da query → busca cosine similarity escopada por `client_id` → retorna top 5 chunks com `file_name + page_number + content`
-- Custo controlado: usado só quando AUDITOR/ESTRATEGISTA precisa de contexto documental
-
-`read_file` continua existindo para leitura completa quando solicitado explicitamente.
+`read_file` continua existindo para leitura completa quando solicitado.
 
 ---
 
-### Camada 3 — Estado da Conversa
+### Atualização do system prompt
 
-Estender `assistant_conversations` com colunas:
-
-```text
-current_client_id     uuid       (cliente em foco — pode mudar mid-chat)
-current_topic         text       (ex: "campanha Black Friday")
-current_objective     text       (ex: "reduzir CPL Meta em 20%")
-last_recommendation   jsonb      ({title, body, created_at})
-last_action           jsonb      ({tool, params, result, created_at})
-pending_items         jsonb      ([{type, description, due}])
-state_updated_at      timestamptz
+Adicionar bloco no `ADMIN_SYSTEM_PROMPT`:
 ```
-
-O edge function `assistant-chat` lê e atualiza esse estado a cada turno (via service role).
-
----
-
-### Camada 4 — Motor de Decisão (refatoração do `assistant-chat`)
-
-Refatorar `supabase/functions/assistant-chat/index.ts` para um **pipeline explícito de 7 passos** antes de chamar a LLM:
-
-```text
-[Pipeline por mensagem]
-
-  1. IDENTIFY_CLIENT
-     - usa client_id do payload OU current_client_id do estado
-     - se admin trocar de cliente, atualiza state
-
-  2. CLASSIFY_INTENT  (chamada LLM rápida, gemini-flash, ~50 tokens)
-     - retorna: { intent: audit|strategy|execute|chat, requires_docs: bool,
-                  topic: string, urgency: low|med|high }
-
-  3. LOAD_OPERATIONAL_CONTEXT
-     - Promise.all queries: client + goals + offers + channels +
-       constraints + active tasks + recent decisions/actions/insights +
-       campaigns + last 6mo metrics
-
-  4. LOAD_DOCUMENT_CONTEXT  (só se requires_docs=true)
-     - search_documents(topic, top_k=5)
-     - injeta chunks como "Trechos relevantes de arquivos"
-
-  5. APPLY_SECURITY
-     - garante que TODOS os IDs no contexto pertencem ao client_id atual
-     - filtra constraints aplicáveis ("nunca usar X")
-     - bloqueia tools de execução se usuário não tiver role
-
-  6. INVOKE_LLM
-     - system prompt = identidade + estado + contexto + constraints
-     - tools disponíveis conforme intent (executor → todas; auditor → só leitura)
-
-  7. RECORD_OUTCOME
-     - se houve tool call → grava em client_actions
-     - se houve recomendação → atualiza last_recommendation no state
-     - se houve insight novo → grava em insights (status=new)
-     - atualiza state_updated_at
+🔍 BUSCA DOCUMENTAL
+Use search_documents quando o usuário perguntar sobre conteúdo de arquivos,
+briefings, contratos, ou pedir resumo de documento. NÃO chame se a resposta
+está no contexto operacional já carregado.
 ```
 
 ---
 
-### Comportamentos novos garantidos
+### UI mínima (Sprint 2)
 
-| Situação | Comportamento |
+**`src/pages/cliente/Arquivos.tsx`** + **`src/pages/admin/ClientDetail.tsx`** (aba arquivos):
+- Botão "🧠 Tornar pesquisável" por arquivo
+- Badge "Indexado ✓" quando já tem chunks
+- Toggle "Permitir uso pela IA" (`document_permissions.can_be_used_by_ai`)
+
+A UI completa de gestão de insights (Sprint 3) fica para depois.
+
+---
+
+### Custo & performance
+
+| Item | Estimativa |
 |---|---|
-| Admin troca de cliente no chat | State atualiza `current_client_id`, contexto recarrega, anti-vazamento |
-| "Lembra do que decidimos semana passada?" | Lê `client_decisions` ordenado por `decided_at desc` |
-| "Resume tudo que sabemos sobre o produto X" | `search_documents` retorna chunks relevantes do briefing/PDFs |
-| "Quais pendências?" | Lê `pending_items` do state + `tasks` em atraso |
-| "Cria tarefa para revisar o plano" | EXECUTOR cria tarefa + grava em `client_actions` com link |
-| Usuário pede algo proibido por `client_constraints` | Bot recusa citando a restrição registrada |
+| Embedding por chunk | ~$0.00001 |
+| PDF típico (20 páginas) | ~30 chunks → $0.0003 |
+| Busca por mensagem | 1 embedding query + 1 SQL → desprezível |
+| Latência ingest | 5–15s por arquivo (assíncrono) |
+| Latência search | <500ms |
+
+Re-ingestão só roda quando usuário clica no botão (controle total).
 
 ---
 
 ### Segurança reforçada
 
-- Toda query no edge function inclui `WHERE client_id = $current_client_id`
-- `search_documents` usa filtro RLS no SQL via `user_has_client_access`
-- `document_permissions.can_be_used_by_ai = false` exclui o doc da busca vetorial
-- Admin (`client_id IS NULL`) pode operar qualquer cliente, mas deve selecionar um explicitamente
-- Logs em `client_actions` permitem auditoria de tudo que o bot executou
-
----
-
-### Roadmap de implementação (3 sprints)
-
-**Sprint 1 — Memória Operacional + Estado** (1 migração + refactor edge)
-- Criar 7 tabelas + RLS
-- Adicionar colunas de estado em `assistant_conversations`
-- Refatorar `assistant-chat` para pipeline 7-passos (sem RAG ainda)
-- Injetar novo contexto operacional no system prompt
-
-**Sprint 2 — RAG Documental** (extensão pgvector + edge function)
-- `CREATE EXTENSION vector`
-- 3 tabelas (chunks, embeddings, permissions)
-- Edge function `ingest-document` (manual + on-upload)
-- Tool `search_documents` no `assistant-chat`
-
-**Sprint 3 — UX + Insights ativos**
-- Botão "ingerir documento" em `Arquivos.tsx` para reprocessar
-- Tela `/admin/insights` listando `insights` gerados pelo bot (admin valida/descarta)
-- Notificação quando bot gera insight de alta urgência
+- `client_id` **denormalizado** em `document_embeddings` para filtro RLS sem JOIN
+- Função `match_document_chunks` é `SECURITY DEFINER` mas valida `target_client_id` contra `user_has_client_access`
+- `document_permissions.can_be_used_by_ai = false` exclui o doc da busca
+- Service role do `ingest-document` valida JWT antes de baixar arquivo
 
 ---
 
@@ -201,17 +156,16 @@ Refatorar `supabase/functions/assistant-chat/index.ts` para um **pipeline explí
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/migrations/...` | 1 migração Sprint 1: 7 tabelas operacionais + colunas de estado + RLS |
-| `supabase/migrations/...` | 1 migração Sprint 2: pgvector + 3 tabelas documentais |
-| `supabase/functions/assistant-chat/index.ts` | Refatoração completa: pipeline 7 passos + novas tools |
-| `supabase/functions/ingest-document/index.ts` | **Nova** — chunking + embeddings |
-| `src/components/LinkouzinhoInternal.tsx` | Mostrar cliente atual no header (admin) + sugestões dinâmicas |
-| `src/pages/cliente/Arquivos.tsx` | Botão "Tornar pesquisável pelo Linkouzinho" |
-| `src/pages/admin/Insights.tsx` (nova) | Listar/aprovar insights gerados |
+| Migration nova | pgvector + 3 tabelas + RLS + função `match_document_chunks` |
+| `supabase/functions/ingest-document/index.ts` | **Novo** — chunking + embeddings |
+| `supabase/functions/assistant-chat/index.ts` | + tool `search_documents` + executor + bloco no prompt |
+| `supabase/config.toml` | + entrada `[functions.ingest-document]` com `verify_jwt = false` |
+| `src/pages/cliente/Arquivos.tsx` | Botão "Tornar pesquisável" + badge |
+| `src/pages/admin/ClientDetail.tsx` | Mesmo botão na aba arquivos do admin |
 
 ### Sem mudanças
-- Identidade visual, modo cliente padrão, frontend de chat (mesma UX), tools existentes (continuam disponíveis).
+- Tabela `files` (intacta), bucket storage, frontend de upload, modo cliente do chat, tools existentes.
 
-### Aprovação por sprint
-Recomendo aprovar **Sprint 1** primeiro (impacto imediato, baixo risco). Sprint 2 (RAG) e Sprint 3 (UX) entram após validação.
+### Próximo passo
+Após aprovar, executo migração + edge function + integração. Sprint 3 (página `/admin/insights` + notificações) fica pendente.
 
