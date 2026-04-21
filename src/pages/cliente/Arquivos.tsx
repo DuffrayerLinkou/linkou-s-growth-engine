@@ -583,6 +583,41 @@ export default function ClienteArquivos() {
                         Baixar
                       </Button>
                     </div>
+                    {isIndexable(file) && (
+                      <div className="mt-2">
+                        {indexedFileIds.has(file.id) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs gap-1 text-green-600 hover:text-green-700"
+                            onClick={() => handleIngest(file)}
+                            disabled={ingestingFileId === file.id}
+                          >
+                            {ingestingFileId === file.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            )}
+                            Indexado · re-indexar
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs gap-1"
+                            onClick={() => handleIngest(file)}
+                            disabled={ingestingFileId === file.id}
+                          >
+                            {ingestingFileId === file.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Brain className="h-3.5 w-3.5" />
+                            )}
+                            {ingestingFileId === file.id ? "Indexando..." : "Tornar pesquisável pelo Linkouzinho"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
