@@ -81,16 +81,26 @@ import {
   projectStatusColors as statusColors,
 } from "@/lib/status-config";
 
+interface ProjectWithStats extends Project {
+  tasksTotal: number;
+  tasksDone: number;
+  campaignsCount: number;
+  deliverablesCount: number;
+  learningsCount: number;
+}
+
 export default function AdminProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
+  const [activePeriodOnly, setActivePeriodOnly] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithStats | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -108,18 +118,48 @@ export default function AdminProjects() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [projectsRes, clientsRes] = await Promise.all([
+      const [projectsRes, clientsRes, tasksRes, campRes, learnRes] = await Promise.all([
         supabase
           .from("projects")
           .select("*, clients(id, name)")
           .order("created_at", { ascending: false }),
         supabase.from("clients").select("id, name").eq("status", "ativo"),
+        supabase.from("tasks").select("project_id, status"),
+        supabase.from("campaigns").select("project_id"),
+        supabase.from("learnings").select("project_id"),
       ]);
 
       if (projectsRes.error) throw projectsRes.error;
       if (clientsRes.error) throw clientsRes.error;
 
-      setProjects(projectsRes.data || []);
+      const tasksByProject = new Map<string, { total: number; done: number }>();
+      (tasksRes.data || []).forEach((t: any) => {
+        if (!t.project_id) return;
+        const cur = tasksByProject.get(t.project_id) || { total: 0, done: 0 };
+        cur.total += 1;
+        if (t.status === "done") cur.done += 1;
+        tasksByProject.set(t.project_id, cur);
+      });
+      const countBy = (rows: any[]) => {
+        const m = new Map<string, number>();
+        rows.forEach((r) => {
+          if (!r.project_id) return;
+          m.set(r.project_id, (m.get(r.project_id) || 0) + 1);
+        });
+        return m;
+      };
+      const campMap = countBy(campRes.data || []);
+      const learnMap = countBy(learnRes.data || []);
+
+      const enriched: ProjectWithStats[] = (projectsRes.data || []).map((p: any) => ({
+        ...p,
+        tasksTotal: tasksByProject.get(p.id)?.total || 0,
+        tasksDone: tasksByProject.get(p.id)?.done || 0,
+        campaignsCount: campMap.get(p.id) || 0,
+        deliverablesCount: 0,
+        learningsCount: learnMap.get(p.id) || 0,
+      }));
+      setProjects(enriched);
       setClients(clientsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
