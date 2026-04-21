@@ -87,26 +87,27 @@ interface PlanningTabProps { clientId?: string; }
 // Helper para listas string editáveis
 function StringListEditor({ items, onChange, placeholder }: { items: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [draft, setDraft] = useState("");
+  const safeItems = Array.isArray(items) ? items : [];
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { e.preventDefault(); onChange([...items, draft.trim()]); setDraft(""); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { e.preventDefault(); onChange([...safeItems, draft.trim()]); setDraft(""); } }}
           placeholder={placeholder}
           className="h-9"
         />
-        <Button type="button" size="sm" variant="outline" onClick={() => { if (draft.trim()) { onChange([...items, draft.trim()]); setDraft(""); } }}>
+        <Button type="button" size="sm" variant="outline" onClick={() => { if (draft.trim()) { onChange([...safeItems, draft.trim()]); setDraft(""); } }}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
-      {items.length > 0 && (
+      {safeItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {items.map((it, i) => (
+          {safeItems.map((it, i) => (
             <Badge key={i} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
               <span className="text-xs">{it}</span>
-              <button type="button" onClick={() => onChange(items.filter((_, idx) => idx !== i))} className="hover:bg-destructive/20 rounded p-0.5">
+              <button type="button" onClick={() => onChange(safeItems.filter((_, idx) => idx !== i))} className="hover:bg-destructive/20 rounded p-0.5">
                 <X className="h-3 w-3" />
               </button>
             </Badge>
