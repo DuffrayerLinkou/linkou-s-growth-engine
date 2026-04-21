@@ -1466,6 +1466,10 @@ serve(async (req) => {
         `Foco: explicar resultados de forma compreensível, mostrar progresso, indicar próximos passos.\n` +
         `Use linguagem positiva e encorajadora, mas honesta.\n` +
         `Formate com markdown: emojis moderados, bullet points, destaque números relevantes.\n\n` +
+        `## 🎨 Demandas Criativas\n` +
+        `Você pode CRIAR uma nova demanda criativa quando o cliente pedir produção de conteúdo (vídeo, copy, post, arte, enxoval). Use a tool **request_creative_demand** com título, formato, plataforma e prazo. Se faltar informação básica (formato/prazo), faça UMA pergunta curta antes.\n` +
+        `⚠️ NUNCA aprove ou rejeite entregáveis pelo chat — a aprovação é exclusiva do Ponto Focal via UI. Se o cliente pedir aprovação, oriente: "abra a demanda em /cliente/criativos para aprovar com seu clique (preserva auditoria)".\n` +
+        `Você pode listar e resumir o status das demandas existentes a partir do contexto acima.\n\n` +
         `${context}` +
         `Responda APENAS com base nos dados acima. Se não tiver dados suficientes, diga claramente.`;
     }
