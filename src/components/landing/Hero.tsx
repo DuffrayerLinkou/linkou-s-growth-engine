@@ -4,13 +4,6 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 import { AnimatedCTA } from "./AnimatedCTA";
 import linkouzinhoHero from "@/assets/linkouzinho-hero.png";
 
-const stats = [
-  { value: "25-40%", label: "do orçamento de mídia é desperdiçado em campanhas mal configuradas" },
-  { value: "72%", label: "das empresas não têm tracking corretamente implementado" },
-  { value: "5x", label: "mais caro converter leads sem rastreabilidade clara" },
-  { value: "60%", label: "das contas de ads têm problemas de atribuição que escondem o ROI real" },
-];
-
 const clipReveal = {
   hidden: { clipPath: "inset(100% 0 0 0)" },
   visible: { clipPath: "inset(0% 0 0 0)" },
@@ -224,49 +217,6 @@ function HeroComponent() {
             </div>
           </div>
 
-          {/* Stats - structured cards mobile, horizontal desktop */}
-          <m.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-10 md:mt-12 pt-6 md:pt-8 border-t border-primary/15"
-          >
-            {/* Mobile/tablet: 2x2 grid of structured cards / md+: hidden */}
-            <div className="grid grid-cols-2 gap-3 md:hidden">
-              {stats.map((stat, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col items-start gap-2 p-4 rounded-xl bg-primary/5 border border-primary/15 backdrop-blur-sm min-h-[140px]"
-                >
-                  <div className="text-2xl font-bold text-primary leading-none">
-                    {stat.value}
-                  </div>
-                  <div className="text-[11px] text-foreground/70 leading-snug">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop: horizontal with separators */}
-            <div className="hidden md:flex justify-start gap-0">
-              {stats.map((stat, index) => (
-                <div key={index} className="flex items-center">
-                  <div className="text-center px-6 py-2">
-                    <div className="text-3xl font-bold text-primary mb-1">
-                      {stat.value}
-                    </div>
-                    <div className="text-sm text-foreground/60 max-w-[180px]">
-                      {stat.label}
-                    </div>
-                  </div>
-                  {index < stats.length - 1 && (
-                    <div className="w-px h-12 bg-primary/20" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </m.div>
         </div>
 
         {/* Scroll indicator — hidden on mobile (natural scroll via stats) */}

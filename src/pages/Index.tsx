@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
+import { HeroStats } from "@/components/landing/HeroStats";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { Marquee } from "@/components/landing/Marquee";
 import { Services } from "@/components/landing/Services";
@@ -55,6 +56,7 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
+        <HeroStats />
         <Marquee />
         <Services />
         <Results />
