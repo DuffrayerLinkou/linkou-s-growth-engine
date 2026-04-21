@@ -38,6 +38,7 @@ const ClienteBaseConhecimento = lazy(() => import("./pages/cliente/BaseConhecime
 const ClienteMinhaEquipe = lazy(() => import("./pages/cliente/MinhaEquipe"));
 const ClientePlanoEstrategico = lazy(() => import("./pages/cliente/PlanoEstrategico"));
 const ClienteCriativos = lazy(() => import("./pages/cliente/Criativos"));
+const ClienteProjetos = lazy(() => import("./pages/cliente/Projetos"));
 
 // Admin pages - loaded on demand
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -128,6 +129,7 @@ const App = () => (
                 <Route path="metricas-trafego" element={<Suspense fallback={<PageLoader />}><ClienteMetricasTrafego /></Suspense>} />
                 <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><ClienteCampanhas /></Suspense>} />
                 <Route path="criativos" element={<Suspense fallback={<PageLoader />}><ClienteCriativos /></Suspense>} />
+                <Route path="projetos" element={<Suspense fallback={<PageLoader />}><ClienteProjetos /></Suspense>} />
                 <Route path="arquivos" element={<Suspense fallback={<PageLoader />}><ClienteArquivos /></Suspense>} />
                 <Route path="base-conhecimento" element={<Suspense fallback={<PageLoader />}><ClienteBaseConhecimento /></Suspense>} />
                 <Route path="agendamentos" element={<Suspense fallback={<PageLoader />}><ClienteAgendamentos /></Suspense>} />

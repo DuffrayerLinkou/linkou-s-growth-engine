@@ -39,7 +39,7 @@ interface Props {
   project: ProjectDetail | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 const formatCurrency = (v: number | null) =>
@@ -207,10 +207,12 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar projeto
-          </Button>
+          {onEdit && (
+            <Button onClick={onEdit}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar projeto
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
