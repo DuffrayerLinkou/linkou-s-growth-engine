@@ -22,7 +22,7 @@ function HeroStatsComponent() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.5 }}
-              className="text-xs uppercase tracking-widest text-primary/70 mb-8 md:mb-12"
+               className="text-xs uppercase tracking-widest text-primary/70 mb-8 md:mb-12 text-center"
             >
               Por que isso importa
             </m.p>
