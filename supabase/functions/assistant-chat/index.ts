@@ -594,7 +594,11 @@ serve(async (req) => {
     }
 
     // Fetch client data in parallel
-    const [clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes] = await Promise.all([
+    const [
+      clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
+      goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
+      convRes,
+    ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
         .select("name, platform, status, budget, metrics, results, start_date, end_date, objective, campaign_type, strategy")
@@ -629,6 +633,36 @@ serve(async (req) => {
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(15),
+      db.from("client_goals")
+        .select("title, description, target_metric, target_value, deadline, priority, status")
+        .eq("client_id", client_id).eq("status", "active")
+        .order("priority", { ascending: false }).limit(10),
+      db.from("client_offers")
+        .select("name, description, price, target_audience, differentiators")
+        .eq("client_id", client_id).eq("status", "active").limit(10),
+      db.from("client_channels")
+        .select("channel, account_id, status, monthly_budget, notes, last_activity_at")
+        .eq("client_id", client_id).eq("status", "active").limit(10),
+      db.from("client_constraints")
+        .select("type, description, severity")
+        .eq("client_id", client_id).eq("active", true).limit(20),
+      db.from("client_decisions")
+        .select("title, decision, rationale, decided_at, related_entity_type")
+        .eq("client_id", client_id)
+        .order("decided_at", { ascending: false }).limit(8),
+      db.from("client_actions")
+        .select("action_type, payload, executed_at, status")
+        .eq("client_id", client_id)
+        .order("executed_at", { ascending: false }).limit(10),
+      db.from("insights")
+        .select("title, body, category, urgency, status, created_at")
+        .eq("client_id", client_id)
+        .in("status", ["new", "acknowledged"])
+        .order("created_at", { ascending: false }).limit(8),
+      db.from("assistant_conversations")
+        .select("id, current_topic, current_objective, last_recommendation, last_action, pending_items")
+        .eq("user_id", userId).eq("mode", mode).eq("client_id", client_id)
+        .maybeSingle(),
     ]);
 
     const client = clientRes.data;
@@ -638,6 +672,14 @@ serve(async (req) => {
     const briefing = briefingsRes.data;
     const tasks = tasksRes.data || [];
     const files = filesRes.data || [];
+    const goals = goalsRes.data || [];
+    const offers = offersRes.data || [];
+    const channels = channelsRes.data || [];
+    const constraints = constraintsRes.data || [];
+    const decisions = decisionsRes.data || [];
+    const recentActions = actionsRes.data || [];
+    const openInsights = insightsRes.data || [];
+    const conversationState = convRes.data;
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
