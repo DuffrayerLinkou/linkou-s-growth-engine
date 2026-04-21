@@ -39,6 +39,7 @@ const ClienteMinhaEquipe = lazy(() => import("./pages/cliente/MinhaEquipe"));
 const ClientePlanoEstrategico = lazy(() => import("./pages/cliente/PlanoEstrategico"));
 const ClienteCriativos = lazy(() => import("./pages/cliente/Criativos"));
 const ClienteProjetos = lazy(() => import("./pages/cliente/Projetos"));
+const ClienteKeywords = lazy(() => import("./pages/cliente/Keywords"));
 
 // Admin pages - loaded on demand
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -60,6 +61,7 @@ const AdminEmailFunnel = lazy(() => import("./pages/admin/EmailFunnel"));
 const AdminEmailComposer = lazy(() => import("./pages/admin/EmailComposer"));
 const AdminMetrics = lazy(() => import("./pages/admin/Metrics"));
 const AdminCriativos = lazy(() => import("./pages/admin/Criativos"));
+const AdminKeywords = lazy(() => import("./pages/admin/Keywords"));
 const CapturePage = lazy(() => import("./pages/CapturePage"));
 const CaptureThankYou = lazy(() => import("./pages/CaptureThankYou"));
 
@@ -129,6 +131,7 @@ const App = () => (
                 <Route path="metricas-trafego" element={<Suspense fallback={<PageLoader />}><ClienteMetricasTrafego /></Suspense>} />
                 <Route path="campanhas" element={<Suspense fallback={<PageLoader />}><ClienteCampanhas /></Suspense>} />
                 <Route path="criativos" element={<Suspense fallback={<PageLoader />}><ClienteCriativos /></Suspense>} />
+                <Route path="keywords" element={<Suspense fallback={<PageLoader />}><ClienteKeywords /></Suspense>} />
                 <Route path="projetos" element={<Suspense fallback={<PageLoader />}><ClienteProjetos /></Suspense>} />
                 <Route path="arquivos" element={<Suspense fallback={<PageLoader />}><ClienteArquivos /></Suspense>} />
                 <Route path="base-conhecimento" element={<Suspense fallback={<PageLoader />}><ClienteBaseConhecimento /></Suspense>} />
@@ -165,6 +168,7 @@ const App = () => (
                 <Route path="funil-email" element={<Suspense fallback={<PageLoader />}><AdminEmailFunnel /></Suspense>} />
                 <Route path="email" element={<Suspense fallback={<PageLoader />}><AdminEmailComposer /></Suspense>} />
                 <Route path="metricas" element={<Suspense fallback={<PageLoader />}><AdminMetrics /></Suspense>} />
+                <Route path="keywords" element={<Suspense fallback={<PageLoader />}><AdminKeywords /></Suspense>} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

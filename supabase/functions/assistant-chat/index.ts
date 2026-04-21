@@ -612,6 +612,112 @@ const clientTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_keywords",
+      description: "Lista as palavras-chave (SEO) e clusters do cliente atual com id curto. Use ANTES de update_keyword/record_keyword_ranking para obter o UUID correto, ou quando o admin pedir 'mostra as keywords', 'lista palavras-chave', 'quais termos estamos monitorando'.",
+      parameters: {
+        type: "object",
+        properties: {
+          filter: { type: "string", description: "Filtro opcional por status (target/ranking/opportunity/archived) ou texto parcial do termo." },
+          limit: { type: "number", description: "Máx. de keywords. Padrão 30." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_keyword",
+      description: "Cria uma nova palavra-chave (SEO) para o cliente atual. Use quando o admin pedir 'cadastra a keyword X', 'adiciona o termo Y', 'monitorar essa palavra'. NUNCA invente volume/dificuldade/CPC — só preencha se o admin disser explicitamente; caso contrário deixe nulo e oriente importar de Semrush/Ahrefs/Keyword Planner.",
+      parameters: {
+        type: "object",
+        properties: {
+          term: { type: "string", description: "Termo da palavra-chave (ex: 'consultoria de tráfego')" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção de busca. Padrão: informational" },
+          search_volume: { type: "number", description: "Volume mensal de busca (opcional, só se fornecido pelo admin)" },
+          difficulty: { type: "number", description: "Dificuldade SEO 0-100 (opcional)" },
+          cpc: { type: "number", description: "CPC estimado em R$ (opcional)" },
+          target_url: { type: "string", description: "URL do site do cliente alvo desse termo (opcional)" },
+          cluster_id: { type: "string", description: "UUID do cluster/pillar (opcional)" },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"], description: "Status. Padrão: target" },
+          notes: { type: "string", description: "Notas livres (opcional)" },
+          tags: { type: "array", items: { type: "string" }, description: "Tags livres (opcional)" },
+        },
+        required: ["term"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_keyword",
+      description: "Atualiza qualquer campo de uma palavra-chave existente do cliente atual: posição, status, intenção, volume, dificuldade, CPC, URL alvo, cluster, vínculos com campanha/tarefa, tags, notas.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword_id: { type: "string", description: "UUID da keyword" },
+          term: { type: "string" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"] },
+          search_volume: { type: "number" },
+          difficulty: { type: "number" },
+          cpc: { type: "number" },
+          current_position: { type: "number", description: "Posição atual no Google (1-100). Atualiza apenas o campo, não cria histórico — para isso use record_keyword_ranking." },
+          target_url: { type: "string" },
+          cluster_id: { type: "string" },
+          campaign_id: { type: "string", description: "UUID de campanha vinculada (opcional)" },
+          task_id: { type: "string", description: "UUID de tarefa vinculada (opcional)" },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"] },
+          notes: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["keyword_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_keyword_cluster",
+      description: "Cria um cluster/pillar de conteúdo SEO (agrupa keywords relacionadas em torno de um tema-pilar). Use ao organizar estratégia de conteúdo: 'cria um cluster para cursos online', 'novo pillar sobre gestão de tráfego'.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome do cluster (ex: 'Fundo de funil — cursos online')" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção dominante do cluster (opcional)" },
+          pillar_url: { type: "string", description: "URL do artigo pillar (opcional)" },
+          description: { type: "string", description: "Descrição/contexto do cluster (opcional)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "record_keyword_ranking",
+      description: "Registra um ponto histórico de posição para uma keyword (alimenta o sparkline de evolução) E atualiza o current_position. Use quando o admin disser 'a keyword X subiu pra posição Y', 'registra ranking', 'caiu pra posição N'.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword_id: { type: "string", description: "UUID da keyword" },
+          position: { type: "number", description: "Posição atual no Google (1-100)" },
+          notes: { type: "string", description: "Notas opcionais sobre a checagem" },
+          source: { type: "string", description: "Origem da medição (manual, gsc, serpapi). Padrão: manual" },
+        },
+        required: ["keyword_id", "position"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "analyze_keyword_opportunities",
+      description: "Lê todas as keywords do cliente, cruza volume × dificuldade × posição atual e devolve recomendações priorizadas: quick wins (pos 11-20), candidatas a artigo de blog (alto vol + baixa dif + sem ranking), candidatas a Google Ads (alta intenção comercial + baixo orgânico), gaps por cluster. Use quando o admin pedir 'analisa oportunidades de SEO', 'onde devemos focar', 'quick wins'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
@@ -1151,6 +1257,162 @@ async function executeTool(
         return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
       }
 
+      case "list_keywords": {
+        const limit = Math.min(Math.max(Number(args.limit) || 30, 1), 100);
+        const filter = (args.filter as string)?.trim().toLowerCase();
+        let q = db.from("keywords")
+          .select("id, term, intent, search_volume, difficulty, cpc, current_position, status, cluster_id, target_url, tags")
+          .eq("client_id", clientId)
+          .order("search_volume", { ascending: false, nullsFirst: false })
+          .limit(limit);
+        if (filter && ["target", "ranking", "opportunity", "archived"].includes(filter)) {
+          q = q.eq("status", filter);
+        } else if (filter) {
+          q = q.ilike("term", `%${filter}%`);
+        }
+        const { data: kws, error: kwErr } = await q;
+        if (kwErr) throw kwErr;
+        const { data: clusters } = await db.from("keyword_clusters")
+          .select("id, name, intent, pillar_url")
+          .eq("client_id", clientId);
+        const list = (kws || []) as Array<Record<string, unknown>>;
+        if (list.length === 0) return { success: true, message: "Nenhuma keyword cadastrada para esse cliente ainda." };
+        let msg = `Encontradas ${list.length} keyword(s):\n`;
+        for (const k of list) {
+          const sid = String(k.id).slice(0, 8);
+          const vol = k.search_volume ?? "?";
+          const dif = k.difficulty ?? "?";
+          const pos = k.current_position ?? "—";
+          msg += `- \`${sid}\` **${k.term}** [${k.intent}] vol=${vol} dif=${dif} pos=${pos} • status=${k.status}\n`;
+        }
+        if (clusters && clusters.length > 0) {
+          msg += `\nClusters: ${clusters.map((c) => `\`${String(c.id).slice(0,8)}\` ${c.name}`).join(" • ")}`;
+        }
+        return { success: true, message: msg };
+      }
+
+      case "create_keyword": {
+        const term = (args.term as string)?.trim();
+        if (!term) return { success: false, message: "term é obrigatório." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          term,
+          intent: (args.intent as string) || "informational",
+          status: (args.status as string) || "target",
+          created_by: userId,
+        };
+        for (const key of ["search_volume", "difficulty", "cpc", "target_url", "cluster_id", "notes"]) {
+          if (args[key] !== undefined && args[key] !== null && args[key] !== "") payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        const { data, error } = await db.from("keywords").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Keyword "${term}" cadastrada (id: ${String(data?.id).slice(0, 8)}).` };
+      }
+
+      case "update_keyword": {
+        const keywordId = args.keyword_id as string;
+        if (!keywordId) return { success: false, message: "keyword_id é obrigatório." };
+        const payload: Record<string, unknown> = {};
+        for (const key of ["term", "intent", "search_volume", "difficulty", "cpc", "current_position", "target_url", "cluster_id", "campaign_id", "task_id", "status", "notes"]) {
+          if (args[key] !== undefined) payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        if (Object.keys(payload).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("keywords").update(payload).eq("id", keywordId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Keyword \`${keywordId.slice(0, 8)}\` atualizada (${Object.keys(payload).join(", ")}).` };
+      }
+
+      case "create_keyword_cluster": {
+        const name = (args.name as string)?.trim();
+        if (!name) return { success: false, message: "name é obrigatório." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          name,
+          created_by: userId,
+        };
+        for (const key of ["intent", "pillar_url", "description"]) {
+          if (args[key] !== undefined && args[key] !== null && args[key] !== "") payload[key] = args[key];
+        }
+        const { data, error } = await db.from("keyword_clusters").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Cluster "${name}" criado (id: ${String(data?.id).slice(0, 8)}).` };
+      }
+
+      case "record_keyword_ranking": {
+        const keywordId = args.keyword_id as string;
+        const position = Number(args.position);
+        if (!keywordId || !Number.isFinite(position)) return { success: false, message: "keyword_id e position são obrigatórios." };
+        const { error: rErr } = await db.from("keyword_rankings").insert({
+          client_id: clientId,
+          keyword_id: keywordId,
+          position,
+          notes: (args.notes as string) || null,
+          source: (args.source as string) || "manual",
+        });
+        if (rErr) throw rErr;
+        // Update current_position + status (auto-promote to ranking se 1-100)
+        const updatePayload: Record<string, unknown> = { current_position: position };
+        if (position >= 1 && position <= 100) updatePayload.status = position <= 10 ? "ranking" : "ranking";
+        const { error: uErr } = await db.from("keywords")
+          .update(updatePayload)
+          .eq("id", keywordId)
+          .eq("client_id", clientId);
+        if (uErr) throw uErr;
+        return { success: true, message: `Ranking registrado: keyword \`${keywordId.slice(0, 8)}\` na posição ${position}.` };
+      }
+
+      case "analyze_keyword_opportunities": {
+        const { data: kws, error: kwErr } = await db.from("keywords")
+          .select("id, term, intent, search_volume, difficulty, current_position, status, cluster_id, target_url")
+          .eq("client_id", clientId)
+          .neq("status", "archived")
+          .limit(200);
+        if (kwErr) throw kwErr;
+        const list = (kws || []) as Array<{
+          id: string; term: string; intent: string | null;
+          search_volume: number | null; difficulty: number | null;
+          current_position: number | null; status: string; cluster_id: string | null; target_url: string | null;
+        }>;
+        if (list.length === 0) return { success: true, message: "Nenhuma keyword cadastrada para analisar." };
+
+        const quickWins = list.filter((k) => k.current_position && k.current_position >= 11 && k.current_position <= 20)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const articleCandidates = list.filter((k) => !k.current_position && (k.search_volume || 0) >= 100 && (k.difficulty ?? 100) <= 40)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const adsCandidates = list.filter((k) => (k.intent === "transactional" || k.intent === "commercial") && (!k.current_position || k.current_position > 10))
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const noClusterHighVol = list.filter((k) => !k.cluster_id && (k.search_volume || 0) >= 200)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 8);
+
+        let msg = `## Análise de oportunidades SEO (${list.length} keywords)\n\n`;
+        if (quickWins.length > 0) {
+          msg += `### ⚡ Quick Wins (pos 11-20 — empurrar pra primeira página)\n`;
+          for (const k of quickWins) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — pos ${k.current_position}, vol ${k.search_volume || "?"}, dif ${k.difficulty ?? "?"}\n`;
+          msg += "\n";
+        }
+        if (articleCandidates.length > 0) {
+          msg += `### 📝 Candidatas a artigo de blog (sem ranking, alto vol, baixa dif)\n`;
+          for (const k of articleCandidates) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — vol ${k.search_volume}, dif ${k.difficulty ?? "?"}\n`;
+          msg += "\n";
+        }
+        if (adsCandidates.length > 0) {
+          msg += `### 💰 Candidatas a Google Ads (intenção comercial, fora do top 10)\n`;
+          for (const k of adsCandidates) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** [${k.intent}] — pos ${k.current_position || "—"}, vol ${k.search_volume || "?"}\n`;
+          msg += "\n";
+        }
+        if (noClusterHighVol.length > 0) {
+          msg += `### 🧩 Gap: keywords sem cluster (alto volume — agrupar em pillars)\n`;
+          for (const k of noClusterHighVol) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — vol ${k.search_volume}\n`;
+          msg += "\n";
+        }
+        if (quickWins.length === 0 && articleCandidates.length === 0 && adsCandidates.length === 0 && noClusterHighVol.length === 0) {
+          msg += "_Nenhuma oportunidade evidente com os dados atuais. Considere importar volume/dificuldade de Semrush, Ahrefs ou Keyword Planner para enriquecer a análise._";
+        }
+        return { success: true, message: msg };
+      }
+
       case "search_documents": {
         const query = (args.query as string)?.trim();
         if (!query) return { success: false, message: "Forneça uma query para buscar." };
@@ -1285,6 +1547,7 @@ serve(async (req) => {
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
       convRes, creativeDemandsRes, creativeDeliverablesRes,
       projectsRes, learningsRes,
+      keywordsRes, keywordClustersRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -1371,6 +1634,17 @@ serve(async (req) => {
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(8),
+      db.from("keywords")
+        .select("id, term, intent, search_volume, difficulty, current_position, status, cluster_id")
+        .eq("client_id", client_id)
+        .neq("status", "archived")
+        .order("search_volume", { ascending: false, nullsFirst: false })
+        .limit(20),
+      db.from("keyword_clusters")
+        .select("id, name, intent, pillar_url")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
     const client = clientRes.data;
@@ -1392,6 +1666,8 @@ serve(async (req) => {
     const creativeDeliverables = creativeDeliverablesRes.data || [];
     const projects = projectsRes.data || [];
     const learnings = learningsRes.data || [];
+    const keywords = keywordsRes.data || [];
+    const keywordClusters = keywordClustersRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1604,6 +1880,29 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (keywords.length > 0 || keywordClusters.length > 0) {
+      context += `## 🔑 Palavras-chave & SEO\n`;
+      if (keywords.length > 0) {
+        const top = keywords.slice(0, 10) as Array<Record<string, unknown>>;
+        context += `Top ${top.length} keywords ativas (de ${keywords.length}):\n`;
+        for (const k of top) {
+          const sid = String(k.id).slice(0, 8);
+          const vol = k.search_volume ?? "?";
+          const dif = k.difficulty ?? "?";
+          const pos = k.current_position ?? "—";
+          context += `- \`${sid}\` **${k.term}** [${k.intent}] vol=${vol} dif=${dif} pos=${pos} • ${k.status}\n`;
+        }
+      }
+      if (keywordClusters.length > 0) {
+        context += `\nClusters (${keywordClusters.length}):\n`;
+        for (const c of keywordClusters) {
+          const count = (keywords as Array<Record<string, unknown>>).filter((k) => k.cluster_id === c.id).length;
+          context += `- \`${String(c.id).slice(0,8)}\` **${c.name}**${c.intent ? ` [${c.intent}]` : ""} → ${count} keyword(s)\n`;
+        }
+      }
+      context += `\nStatus: target / ranking / opportunity / archived\n\n`;
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
@@ -1686,6 +1985,13 @@ serve(async (req) => {
         `- **update_demand_status** / **update_deliverable_status**: Move pelo fluxo briefing → in_production → in_approval → adjustments → delivered.\n` +
         `- **add_deliverable_version**: Quando o admin ditar uma copy/roteiro novo no chat, persista como versão (incrementa current_version).\n` +
         `- ⚠️ NUNCA marque status 'approved' — aprovação é exclusiva do Ponto Focal pela UI em /cliente/criativos.\n\n` +
+        `## 🔑 Palavras-chave & SEO\n` +
+        `- **list_keywords**: lê keywords + clusters do cliente (use ANTES de update/record_ranking pra obter o UUID).\n` +
+        `- **create_keyword** / **update_keyword**: gerencia termo, intenção, posição, vínculos com cluster/campanha/tarefa.\n` +
+        `- **create_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
+        `- **record_keyword_ranking**: registra ponto histórico de posição (alimenta sparkline) E atualiza current_position.\n` +
+        `- **analyze_keyword_opportunities**: cruza volume × dificuldade × posição → quick wins, candidatas a artigo, candidatas a Ads, gaps por cluster.\n` +
+        `- ⚠️ NUNCA invente volume/dificuldade/CPC — se o admin não informar, deixe nulo e oriente importar de Semrush/Ahrefs/Keyword Planner via /admin/keywords.\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
         `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
