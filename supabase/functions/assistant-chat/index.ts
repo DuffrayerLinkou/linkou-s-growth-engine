@@ -795,6 +795,134 @@ async function executeTool(
         };
       }
 
+      case "create_creative_demand":
+      case "request_creative_demand": {
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          title: args.title as string,
+          status: "briefing",
+          requested_by: userId,
+          priority: (args.priority as string) || "medium",
+        };
+        for (const k of ["briefing", "objective", "platform", "format", "deadline"]) {
+          if (args[k] !== undefined && args[k] !== null && args[k] !== "") payload[k] = args[k];
+        }
+        const { data, error } = await db.from("creative_demands").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Demanda criativa "${args.title}" criada (id: ${String(data?.id).slice(0,8)}). Status: briefing.` };
+      }
+
+      case "create_creative_deliverable": {
+        const status = (args.status as string) || "in_production";
+        if (status === "approved") {
+          return { success: false, message: "Status 'approved' é exclusivo do Ponto Focal via UI." };
+        }
+        // Verifica que a demanda pertence ao cliente
+        const { data: demand, error: dErr } = await db
+          .from("creative_demands")
+          .select("id, client_id")
+          .eq("id", args.demand_id as string)
+          .maybeSingle();
+        if (dErr) throw dErr;
+        if (!demand || demand.client_id !== clientId) {
+          return { success: false, message: "Demanda não encontrada ou não pertence a este cliente." };
+        }
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          demand_id: args.demand_id as string,
+          type: args.type as string,
+          title: args.title as string,
+          status,
+          current_version: 1,
+          created_by: userId,
+        };
+        if (args.content) payload.content = args.content;
+        const { data: deliv, error } = await db.from("creative_deliverables").insert(payload).select("id").single();
+        if (error) throw error;
+        // Se veio conteúdo, cria também a versão 1 no histórico
+        if (args.content && deliv?.id) {
+          await db.from("creative_deliverable_versions").insert({
+            client_id: clientId,
+            deliverable_id: deliv.id,
+            version_number: 1,
+            content: args.content as string,
+            created_by: userId,
+          });
+        }
+        return { success: true, message: `Entregável "${args.title}" (${args.type}) criado com status ${status}.` };
+      }
+
+      case "update_demand_status": {
+        const status = args.status as string;
+        if (status === "approved") {
+          return { success: false, message: "Aprovação só pelo Ponto Focal via UI em /cliente/criativos." };
+        }
+        const { data: existing } = await db
+          .from("creative_demands")
+          .select("id, client_id, title")
+          .eq("id", args.demand_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Demanda não encontrada ou não pertence a este cliente." };
+        }
+        const { error } = await db
+          .from("creative_demands")
+          .update({ status })
+          .eq("id", args.demand_id as string);
+        if (error) throw error;
+        return { success: true, message: `Demanda "${existing.title}" movida para "${status}".` };
+      }
+
+      case "update_deliverable_status": {
+        const status = args.status as string;
+        if (status === "approved") {
+          return { success: false, message: "Aprovação só pelo Ponto Focal via UI em /cliente/criativos." };
+        }
+        const { data: existing } = await db
+          .from("creative_deliverables")
+          .select("id, client_id, title")
+          .eq("id", args.deliverable_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Entregável não encontrado ou não pertence a este cliente." };
+        }
+        const updatePayload: Record<string, unknown> = { status };
+        if (args.feedback) updatePayload.feedback = args.feedback;
+        const { error } = await db
+          .from("creative_deliverables")
+          .update(updatePayload)
+          .eq("id", args.deliverable_id as string);
+        if (error) throw error;
+        return { success: true, message: `Entregável "${existing.title}" movido para "${status}".` };
+      }
+
+      case "add_deliverable_version": {
+        const { data: existing } = await db
+          .from("creative_deliverables")
+          .select("id, client_id, title, current_version")
+          .eq("id", args.deliverable_id as string)
+          .maybeSingle();
+        if (!existing || existing.client_id !== clientId) {
+          return { success: false, message: "Entregável não encontrado ou não pertence a este cliente." };
+        }
+        const newVersion = ((existing.current_version as number) || 0) + 1;
+        const { error: vErr } = await db.from("creative_deliverable_versions").insert({
+          client_id: clientId,
+          deliverable_id: args.deliverable_id as string,
+          version_number: newVersion,
+          content: args.content as string,
+          notes: (args.notes as string) || null,
+          created_by: userId,
+        });
+        if (vErr) throw vErr;
+        const { error: uErr } = await db
+          .from("creative_deliverables")
+          .update({ current_version: newVersion, content: args.content as string })
+          .eq("id", args.deliverable_id as string);
+        if (uErr) throw uErr;
+        return { success: true, message: `Versão v${newVersion} adicionada ao entregável "${existing.title}".` };
+      }
+
       case "log_decision": {
         const { data, error } = await db.from("client_decisions").insert({
           client_id: clientId,
