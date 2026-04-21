@@ -1575,6 +1575,35 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (projects.length > 0) {
+      context += `## 📦 Projetos (${projects.length})\n`;
+      for (const p of projects) {
+        const linkedTasks = tasks.filter((t: any) => (t as any).project_id === p.id);
+        const doneTasks = linkedTasks.filter((t: any) => t.status === "completed" || t.status === "done").length;
+        const linkedCamps = campaigns.filter((c: any) => (c as any).project_id === p.id).length;
+        const linkedLearn = learnings.filter((l: any) => l.project_id === p.id).length;
+        const period = p.start_date ? `${p.start_date}${p.end_date ? ` → ${p.end_date}` : ""}` : "—";
+        const budget = p.budget ? `R$${Number(p.budget).toLocaleString("pt-BR")}` : "—";
+        context += `- \`${String(p.id).slice(0,8)}\` [${p.status || "—"}] **${p.name}** — ${budget} (${period})\n`;
+        if (p.description) context += `   └ hipótese: ${String(p.description).slice(0, 160)}\n`;
+        context += `   └ tarefas: ${linkedTasks.length} (${doneTasks} concluídas) • campanhas: ${linkedCamps} • aprendizados: ${linkedLearn}\n`;
+      }
+      context += "\n";
+    }
+
+    if (learnings.length > 0) {
+      context += `## 🎓 Aprendizados Recentes (${learnings.length})\n`;
+      for (const l of learnings) {
+        const d = l.created_at ? new Date(l.created_at as string).toLocaleDateString("pt-BR") : "";
+        const appr = l.approved_by_ponto_focal ? " ✅ aprovado" : " ⏳ aguardando aprovação";
+        const cat = l.category ? `[${l.category}] ` : "";
+        const proj = l.project_id ? ` • projeto \`${String(l.project_id).slice(0,8)}\`` : "";
+        context += `- \`${String(l.id).slice(0,8)}\` (${d}) ${cat}**${l.title}**${appr}${proj}\n`;
+        if (l.impact) context += `   └ impacto: ${String(l.impact).slice(0, 160)}\n`;
+      }
+      context += "\n";
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
