@@ -1480,9 +1480,11 @@ serve(async (req) => {
     ];
 
     // ── Decide: tool calling (admin) or direct streaming ───────────────
-    const isAdminMode = mode === "admin";
+    const activeTools = mode === "admin"
+      ? [...adminTools, ...memoryTools]
+      : clientTools;
 
-    if (isAdminMode) {
+    {
       // Step 1: Non-streaming call with tools to check for tool_calls
       const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -1493,7 +1495,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
-          tools: [...adminTools, ...memoryTools],
+          tools: activeTools,
           tool_choice: "auto",
           stream: false,
         }),
@@ -1525,7 +1527,7 @@ serve(async (req) => {
             fnArgs = {};
           }
 
-          const result = await executeTool(db, fnName, fnArgs, client_id, userId);
+          const result = await executeTool(db, fnName, fnArgs, client_id, userId, mode);
           toolMessages.push({
             role: "tool",
             tool_call_id: tc.id,
