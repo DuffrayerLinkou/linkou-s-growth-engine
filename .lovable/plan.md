@@ -1,134 +1,75 @@
 
 
-## Onde encaixar Gestão de Palavras-chave (SEO Keywords)
+## Finalizar módulo Palavras-chave — rotas, menus e autonomia do Linkouzinho
 
-### Minha sugestão: módulo próprio "Palavras-chave" por cliente
+Faltam 3 plugagens pra fechar o módulo já criado:
 
-**Não recomendo enfiar em Plano nem em Campanha.** Cada um tem propósito errado pra isso:
+### 1. Rotas em `src/App.tsx`
+Adicionar lazy imports e rotas dentro dos respectivos layouts:
+- `/admin/keywords` → `AdminLayout` (admin/account_manager)
+- `/cliente/keywords` → `ClientLayout` (qualquer papel do cliente)
 
-- **Plano estratégico** = visão macro (objetivos, KPIs, personas, funil, budget). Encher de keywords vira ruído.
-- **Campanha** = execução de ads (Meta/Google/TikTok). Keywords serve só pra Google Ads, não cobre SEO orgânico, conteúdo, blog, YouTube.
+### 2. Menus laterais
 
-Keywords é um **ativo transversal do cliente**: alimenta SEO orgânico, Google Ads, YouTube, conteúdo do blog, posts de Instagram, scripts de vídeo. Precisa ter **vida própria** com histórico de ranking, dificuldade, intenção de busca e relacionamentos. Por isso → módulo dedicado.
-
-### O que entrega (visão de especialista em SEO)
-
-**Página `/admin/keywords` (admin) + `/cliente/keywords` (cliente, leitura)**
-
-**1. Header com KPIs reais**
-- Total de keywords monitoradas · Top 10 (rankeando 1-10 no Google) · Volume de busca total · Oportunidades (alto volume + baixa concorrência)
-
-**2. Grade/tabela rica de keywords**
-Por keyword:
-- Termo + intenção (informacional / navegacional / transacional / comercial)
-- Volume mensal de busca (manual ou import)
-- Dificuldade SEO (0-100)
-- CPC estimado (Google Ads)
-- Posição atual + posição histórica (mini-sparkline)
-- URL alvo no site do cliente
-- Cluster/grupo (ex: "fundo de funil cursos online")
-- Status (alvo / rankeando / oportunidade / arquivada)
-- Tags livres (BR-only, mobile, local, etc)
-
-**3. Clusters de keywords (agrupamento)**
-Cada cluster = um pillar de conteúdo. Ex: "consultoria de tráfego" agrupa 12 keywords correlatas → orienta criação de 1 artigo pillar + 12 satélites.
-
-**4. Análise de concorrentes**
-Lista de concorrentes (já existe no `briefings` e `strategic_plans.diagnostic.competitors`) — para cada keyword, registrar posição dos top 3 concorrentes.
-
-**5. Recomendações geradas por IA (Linkouzinho)**
-Botão "Analisar oportunidades" → IA olha keywords + clusters + concorrentes e sugere:
-- Quais merecem virar artigo de blog
-- Quais merecem campanha Google Ads (alto comercial + baixo orgânico)
-- Quais já rankeam mas estão na pos 11-20 (quick wins, otimizar)
-- Gaps vs concorrentes
-
-**6. Vínculos opcionais** (não obriga)
-- `keyword.campaign_id` opcional → liga keyword a campanha Google Ads ativa
-- `keyword.task_id` opcional → liga keyword a task de produção de conteúdo
-- `keyword.cluster_id` → agrupa em pillar
-
-### Estrutura técnica
-
-**Migrações novas (3 tabelas)**
-
-```sql
--- Clusters/pillares de conteúdo
-CREATE TABLE public.keyword_clusters (
-  id uuid PK, client_id uuid NOT NULL,
-  name text NOT NULL, pillar_url text, intent text,
-  description text, created_at, updated_at
-);
-
--- Keywords
-CREATE TABLE public.keywords (
-  id uuid PK, client_id uuid NOT NULL,
-  cluster_id uuid NULL, term text NOT NULL,
-  intent text, -- informational/navigational/transactional/commercial
-  search_volume int, difficulty int, cpc numeric,
-  current_position int, target_url text, status text DEFAULT 'target',
-  -- target/ranking/opportunity/archived
-  tags text[] DEFAULT '{}',
-  campaign_id uuid NULL, task_id uuid NULL,
-  notes text, created_at, updated_at, created_by
-);
-
--- Histórico de posição (sparkline + evolução)
-CREATE TABLE public.keyword_rankings (
-  id uuid PK, keyword_id uuid NOT NULL,
-  client_id uuid NOT NULL, position int NOT NULL,
-  checked_at timestamptz DEFAULT now(),
-  source text DEFAULT 'manual' -- manual/serpapi/gsc futuro
-);
+**`src/layouts/AdminLayout.tsx`** — adicionar item "Palavras-chave" com ícone `KeyRound` no grupo **Operacional**, posicionado logo após "Métricas":
+```ts
+{ href: "/admin/keywords", icon: KeyRound, label: "Palavras-chave" }
 ```
 
-**RLS padrão** (admin/account_manager FULL · cliente SELECT do próprio `client_id`).
+**`src/layouts/ClientLayout.tsx`** — adicionar item "Palavras-chave" com ícone `KeyRound`, posicionado logo após "Criativos" e antes de "Projetos". Sem `permission` (visível para todos os papéis do cliente).
 
-**Páginas/componentes novos**
-- `src/pages/admin/Keywords.tsx` — grade + filtros + KPIs + import CSV
-- `src/pages/cliente/Keywords.tsx` — leitura
-- `src/components/admin/keywords/KeywordTable.tsx` (tabela com sparkline + edição inline)
-- `src/components/admin/keywords/KeywordDetailDialog.tsx` (histórico de ranking + vínculos)
-- `src/components/admin/keywords/ClusterCard.tsx` (cluster como card com keywords dentro)
-- `src/components/admin/keywords/ImportKeywordsDialog.tsx` (cola CSV ou colunas Volume/Dificuldade/CPC vindas de Semrush/Ahrefs/Ubersuggest/Keyword Planner)
+### 3. Linkouzinho admin — 6 tools novas + contexto SEO
 
-**Rota + menu**
-- `/admin/keywords` em `App.tsx` + item "Palavras-chave" (ícone `Search` ou `KeyRound`) em `AdminLayout.tsx`
-- `/cliente/keywords` + item no `ClientLayout.tsx`
+**`supabase/functions/assistant-chat/index.ts`** — adicionar:
 
-**Linkouzinho — novas tools admin** (autonomia total, padrão dos outros módulos)
-- `list_keywords(filter?)` — lê keywords + clusters do cliente atual
-- `create_keyword(term, intent, volume, difficulty, target_url, cluster_id?)`
-- `update_keyword(id, ...)` — posição, status, tags, vínculos
-- `create_keyword_cluster(name, pillar_url, intent)`
-- `record_keyword_ranking(keyword_id, position)` — registra ponto histórico
-- `analyze_keyword_opportunities()` — IA cruza volume × dificuldade × posição atual e devolve recomendações priorizadas
+**Fetches paralelos** no `Promise.all` (cliente atual):
+- `keywords` últimas 20 (term, intent, search_volume, difficulty, current_position, status, cluster_id)
+- `keyword_clusters` ativos (id, name, intent, pillar_url) com count de keywords
 
-E adicionar bloco no system prompt:
+**Bloco no system prompt:**
 ```text
 ## 🔑 Palavras-chave & SEO
 - Top 10 keywords ativas: termo [intenção · vol · dif · pos]
-- Clusters ativos: nome → nº de keywords
+- Clusters ativos: nome [intenção] → nº de keywords
+- Status: alvo / rankeando / oportunidade / arquivada
 ```
 
-**Conexões com o que já existe**
-- Plano estratégico ganha menção "ver clusters de keywords →" linkando pra `/admin/keywords?client=X`
-- Campanha Google Ads ganha campo opcional "keywords vinculadas" (multi-select de keywords do cliente)
-- Tarefas de conteúdo (categoria `criativo`/`conteudo`) ganham campo opcional "keyword alvo"
+**6 tools novas (admin only):**
 
-### Integração futura (fora de escopo agora, mas a arquitetura prepara)
-- **Google Search Console API** → puxar posição real e impressões automaticamente
-- **SerpAPI / DataForSEO** → atualização automática de ranking
-- **Geração de brief de artigo via IA** a partir do cluster (título + H2s + entities + perguntas relacionadas)
+| Tool | Função |
+|---|---|
+| `list_keywords(filter?)` | Lista keywords + clusters do cliente atual com id curto |
+| `create_keyword(term, intent, search_volume?, difficulty?, cpc?, target_url?, cluster_id?, status?)` | Insere nova keyword vinculada ao client_id |
+| `update_keyword(id, ...campos)` | Atualiza qualquer campo (posição, status, tags, vínculos task/campaign) |
+| `create_keyword_cluster(name, intent?, pillar_url?, description?)` | Cria pillar/cluster |
+| `record_keyword_ranking(keyword_id, position)` | Registra ponto histórico em `keyword_rankings` E atualiza `current_position` na keyword |
+| `analyze_keyword_opportunities()` | Lê todas as keywords do cliente, cruza volume × dificuldade × posição atual e devolve recomendações priorizadas (quick wins, novos artigos, ads sugeridos, gaps) — usa o próprio modelo via mensagem de contexto, sem chamada extra à API |
 
-### O que NÃO faço agora (pra entregar enxuto)
-- Integrações pagas (GSC/SerpAPI) — ficam plugáveis depois
-- Geração automática de artigos — depois
-- Auditoria técnica de SEO da página (Core Web Vitals já tem em `PerformanceTab` da landing) — fica separado
+Cada tool grava em `client_actions` automaticamente (já é o padrão do `executeTool`).
 
-### Resumo da resposta à sua pergunta
+**Seção dedicada no system prompt:**
+```text
+## 🔑 Palavras-chave & SEO
+- list_keywords: lê keywords + clusters do cliente
+- create_keyword / update_keyword: gerencia termo, intenção, posição, vínculos
+- create_keyword_cluster: agrupa em pillars de conteúdo
+- record_keyword_ranking: registra histórico de posição (sparkline)
+- analyze_keyword_opportunities: cruza volume × dificuldade × posição → quick wins
+- NUNCA invente volume/dificuldade — peça ao admin importar de Semrush/Ahrefs/Keyword Planner
+```
 
-> "Em plano ou campanha?"
+### Estrutura técnica resumida
 
-**Em nenhum dos dois.** Crie o módulo **Palavras-chave** como cidadão de primeira classe ao lado de Projetos / Campanhas / Plano — porque keywords alimenta múltiplas frentes (SEO, Ads, conteúdo, vídeo) e tem ciclo de vida próprio (volume, dificuldade, posição evolutiva). Plano e Campanha **referenciam** keywords via vínculo opcional, mas não são donos delas.
+**Arquivos editados (3):**
+- `src/App.tsx` — 2 lazy imports + 2 rotas
+- `src/layouts/AdminLayout.tsx` — 1 item de menu + import `KeyRound`
+- `src/layouts/ClientLayout.tsx` — 1 item de menu + import `KeyRound`
+- `supabase/functions/assistant-chat/index.ts` — 2 fetches, 1 bloco de contexto, 1 seção no prompt, 6 tools no `adminTools`, 6 cases no `executeTool`
+
+**Sem mudanças de banco** — as 3 tabelas (`keywords`, `keyword_clusters`, `keyword_rankings`) já existem com RLS.
+
+### Fora de escopo
+- Tools DELETE de keyword/cluster (peço aprovação separada se quiser)
+- Integração GSC/SerpAPI (próximo passo)
+- Multi-select de keywords vinculadas em campanhas/tasks (também próximo passo)
 
