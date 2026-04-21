@@ -25,6 +25,7 @@ import {
   Send,
   BarChart3,
   Sparkles,
+  KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ const navGroups = [
       { href: "/admin/campanhas", icon: Megaphone, label: "Campanhas" },
       { href: "/admin/criativos", icon: Sparkles, label: "Criativos" },
       { href: "/admin/metricas", icon: BarChart3, label: "Métricas" },
+      { href: "/admin/keywords", icon: KeyRound, label: "Palavras-chave" },
       { href: "/admin/tarefas", icon: CheckSquare, label: "Tarefas" },
       { href: "/admin/agendamentos", icon: Calendar, label: "Agendamentos" },
     ],
