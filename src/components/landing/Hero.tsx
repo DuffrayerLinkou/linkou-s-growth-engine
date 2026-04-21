@@ -106,7 +106,7 @@ function HeroComponent() {
         />
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="grid lg:grid-cols-[45%_55%] items-center gap-8">
+          <div className="grid lg:grid-cols-[40%_60%] items-center gap-4">
             {/* Left: Text Content */}
             <div className="max-w-2xl">
               {/* Badge */}
@@ -176,7 +176,7 @@ function HeroComponent() {
             </div>
 
             {/* Right: Empty space for blob on desktop, hidden on mobile */}
-            <div className="hidden lg:flex items-center justify-center relative min-h-[900px]">
+            <div className="hidden lg:flex items-center justify-center relative min-h-[750px]">
               {/* Radial glow halo — intensified purple aura */}
               <div
                 className="absolute inset-0 pointer-events-none"
@@ -208,7 +208,7 @@ function HeroComponent() {
                   loading="eager"
                   // @ts-expect-error fetchpriority is a valid HTML attribute not yet in React types
                   fetchpriority="high"
-                  className="w-full max-w-[1120px] xl:max-w-[1240px] select-none"
+                  className="w-[140%] max-w-none select-none -mr-[20%] scale-110"
                   draggable={false}
                   animate={prefersReducedMotion ? undefined : { y: [0, -10, 0] }}
                   transition={prefersReducedMotion ? undefined : { duration: 4, repeat: Infinity, ease: "easeInOut" }}
