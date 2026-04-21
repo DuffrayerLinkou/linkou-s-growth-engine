@@ -627,97 +627,40 @@ export default function AdminProjects() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FolderKanban className="h-5 w-5" />
-              {selectedProject?.name}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedProject && (
-            <div className="space-y-4">
-              {/* Cliente */}
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{selectedProject.clients?.name || "-"}</p>
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge className={statusColors[selectedProject.status || "planning"]}>
-                  {statusLabels[selectedProject.status || "planning"]}
-                </Badge>
-              </div>
-
-              {/* Descrição */}
-              {selectedProject.description && (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Descrição</p>
-                  <p className="text-sm">{selectedProject.description}</p>
-                </div>
-              )}
-
-              {/* Período */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Data Início</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {selectedProject.start_date
-                      ? format(new Date(selectedProject.start_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Data Fim</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {selectedProject.end_date
-                      ? format(new Date(selectedProject.end_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "-"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Budget */}
-              <div>
-                <p className="text-xs text-muted-foreground">Orçamento</p>
-                <p className="text-lg font-semibold flex items-center gap-1">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                  {formatCurrency(selectedProject.budget)}
-                </p>
-              </div>
-
-              {/* Data de criação */}
-              <div className="pt-3 border-t text-xs text-muted-foreground">
-                Criado em: {format(new Date(selectedProject.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
-              Fechar
-            </Button>
-            <Button
-              onClick={() => {
-                setIsViewOpen(false);
-                openForm(selectedProject!);
-              }}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Project Detail Dialog */}
+      <ProjectDetailDialog
+        project={selectedProject ? {
+          id: selectedProject.id,
+          name: selectedProject.name,
+          description: selectedProject.description,
+          status: selectedProject.status,
+          start_date: selectedProject.start_date,
+          end_date: selectedProject.end_date,
+          budget: selectedProject.budget,
+          created_at: selectedProject.created_at,
+          client_name: selectedProject.clients?.name || null,
+        } : null}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        onEdit={() => {
+          setIsViewOpen(false);
+          openForm(selectedProject);
+        }}
+      />
     </div>
+  );
+}
+
+function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="p-2.5 rounded-md bg-primary/10 text-primary">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold truncate">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
