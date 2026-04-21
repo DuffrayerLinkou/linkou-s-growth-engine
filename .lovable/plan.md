@@ -1,120 +1,124 @@
 
 
-## Auditoria Responsiva — Grids Mobile-First & Desktop
+## Inspirações do Pocketchange — o que dá pra adaptar à Linkou
 
-Auditei as 7 seções da landing page no viewport atual (1438px) e em mobile (<640px). Encontrei **5 problemas reais de grid** que criam cards finos, espaçamento inconsistente ou breakpoints mal escolhidos. Aqui está o plano de correção, seção por seção.
+Visitei o site. É um one-page com forte estética editorial, **animações scroll-triggered** e **tipografia oversized**. A identidade deles é vermelho/laranja saturado com mockups de iPhone — bem diferente do nosso roxo cosmos. Mas várias **técnicas de movimento e composição** podem elevar a Linkou sem quebrar a identidade.
 
 ---
 
-### Problemas identificados
+### Análise — o que faz o site funcionar
 
-| Seção | Problema | Severidade |
+| Técnica | Como usam | Compatível com Linkou? |
 |---|---|---|
-| **Results** ("Por que uma auditoria") | `grid-cols-2` em mobile = 4 cards finos em 2x2 com texto apertado (~160px de largura cada) — descrições de 20+ palavras ficam ilegíveis | 🔴 Alta |
-| **Hero stats** | Mesmo problema: `grid-cols-2` mobile com label de 12 palavras dentro de 100px de altura → texto `text-[10px]` ilegível | 🔴 Alta |
-| **Method (timeline desktop)** | Salta direto de mobile vertical para `lg:` (1024px). Entre 768px–1024px (tablet) fica vertical desperdiçando espaço horizontal | 🟡 Média |
-| **Services** | `md:grid-cols-2` cria cards densos em tablet (768px) com lista de features em 2 colunas dentro de coluna estreita → quebra texto feio | 🟡 Média |
-| **ForWhom** | `md:grid-cols-3` ativa em 768px → 3 cards com ~220px cada, título "Negócios que Dependem de Mídia Paga" quebra em 4 linhas | 🟡 Média |
-| **ContactForm** | `lg:grid-cols-2` (1024px+) — entre 768–1024 o formulário fica em coluna única muito largo (max-w-4xl sem limite interno) | 🟢 Cosmético |
+| **Letras reveladas individualmente no scroll** (SplitText) | Headlines aparecem letra-a-letra conforme o usuário rola, com espaçamento exagerado entre caracteres durante a animação | ✅ Sim — combina com o tom editorial |
+| **Mockups 3D em ângulos dramáticos** | iPhones flutuando rotacionados (~15-20°), com sombras profundas e profundidade | ⚠️ Adaptar — usar dashboards/painéis do app Linkou em vez de iPhones |
+| **Tipografia oversized** (10rem+) | Headlines gigantescas que dominam viewport inteiro | ✅ Sim — combina com a Poppins bold |
+| **"Scroll down" animado** com letras espaçadas | Indicador de scroll com letras separadas que pulsam | ✅ Sim |
+| **Marquee de palavras-conceito** | Texto rolando horizontal com keywords | ✅ Já temos! |
+| **Sticky scroll com troca de conteúdo** | Conforme rola, texto fixo muda de cor/conteúdo | ✅ Sim — bom para a seção Method |
+| **Citação em coluna vertical** (uma letra por linha) | "Pocketchange will always be free…" empilhada verticalmente | ⚠️ Decorativo demais — pular |
+| **Cor saturada cobrindo viewport inteiro** | Vermelho dominante full-bleed | ❌ Não — manteríamos roxo cosmos |
+| **Cards de categorias com imagem + label** | Grid de "Veteran-owned brands", "LGBTQ+ cafés" etc. | ✅ Sim — bom para reformular ForWhom |
 
 ---
 
-### Plano de correção por seção
+### Proposta de adaptação para Linkou
 
-#### 1. `Results.tsx` — quebra para 1 coluna em mobile
-```diff
-- grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6
-+ grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6
-```
-Mobile: 1 card por linha (largura total, descrição respira). Tablet (640px+): 2x2. Desktop: 4 colunas.
+#### 1. **Letras reveladas no scroll** (alta prioridade) — `Hero.tsx` e `Method.tsx`
 
-#### 2. `Hero.tsx` — stats com layout adaptativo
-- Mobile: manter `grid-cols-2` MAS aumentar `text-[10px]` → `text-xs` e `min-h-[100px]` → `min-h-[120px]`
-- Adicionar breakpoint intermediário: `sm:grid-cols-4` (4 colunas a partir de 640px) para evitar pulo brusco mobile→desktop
-- Reduzir tamanho do `value` em mobile: `text-2xl` → `text-xl` para liberar espaço para o label
+Implementar com `framer-motion` (já instalado) + componente `<RevealText>` reutilizável que divide texto em chars/words e anima opacidade + translateY conforme entra no viewport.
 
-#### 3. `Method.tsx` — timeline tablet
-Mudar breakpoint de timeline horizontal de `lg:` (1024px) para `md:` (768px), MAS com nodes mais compactos em tablet:
-```diff
-- <div className="hidden lg:block">
-+ <div className="hidden md:block">
-- <div className="grid lg:grid-cols-4 gap-6 mt-8">
-+ <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-```
-Tablet: timeline horizontal + cards 2x2. Desktop: timeline + cards 1x4.
-
-#### 4. `Services.tsx` — coluna única até tablet largo
-```diff
-- grid md:grid-cols-2 gap-4 md:gap-6 lg:gap-8
-+ grid lg:grid-cols-2 gap-6 lg:gap-8
-```
-E na lista interna de features:
-```diff
-- ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4"
-+ ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4"
-```
-Cards full-width até 1024px (lg). A partir daí 2 colunas com espaço suficiente para a lista de features em 2 colunas.
-
-#### 5. `ForWhom.tsx` — 1→2→3 colunas progressivo
-```diff
-- grid md:grid-cols-3 gap-6
-+ grid sm:grid-cols-2 lg:grid-cols-3 gap-6
-```
-Mobile: 1 coluna. Tablet (640px+): 2 colunas (3º card quebra para linha de baixo, full-width centralizado seria ideal mas mantém 2x2 com 3º item natural). Desktop (1024px+): 3 colunas.
-
-Para evitar 3º card sozinho em tablet, adicionar wrapper:
 ```tsx
-<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-  {/* primeiros 2 normais, terceiro com sm:col-span-2 lg:col-span-1 */}
-</div>
+<RevealText as="h1" className="text-5xl md:text-7xl">
+  Marketing digital com clareza
+</RevealText>
 ```
 
-#### 6. `ContactForm.tsx` — controle de largura intermediário
-- Trocar `max-w-4xl` → `max-w-5xl` para o container desktop
-- Adicionar `md:max-w-2xl md:mx-auto` no formulário em tablet para não esticar demais
-- `lg:grid-cols-2` mantém
+- Animação: cada char/word com `delay` escalonado (stagger de 0.02-0.04s)
+- Trigger: `whileInView` com viewport `once: true`
+- Performance: usar `transform` + `opacity` (GPU-friendly)
+- Respeita `prefers-reduced-motion`
+
+Aplicar nas headlines de: **Hero** (já existente), **Results**, **Method**, **ForWhom**, **ContactForm**.
+
+#### 2. **Mockups 3D dos painéis Linkou** (média prioridade) — substituir mascote em seções secundárias
+
+Em vez de só o mascote no Hero, criar uma nova seção "Dentro da plataforma" com:
+- 2-3 screenshots de painéis (Dashboard cliente, Kanban de tarefas, Plano estratégico)
+- Rotação 3D leve (`rotate-y-12 rotate-x-3`)
+- Sombras profundas (`shadow-2xl shadow-primary/30`)
+- Animação parallax sutil ao scroll (mover Y conforme `useScroll`)
+
+Posicionamento sobreposto, criando profundidade. Manter o mascote só no Hero.
+
+#### 3. **"Scroll down" com letras espaçadas pulsantes** (baixa prioridade) — `Hero.tsx`
+
+Substituir o ícone atual de scroll por:
+```
+S · c · r · o · l · l
+```
+Com cada letra fazendo `opacity` pulse em sequência (efeito wave). Decorativo mas charmoso.
+
+#### 4. **Sticky scroll na seção Method** (alta prioridade)
+
+Hoje o Method é uma timeline horizontal estática. Transformar em **sticky scroll narrative**:
+- Lado esquerdo: lista vertical das 4 etapas (sticky enquanto rola)
+- Lado direito: imagens/cards trocam conforme cada etapa entra no viewport
+- Ao chegar na etapa atual, ela fica com `text-primary` e bold; outras ficam `text-muted`
+
+Padrão muito usado em sites editoriais (Apple, Stripe, Linear). Encaixa com nosso tom premium.
+
+#### 5. **Tipografia oversized estratégica** (média prioridade)
+
+Aumentar 1-2 headlines-âncora ao tamanho de viewport-dominante:
+- "Não gerenciamos contas. Construímos ecossistemas." em `text-6xl md:text-8xl lg:text-9xl`
+- Posicionar como divisor entre seções (full-width, centro)
+
+Combina com o roxo cosmos e cria pausa visual.
+
+#### 6. **Grid de "Para quem" com imagens reais** (média prioridade) — refinar `ForWhom.tsx`
+
+Atualmente é só cards com ícones. Adicionar imagens reais ou ilustrações de cada perfil:
+- "Negócios que dependem de mídia paga" → imagem de e-commerce/loja
+- "Ecommerces e DTC" → imagem de produto
+- "Consultorias e SaaS" → imagem de dashboard
+
+Layout estilo Pocketchange: imagem em cima + label + descrição embaixo.
 
 ---
 
-### Padronização de breakpoints (mobile-first)
+### O que NÃO copiar
 
-Adoção de escala consistente em **todas** as seções:
-
-```text
-Default (0px+)    : 1 coluna
-sm:  (640px+)     : 2 colunas (cards de catálogo) ou mantém 1 (texto longo)
-md:  (768px+)     : breakpoint de transição (tablet portrait)
-lg:  (1024px+)    : layout final (3-4 colunas)
-xl:  (1280px+)    : ajustes finos opcionais
-```
-
-| Seção | Mobile | Tablet (sm) | Tablet wide (md) | Desktop (lg) |
-|---|---|---|---|---|
-| Hero stats | 2 col | 4 col | 4 col | 4 col |
-| Services | 1 col | 1 col | 1 col | 2 col |
-| Results | 1 col | 2 col | 2 col | 4 col |
-| Method cards | 1 col | 1 col | 2 col | 4 col |
-| ForWhom | 1 col | 2 col (3º full) | 2 col | 3 col |
-| Testimonials | 1 col | carousel | carousel | carousel |
-| ContactForm | 1 col | 1 col | 1 col | 2 col |
+- ❌ Cor vermelha saturada full-bleed (mantém roxo cosmos)
+- ❌ Citação em letras empilhadas verticalmente (decoração excessiva, ruim de ler)
+- ❌ Cookie banner animado custom (mantém padrão simples)
+- ❌ Mockups de iPhone (somos B2B SaaS, não app mobile)
 
 ---
 
-### Sem alterações
-- Hero (layout principal split, mascote, fundo cosmos) — apenas stats ajustam
-- Marquee — já é horizontal infinito, não tem grid
-- FAQ — accordion vertical único, já está bom
-- Footer — fora do escopo (não foi mencionado)
-- Identidade visual (cores, fontes, animações)
+### Ordem de implementação sugerida
 
-### Arquivos alterados
+| Fase | Item | Esforço |
+|---|---|---|
+| **1ª** | Componente `<RevealText>` reutilizável + aplicar nas headlines | Médio (1 componente novo, 5-6 lugares pra trocar) |
+| **2ª** | Sticky scroll narrative no `Method.tsx` | Médio-alto (reescrever seção) |
+| **3ª** | Tipografia oversized em 1-2 divisores entre seções | Baixo |
+| **4ª** | "Scroll down" com letras espaçadas | Baixo (cosmético) |
+| **5ª** | Grid `ForWhom` com imagens reais | Depende de assets |
+| **6ª** | Seção "Dentro da plataforma" com mockups 3D dos painéis | Alto (precisa screenshots reais dos painéis) |
 
-| Arquivo | Mudança |
-|---|---|
-| `src/components/landing/Results.tsx` | Grid `1 → sm:2 → lg:4`, gap consistente |
-| `src/components/landing/Hero.tsx` | Stats: tipografia + breakpoint sm:4 cols |
-| `src/components/landing/Method.tsx` | Timeline horizontal a partir de `md:`, cards `md:2 → lg:4` |
-| `src/components/landing/Services.tsx` | Cards full-width até `lg:`, features `sm:2` |
-| `src/components/landing/ForWhom.tsx` | Grid `1 → sm:2 → lg:3`, 3º card full em tablet |
-| `src/components/landing/ContactForm.tsx` | Largura controlada em tablet |
+---
+
+### Performance & acessibilidade
+- Tudo respeitando `prefers-reduced-motion`
+- `RevealText` usa `whileInView` com `once: true` — anima apenas 1x por sessão
+- Sem libs novas (já temos `framer-motion`)
+- Mockups 3D: usar `transform: rotate()` com `will-change: transform` apenas durante animação
+
+### Arquivos que seriam alterados
+- **Novo**: `src/components/landing/RevealText.tsx`
+- **Editado**: `Hero.tsx`, `Results.tsx`, `Method.tsx`, `ForWhom.tsx`, `ContactForm.tsx`
+- **Opcional novo**: `src/components/landing/PlatformShowcase.tsx` (fase 6)
+
+**Quais fases quer aprovar?** Posso fazer só as fases 1+2+3 (que dão o maior impacto visual sem precisar de assets novos), ou o pacote completo.
 
