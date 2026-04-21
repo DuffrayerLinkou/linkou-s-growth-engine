@@ -182,6 +182,21 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_documents",
+      description: "Busca semântica nos arquivos JÁ INDEXADOS do cliente atual via similaridade vetorial. Use quando o usuário perguntar sobre conteúdo de documentos, briefings, contratos, ou pedir resumo de um tópico que pode estar em arquivos. Mais econômico que read_file: retorna apenas os trechos relevantes. NÃO chame se a resposta já está no contexto operacional carregado.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Pergunta ou tópico para busca semântica (ex: 'qual o público-alvo do produto X', 'cláusulas de rescisão')" },
+          top_k: { type: "number", description: "Número máximo de trechos a retornar. Padrão: 5, máximo: 10" },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 
 // Memory & state management tools (admin only)
