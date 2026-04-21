@@ -1257,6 +1257,162 @@ async function executeTool(
         return { success: true, message: `Estado atualizado: tópico="${args.current_topic || '-'}", objetivo="${args.current_objective || '-'}".` };
       }
 
+      case "list_keywords": {
+        const limit = Math.min(Math.max(Number(args.limit) || 30, 1), 100);
+        const filter = (args.filter as string)?.trim().toLowerCase();
+        let q = db.from("keywords")
+          .select("id, term, intent, search_volume, difficulty, cpc, current_position, status, cluster_id, target_url, tags")
+          .eq("client_id", clientId)
+          .order("search_volume", { ascending: false, nullsFirst: false })
+          .limit(limit);
+        if (filter && ["target", "ranking", "opportunity", "archived"].includes(filter)) {
+          q = q.eq("status", filter);
+        } else if (filter) {
+          q = q.ilike("term", `%${filter}%`);
+        }
+        const { data: kws, error: kwErr } = await q;
+        if (kwErr) throw kwErr;
+        const { data: clusters } = await db.from("keyword_clusters")
+          .select("id, name, intent, pillar_url")
+          .eq("client_id", clientId);
+        const list = (kws || []) as Array<Record<string, unknown>>;
+        if (list.length === 0) return { success: true, message: "Nenhuma keyword cadastrada para esse cliente ainda." };
+        let msg = `Encontradas ${list.length} keyword(s):\n`;
+        for (const k of list) {
+          const sid = String(k.id).slice(0, 8);
+          const vol = k.search_volume ?? "?";
+          const dif = k.difficulty ?? "?";
+          const pos = k.current_position ?? "—";
+          msg += `- \`${sid}\` **${k.term}** [${k.intent}] vol=${vol} dif=${dif} pos=${pos} • status=${k.status}\n`;
+        }
+        if (clusters && clusters.length > 0) {
+          msg += `\nClusters: ${clusters.map((c) => `\`${String(c.id).slice(0,8)}\` ${c.name}`).join(" • ")}`;
+        }
+        return { success: true, message: msg };
+      }
+
+      case "create_keyword": {
+        const term = (args.term as string)?.trim();
+        if (!term) return { success: false, message: "term é obrigatório." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          term,
+          intent: (args.intent as string) || "informational",
+          status: (args.status as string) || "target",
+          created_by: userId,
+        };
+        for (const key of ["search_volume", "difficulty", "cpc", "target_url", "cluster_id", "notes"]) {
+          if (args[key] !== undefined && args[key] !== null && args[key] !== "") payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        const { data, error } = await db.from("keywords").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Keyword "${term}" cadastrada (id: ${String(data?.id).slice(0, 8)}).` };
+      }
+
+      case "update_keyword": {
+        const keywordId = args.keyword_id as string;
+        if (!keywordId) return { success: false, message: "keyword_id é obrigatório." };
+        const payload: Record<string, unknown> = {};
+        for (const key of ["term", "intent", "search_volume", "difficulty", "cpc", "current_position", "target_url", "cluster_id", "campaign_id", "task_id", "status", "notes"]) {
+          if (args[key] !== undefined) payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        if (Object.keys(payload).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("keywords").update(payload).eq("id", keywordId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Keyword \`${keywordId.slice(0, 8)}\` atualizada (${Object.keys(payload).join(", ")}).` };
+      }
+
+      case "create_keyword_cluster": {
+        const name = (args.name as string)?.trim();
+        if (!name) return { success: false, message: "name é obrigatório." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          name,
+          created_by: userId,
+        };
+        for (const key of ["intent", "pillar_url", "description"]) {
+          if (args[key] !== undefined && args[key] !== null && args[key] !== "") payload[key] = args[key];
+        }
+        const { data, error } = await db.from("keyword_clusters").insert(payload).select("id").single();
+        if (error) throw error;
+        return { success: true, message: `Cluster "${name}" criado (id: ${String(data?.id).slice(0, 8)}).` };
+      }
+
+      case "record_keyword_ranking": {
+        const keywordId = args.keyword_id as string;
+        const position = Number(args.position);
+        if (!keywordId || !Number.isFinite(position)) return { success: false, message: "keyword_id e position são obrigatórios." };
+        const { error: rErr } = await db.from("keyword_rankings").insert({
+          client_id: clientId,
+          keyword_id: keywordId,
+          position,
+          notes: (args.notes as string) || null,
+          source: (args.source as string) || "manual",
+        });
+        if (rErr) throw rErr;
+        // Update current_position + status (auto-promote to ranking se 1-100)
+        const updatePayload: Record<string, unknown> = { current_position: position };
+        if (position >= 1 && position <= 100) updatePayload.status = position <= 10 ? "ranking" : "ranking";
+        const { error: uErr } = await db.from("keywords")
+          .update(updatePayload)
+          .eq("id", keywordId)
+          .eq("client_id", clientId);
+        if (uErr) throw uErr;
+        return { success: true, message: `Ranking registrado: keyword \`${keywordId.slice(0, 8)}\` na posição ${position}.` };
+      }
+
+      case "analyze_keyword_opportunities": {
+        const { data: kws, error: kwErr } = await db.from("keywords")
+          .select("id, term, intent, search_volume, difficulty, current_position, status, cluster_id, target_url")
+          .eq("client_id", clientId)
+          .neq("status", "archived")
+          .limit(200);
+        if (kwErr) throw kwErr;
+        const list = (kws || []) as Array<{
+          id: string; term: string; intent: string | null;
+          search_volume: number | null; difficulty: number | null;
+          current_position: number | null; status: string; cluster_id: string | null; target_url: string | null;
+        }>;
+        if (list.length === 0) return { success: true, message: "Nenhuma keyword cadastrada para analisar." };
+
+        const quickWins = list.filter((k) => k.current_position && k.current_position >= 11 && k.current_position <= 20)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const articleCandidates = list.filter((k) => !k.current_position && (k.search_volume || 0) >= 100 && (k.difficulty ?? 100) <= 40)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const adsCandidates = list.filter((k) => (k.intent === "transactional" || k.intent === "commercial") && (!k.current_position || k.current_position > 10))
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10);
+        const noClusterHighVol = list.filter((k) => !k.cluster_id && (k.search_volume || 0) >= 200)
+          .sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 8);
+
+        let msg = `## Análise de oportunidades SEO (${list.length} keywords)\n\n`;
+        if (quickWins.length > 0) {
+          msg += `### ⚡ Quick Wins (pos 11-20 — empurrar pra primeira página)\n`;
+          for (const k of quickWins) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — pos ${k.current_position}, vol ${k.search_volume || "?"}, dif ${k.difficulty ?? "?"}\n`;
+          msg += "\n";
+        }
+        if (articleCandidates.length > 0) {
+          msg += `### 📝 Candidatas a artigo de blog (sem ranking, alto vol, baixa dif)\n`;
+          for (const k of articleCandidates) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — vol ${k.search_volume}, dif ${k.difficulty ?? "?"}\n`;
+          msg += "\n";
+        }
+        if (adsCandidates.length > 0) {
+          msg += `### 💰 Candidatas a Google Ads (intenção comercial, fora do top 10)\n`;
+          for (const k of adsCandidates) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** [${k.intent}] — pos ${k.current_position || "—"}, vol ${k.search_volume || "?"}\n`;
+          msg += "\n";
+        }
+        if (noClusterHighVol.length > 0) {
+          msg += `### 🧩 Gap: keywords sem cluster (alto volume — agrupar em pillars)\n`;
+          for (const k of noClusterHighVol) msg += `- \`${k.id.slice(0,8)}\` **${k.term}** — vol ${k.search_volume}\n`;
+          msg += "\n";
+        }
+        if (quickWins.length === 0 && articleCandidates.length === 0 && adsCandidates.length === 0 && noClusterHighVol.length === 0) {
+          msg += "_Nenhuma oportunidade evidente com os dados atuais. Considere importar volume/dificuldade de Semrush, Ahrefs ou Keyword Planner para enriquecer a análise._";
+        }
+        return { success: true, message: msg };
+      }
+
       case "search_documents": {
         const query = (args.query as string)?.trim();
         if (!query) return { success: false, message: "Forneça uma query para buscar." };
