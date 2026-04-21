@@ -16,6 +16,22 @@ const clipReveal = {
   visible: { clipPath: "inset(0% 0 0 0)" },
 };
 
+// Pre-computed particle positions (deterministic, no re-render randomness)
+const particles = [
+  { top: "12%", left: "8%", size: 3, delay: "0s" },
+  { top: "22%", left: "78%", size: 2, delay: "1.2s" },
+  { top: "35%", left: "18%", size: 2, delay: "2.4s" },
+  { top: "48%", left: "62%", size: 4, delay: "0.6s" },
+  { top: "58%", left: "32%", size: 2, delay: "3.1s" },
+  { top: "68%", left: "88%", size: 3, delay: "1.8s" },
+  { top: "78%", left: "12%", size: 2, delay: "2.7s" },
+  { top: "85%", left: "55%", size: 3, delay: "0.3s" },
+  { top: "15%", left: "45%", size: 2, delay: "3.6s" },
+  { top: "42%", left: "92%", size: 2, delay: "1.5s" },
+  { top: "72%", left: "70%", size: 3, delay: "2.1s" },
+  { top: "28%", left: "30%", size: 2, delay: "0.9s" },
+];
+
 function HeroComponent() {
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const scrollToSection = (href: string) => {
@@ -28,28 +44,73 @@ function HeroComponent() {
   return (
     <LazyMotion features={domAnimation}>
       <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-        {/* Video Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            poster="/videos/hero-poster.jpg"
-            className="absolute inset-0 w-full h-full object-cover"
-          >
-            <source src="/videos/hero-background.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+        {/* Cosmic background — radial gradient base */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, hsl(270 60% 12%) 0%, hsl(265 70% 6%) 50%, hsl(260 80% 3%) 100%)",
+          }}
+          aria-hidden
+        />
+
+        {/* Constellation network — SVG pattern */}
+        <svg
+          className="absolute inset-0 w-full h-full hero-constellation pointer-events-none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+        >
+          <defs>
+            <pattern id="constellation" x="0" y="0" width="240" height="240" patternUnits="userSpaceOnUse">
+              {/* Nodes */}
+              <circle cx="20" cy="30" r="1.5" fill="hsl(var(--primary))" opacity="0.8" />
+              <circle cx="120" cy="60" r="1.2" fill="hsl(var(--primary))" opacity="0.6" />
+              <circle cx="200" cy="40" r="1.8" fill="hsl(var(--primary))" opacity="0.9" />
+              <circle cx="60" cy="140" r="1.3" fill="hsl(var(--primary))" opacity="0.7" />
+              <circle cx="180" cy="160" r="1.5" fill="hsl(var(--primary))" opacity="0.8" />
+              <circle cx="100" cy="210" r="1.2" fill="hsl(var(--primary))" opacity="0.6" />
+              <circle cx="220" cy="220" r="1.4" fill="hsl(var(--primary))" opacity="0.7" />
+              {/* Lines connecting nodes */}
+              <line x1="20" y1="30" x2="120" y2="60" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.25" />
+              <line x1="120" y1="60" x2="200" y2="40" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.25" />
+              <line x1="120" y1="60" x2="60" y2="140" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.2" />
+              <line x1="60" y1="140" x2="180" y2="160" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.2" />
+              <line x1="180" y1="160" x2="200" y2="40" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.15" />
+              <line x1="180" y1="160" x2="220" y2="220" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.25" />
+              <line x1="60" y1="140" x2="100" y2="210" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.2" />
+              <line x1="100" y1="210" x2="220" y2="220" stroke="hsl(var(--primary))" strokeWidth="0.4" opacity="0.2" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#constellation)" />
+        </svg>
+
+        {/* Twinkling particles */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          {particles.map((p, i) => (
+            <span
+              key={i}
+              className="hero-particle absolute rounded-full bg-primary"
+              style={{
+                top: p.top,
+                left: p.left,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                boxShadow: `0 0 ${p.size * 3}px hsl(var(--primary) / 0.9), 0 0 ${p.size * 6}px hsl(var(--primary) / 0.4)`,
+                animationDelay: p.delay,
+              }}
+            />
+          ))}
         </div>
 
-        {/* Decorative blob on the right */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[45%] h-[70%] hidden lg:block pointer-events-none">
-          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/30 via-primary/20 to-transparent blur-xl motion-safe:animate-[pulse_6s_ease-in-out_infinite]" />
-          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/20 to-accent/25 blur-lg motion-safe:animate-[pulse_8s_ease-in-out_infinite_1s]" />
-          <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/20" />
-        </div>
+        {/* Vignette overlay for depth */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, transparent 0%, transparent 50%, hsl(260 80% 3% / 0.6) 100%)",
+          }}
+          aria-hidden
+        />
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-[55%_45%] items-center gap-8">
@@ -60,10 +121,10 @@ function HeroComponent() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, type: "spring", stiffness: 80 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border bg-card/50 backdrop-blur-sm mb-8"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 mb-8"
               >
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-sm font-medium text-muted-foreground">
+                <span className="text-sm font-medium text-foreground/80">
                   Auditoria · Tráfego · Produção · Design
                 </span>
               </m.div>
