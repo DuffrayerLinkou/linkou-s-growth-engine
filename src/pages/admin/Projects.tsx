@@ -305,14 +305,28 @@ export default function AdminProjects() {
     }
   };
 
+  const today = new Date().toISOString().slice(0, 10);
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.clients?.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesClient = clientFilter === "all" || project.client_id === clientFilter;
+    const matchesPeriod = !activePeriodOnly || (
+      (!project.start_date || project.start_date <= today) &&
+      (!project.end_date || project.end_date >= today)
+    );
+    return matchesSearch && matchesStatus && matchesClient && matchesPeriod;
   });
+
+  const kpis = useMemo(() => {
+    const active = projects.filter((p) => p.status === "active").length;
+    const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
+    const ongoingDeliveries = projects.reduce((sum, p) => sum + (p.tasksTotal - p.tasksDone), 0);
+    const recentLearnings = projects.reduce((sum, p) => sum + p.learningsCount, 0);
+    return { active, totalBudget, ongoingDeliveries, recentLearnings };
+  }, [projects]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
