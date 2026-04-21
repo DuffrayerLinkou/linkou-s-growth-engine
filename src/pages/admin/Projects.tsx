@@ -1,41 +1,22 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useState, useEffect, useMemo } from "react";
 import {
   FolderKanban,
   Search,
   Plus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  Trash2,
-  Calendar,
-  DollarSign,
   Building2,
   Loader2,
   Filter,
+  DollarSign,
+  Sparkles,
+  Lightbulb,
+  TrendingUp,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +45,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ProjectCard, type ProjectCardData } from "@/components/admin/projects/ProjectCard";
+import { ProjectDetailDialog } from "@/components/admin/projects/ProjectDetailDialog";
 
 interface Client {
   id: string;
@@ -98,16 +81,26 @@ import {
   projectStatusColors as statusColors,
 } from "@/lib/status-config";
 
+interface ProjectWithStats extends Project {
+  tasksTotal: number;
+  tasksDone: number;
+  campaignsCount: number;
+  deliverablesCount: number;
+  learningsCount: number;
+}
+
 export default function AdminProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
+  const [activePeriodOnly, setActivePeriodOnly] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithStats | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -125,18 +118,48 @@ export default function AdminProjects() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [projectsRes, clientsRes] = await Promise.all([
+      const [projectsRes, clientsRes, tasksRes, campRes, learnRes] = await Promise.all([
         supabase
           .from("projects")
           .select("*, clients(id, name)")
           .order("created_at", { ascending: false }),
         supabase.from("clients").select("id, name").eq("status", "ativo"),
+        supabase.from("tasks").select("project_id, status"),
+        supabase.from("campaigns").select("project_id"),
+        supabase.from("learnings").select("project_id"),
       ]);
 
       if (projectsRes.error) throw projectsRes.error;
       if (clientsRes.error) throw clientsRes.error;
 
-      setProjects(projectsRes.data || []);
+      const tasksByProject = new Map<string, { total: number; done: number }>();
+      (tasksRes.data || []).forEach((t: any) => {
+        if (!t.project_id) return;
+        const cur = tasksByProject.get(t.project_id) || { total: 0, done: 0 };
+        cur.total += 1;
+        if (t.status === "done") cur.done += 1;
+        tasksByProject.set(t.project_id, cur);
+      });
+      const countBy = (rows: any[]) => {
+        const m = new Map<string, number>();
+        rows.forEach((r) => {
+          if (!r.project_id) return;
+          m.set(r.project_id, (m.get(r.project_id) || 0) + 1);
+        });
+        return m;
+      };
+      const campMap = countBy(campRes.data || []);
+      const learnMap = countBy(learnRes.data || []);
+
+      const enriched: ProjectWithStats[] = (projectsRes.data || []).map((p: any) => ({
+        ...p,
+        tasksTotal: tasksByProject.get(p.id)?.total || 0,
+        tasksDone: tasksByProject.get(p.id)?.done || 0,
+        campaignsCount: campMap.get(p.id) || 0,
+        deliverablesCount: 0,
+        learningsCount: learnMap.get(p.id) || 0,
+      }));
+      setProjects(enriched);
       setClients(clientsRes.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -154,7 +177,7 @@ export default function AdminProjects() {
     fetchData();
   }, []);
 
-  const openForm = (project?: Project) => {
+  const openForm = (project?: ProjectWithStats | null) => {
     if (project) {
       setSelectedProject(project);
       setFormData({
@@ -282,14 +305,28 @@ export default function AdminProjects() {
     }
   };
 
+  const today = new Date().toISOString().slice(0, 10);
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.clients?.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesClient = clientFilter === "all" || project.client_id === clientFilter;
+    const matchesPeriod = !activePeriodOnly || (
+      (!project.start_date || project.start_date <= today) &&
+      (!project.end_date || project.end_date >= today)
+    );
+    return matchesSearch && matchesStatus && matchesClient && matchesPeriod;
   });
+
+  const kpis = useMemo(() => {
+    const active = projects.filter((p) => p.status === "active").length;
+    const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
+    const ongoingDeliveries = projects.reduce((sum, p) => sum + (p.tasksTotal - p.tasksDone), 0);
+    const recentLearnings = projects.reduce((sum, p) => sum + p.learningsCount, 0);
+    return { active, totalBudget, ongoingDeliveries, recentLearnings };
+  }, [projects]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
@@ -315,29 +352,16 @@ export default function AdminProjects() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {Object.entries(statusLabels).map(([status, label]) => {
-          const count = projects.filter((p) => p.status === status).length;
-          return (
-            <Card
-              key={status}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() =>
-                setStatusFilter(status === statusFilter ? "all" : status)
-              }
-            >
-              <CardHeader className="pb-2">
-                <CardDescription>{label}</CardDescription>
-                <CardTitle className="text-2xl">{count}</CardTitle>
-              </CardHeader>
-            </Card>
-          );
-        })}
+      {/* KPIs */}
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Projetos ativos" value={kpis.active.toString()} />
+        <KpiCard icon={<DollarSign className="h-4 w-4" />} label="Budget alocado" value={formatCurrency(kpis.totalBudget)} />
+        <KpiCard icon={<Sparkles className="h-4 w-4" />} label="Entregas em andamento" value={kpis.ongoingDeliveries.toString()} />
+        <KpiCard icon={<Lightbulb className="h-4 w-4" />} label="Aprendizados" value={kpis.recentLearnings.toString()} />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -348,158 +372,89 @@ export default function AdminProjects() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger className="w-full lg:w-[170px]">
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar status" />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos status</SelectItem>
             {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
+              <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Select value={clientFilter} onValueChange={setClientFilter}>
+          <SelectTrigger className="w-full lg:w-[200px]">
+            <Building2 className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Cliente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos clientes</SelectItem>
+            {clients.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 px-3 rounded-md border h-10">
+          <Switch id="active-period" checked={activePeriodOnly} onCheckedChange={setActivePeriodOnly} />
+          <Label htmlFor="active-period" className="text-sm cursor-pointer whitespace-nowrap">
+            Período ativo
+          </Label>
+        </div>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Building2 className="h-12 w-12 mb-4 opacity-50" />
-              <p>Crie um cliente primeiro</p>
-              <p className="text-sm">Projetos precisam estar vinculados a um cliente.</p>
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FolderKanban className="h-12 w-12 mb-4 opacity-50" />
-              <p>Nenhum projeto encontrado</p>
-              <Button variant="link" onClick={() => openForm()}>
-                Criar primeiro projeto
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Período</TableHead>
-                  <TableHead className="hidden sm:table-cell">Budget</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project, index) => (
-                  <motion.tr
-                    key={project.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group"
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{project.name}</div>
-                        {project.description && (
-                          <div className="text-sm text-muted-foreground line-clamp-1">
-                            {project.description}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {project.clients?.name || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={statusColors[project.status || "planning"]}
-                      >
-                        {statusLabels[project.status || "planning"]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {project.start_date ? (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(project.start_date), "dd/MM/yy", {
-                            locale: ptBR,
-                          })}
-                          {project.end_date && (
-                            <>
-                              {" - "}
-                              {format(new Date(project.end_date), "dd/MM/yy", {
-                                locale: ptBR,
-                              })}
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {project.budget ? (
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3 text-muted-foreground" />
-                          {formatCurrency(project.budget)}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedProject(project);
-                              setIsViewOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openForm(project)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedProject(project);
-                              setIsDeleteOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Grid de projetos */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : clients.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Building2 className="h-12 w-12 mb-4 opacity-50" />
+            <p>Crie um cliente primeiro</p>
+            <p className="text-sm">Projetos precisam estar vinculados a um cliente.</p>
+          </CardContent>
+        </Card>
+      ) : filteredProjects.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <FolderKanban className="h-12 w-12 mb-4 opacity-50" />
+            <p>Nenhum projeto encontrado</p>
+            <Button variant="link" onClick={() => openForm()}>
+              Criar primeiro projeto
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredProjects.map((project, index) => (
+            <ProjectCard
+              key={project.id}
+              index={index}
+              project={{
+                id: project.id,
+                name: project.name,
+                description: project.description,
+                status: project.status,
+                start_date: project.start_date,
+                end_date: project.end_date,
+                budget: project.budget,
+                client_name: project.clients?.name || null,
+                tasksTotal: project.tasksTotal,
+                tasksDone: project.tasksDone,
+                campaignsCount: project.campaignsCount,
+                deliverablesCount: project.deliverablesCount,
+                learningsCount: project.learningsCount,
+              }}
+              onOpen={() => {
+                setSelectedProject(project);
+                setIsViewOpen(true);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -556,14 +511,14 @@ export default function AdminProjects() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Hipótese / Objetivo</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Descreva o projeto..."
+                placeholder="Qual hipótese este projeto valida? Qual resultado esperado?"
                 rows={3}
               />
             </div>
@@ -672,97 +627,40 @@ export default function AdminProjects() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FolderKanban className="h-5 w-5" />
-              {selectedProject?.name}
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedProject && (
-            <div className="space-y-4">
-              {/* Cliente */}
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{selectedProject.clients?.name || "-"}</p>
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge className={statusColors[selectedProject.status || "planning"]}>
-                  {statusLabels[selectedProject.status || "planning"]}
-                </Badge>
-              </div>
-
-              {/* Descrição */}
-              {selectedProject.description && (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Descrição</p>
-                  <p className="text-sm">{selectedProject.description}</p>
-                </div>
-              )}
-
-              {/* Período */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Data Início</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {selectedProject.start_date
-                      ? format(new Date(selectedProject.start_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Data Fim</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {selectedProject.end_date
-                      ? format(new Date(selectedProject.end_date), "dd/MM/yyyy", { locale: ptBR })
-                      : "-"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Budget */}
-              <div>
-                <p className="text-xs text-muted-foreground">Orçamento</p>
-                <p className="text-lg font-semibold flex items-center gap-1">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                  {formatCurrency(selectedProject.budget)}
-                </p>
-              </div>
-
-              {/* Data de criação */}
-              <div className="pt-3 border-t text-xs text-muted-foreground">
-                Criado em: {format(new Date(selectedProject.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
-              Fechar
-            </Button>
-            <Button
-              onClick={() => {
-                setIsViewOpen(false);
-                openForm(selectedProject!);
-              }}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Project Detail Dialog */}
+      <ProjectDetailDialog
+        project={selectedProject ? {
+          id: selectedProject.id,
+          name: selectedProject.name,
+          description: selectedProject.description,
+          status: selectedProject.status,
+          start_date: selectedProject.start_date,
+          end_date: selectedProject.end_date,
+          budget: selectedProject.budget,
+          created_at: selectedProject.created_at,
+          client_name: selectedProject.clients?.name || null,
+        } : null}
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        onEdit={() => {
+          setIsViewOpen(false);
+          openForm(selectedProject);
+        }}
+      />
     </div>
+  );
+}
+
+function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="p-2.5 rounded-md bg-primary/10 text-primary">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold truncate">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
