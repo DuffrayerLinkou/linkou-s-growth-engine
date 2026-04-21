@@ -1349,6 +1349,27 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (creativeDemands.length > 0) {
+      context += `## 🎨 Demandas Criativas (${creativeDemands.length})\n`;
+      for (const d of creativeDemands) {
+        const dlv = creativeDeliverables.filter((x) => x.demand_id === d.id);
+        const meta: string[] = [];
+        if (d.format) meta.push(d.format as string);
+        if (d.platform) meta.push(d.platform as string);
+        if (d.deadline) meta.push(`prazo ${d.deadline}`);
+        if (d.priority) meta.push(`prio: ${d.priority}`);
+        const metaStr = meta.length ? ` (${meta.join(", ")})` : "";
+        context += `- \`${String(d.id).slice(0,8)}\` [${d.status}] **${d.title}**${metaStr}\n`;
+        if (dlv.length > 0) {
+          for (const x of dlv) {
+            const appr = x.approved_by_ponto_focal ? " ✅" : "";
+            context += `   └ \`${String(x.id).slice(0,8)}\` [${x.status}] ${x.title} (${x.type}, v${x.current_version})${appr}\n`;
+          }
+        }
+      }
+      context += "\n";
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
