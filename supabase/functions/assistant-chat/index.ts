@@ -1547,6 +1547,7 @@ serve(async (req) => {
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
       convRes, creativeDemandsRes, creativeDeliverablesRes,
       projectsRes, learningsRes,
+      keywordsRes, keywordClustersRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -1633,6 +1634,17 @@ serve(async (req) => {
         .eq("client_id", client_id)
         .order("created_at", { ascending: false })
         .limit(8),
+      db.from("keywords")
+        .select("id, term, intent, search_volume, difficulty, current_position, status, cluster_id")
+        .eq("client_id", client_id)
+        .neq("status", "archived")
+        .order("search_volume", { ascending: false, nullsFirst: false })
+        .limit(20),
+      db.from("keyword_clusters")
+        .select("id, name, intent, pillar_url")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
     const client = clientRes.data;
