@@ -2037,6 +2037,9 @@ export type Database = {
           client_id: string
           created_at: string | null
           created_by: string | null
+          diagnostic: Json | null
+          execution_plan: Json | null
+          executive_summary: string | null
           funnel_strategy: string | null
           id: string
           kpis: Json | null
@@ -2054,6 +2057,9 @@ export type Database = {
           client_id: string
           created_at?: string | null
           created_by?: string | null
+          diagnostic?: Json | null
+          execution_plan?: Json | null
+          executive_summary?: string | null
           funnel_strategy?: string | null
           id?: string
           kpis?: Json | null
@@ -2071,6 +2077,9 @@ export type Database = {
           client_id?: string
           created_at?: string | null
           created_by?: string | null
+          diagnostic?: Json | null
+          execution_plan?: Json | null
+          executive_summary?: string | null
           funnel_strategy?: string | null
           id?: string
           kpis?: Json | null

@@ -14,6 +14,10 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function asArr(v: unknown): unknown[] {
+  return Array.isArray(v) ? v : [];
+}
+
 // ── Tool definitions (admin only) ──────────────────────────────────────
 const adminTools = [
   {
@@ -129,21 +133,172 @@ const adminTools = [
     type: "function",
     function: {
       name: "create_strategic_plan",
-      description: "Cria um plano estratégico completo e profissional para o cliente atual. Use quando o admin pedir para criar plano, estratégia, planejamento. Gere personas detalhadas, KPIs SMART, estratégia de funil (topo/meio/fundo), alocação de budget por canal e tipos de campanha recomendados. Baseie-se no briefing, métricas históricas e segmento do cliente.",
+      description: "Cria um plano estratégico PROFUNDO e EDITORIAL para o cliente atual. NÃO crie nada raso: gere ao menos 3 personas detalhadas, 5+ objetivos SMART numéricos, 6+ KPIs categorizados, funil topo/meio/fundo estruturado, diagnóstico (oportunidades + riscos + concorrência), alocação de budget por canal e por etapa, e plano de execução com 3 ondas (90 dias) + governança. Baseie-se em briefing, métricas históricas, segmento e contexto real do cliente.",
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string", description: "Título do plano (ex: 'Plano Estratégico Q2/2026 - Escala de Vendas')" },
-          objectives: { type: "array", items: { type: "object" }, description: "Array de objetivos SMART com name, description, target, deadline" },
-          kpis: { type: "array", items: { type: "object" }, description: "Array de KPIs com name, target, current, unit (ex: CPL, ROAS, leads/mês)" },
-          personas: { type: "array", items: { type: "object" }, description: "Array de personas com name, age_range, interests, pain_points, channels" },
-          funnel_strategy: { type: "string", description: "Estratégia de funil detalhada: topo (awareness), meio (consideração), fundo (conversão)" },
-          campaign_types: { type: "array", items: { type: "string" }, description: "Tipos de campanha recomendados (ex: prospecting, retargeting, branding, remarketing)" },
-          timeline_start: { type: "string", description: "Data de início do plano (YYYY-MM-DD)" },
-          timeline_end: { type: "string", description: "Data de término do plano (YYYY-MM-DD)" },
-          budget_allocation: { type: "object", description: "Alocação de budget por canal/objetivo em JSON (ex: { meta_ads: 60, google_ads: 30, tiktok: 10 })" },
+          title: { type: "string", description: "Título do plano (ex: 'Plano Estratégico Q2/2026 — Escala de Vendas')" },
+          executive_summary: { type: "string", description: "Sumário executivo de 3-5 linhas: contexto, objetivo principal, abordagem-chave, resultado esperado." },
+          timeline_start: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+          timeline_end: { type: "string", description: "Data de término (YYYY-MM-DD)" },
+          campaign_types: { type: "array", items: { type: "string" }, description: "Tipos de campanha recomendados" },
+          diagnostic: {
+            type: "object",
+            description: "Diagnóstico completo da situação atual",
+            properties: {
+              current_situation: { type: "string", description: "Análise da situação atual (3-6 linhas) baseada nos dados do cliente." },
+              opportunities: { type: "array", items: { type: "string" }, description: "Mínimo 3 oportunidades concretas." },
+              risks: { type: "array", items: { type: "string" }, description: "Mínimo 3 riscos relevantes." },
+              competition: {
+                type: "array",
+                description: "Lista de 2-5 concorrentes",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    strengths: { type: "string" },
+                    weaknesses: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          personas: {
+            type: "array",
+            description: "Mínimo 3 personas profundas e segmentadas.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "Nome/apelido da persona" },
+                demographics: { type: "string", description: "Idade, gênero, renda, profissão, localização" },
+                pain_points: { type: "array", items: { type: "string" }, description: "Mínimo 3 dores reais" },
+                desires: { type: "array", items: { type: "string" }, description: "Mínimo 2 desejos/aspirações" },
+                objections: { type: "array", items: { type: "string" }, description: "Mínimo 2 objeções de compra" },
+                channels: { type: "array", items: { type: "string" }, description: "Canais onde estão (Instagram, Google, TikTok…)" },
+                message_hook: { type: "string", description: "Mensagem-chave que ressoa com essa persona" },
+              },
+              required: ["name", "demographics", "pain_points"],
+            },
+          },
+          objectives: {
+            type: "array",
+            description: "Mínimo 5 objetivos SMART com baseline e meta numérica.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                description: { type: "string" },
+                metric: { type: "string", description: "Ex: leads/mês, ROAS, CPL" },
+                baseline: { type: "number", description: "Valor atual" },
+                target: { type: "number", description: "Meta numérica" },
+                deadline: { type: "string", description: "YYYY-MM-DD" },
+                owner: { type: "string", description: "Responsável" },
+              },
+              required: ["name", "metric", "target"],
+            },
+          },
+          kpis: {
+            type: "array",
+            description: "Mínimo 6 KPIs distribuídos entre Aquisição, Conversão e Retenção.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                category: { type: "string", enum: ["aquisicao", "conversao", "retencao", "branding"] },
+                unit: { type: "string", description: "Ex: R$, %, un" },
+                current: { type: "number" },
+                target: { type: "number" },
+                source: { type: "string", description: "Fonte: Meta Ads, GA4, CRM…" },
+                frequency: { type: "string", description: "Diária / Semanal / Mensal" },
+              },
+              required: ["name", "category", "target"],
+            },
+          },
+          funnel_strategy: {
+            type: "object",
+            description: "Estratégia estruturada por etapa do funil.",
+            properties: {
+              topo: {
+                type: "object",
+                properties: {
+                  goal: { type: "string" },
+                  channels: { type: "array", items: { type: "string" } },
+                  creatives: { type: "array", items: { type: "string" } },
+                  kpi: { type: "string" },
+                  budget_pct: { type: "number" },
+                },
+              },
+              meio: {
+                type: "object",
+                properties: {
+                  goal: { type: "string" },
+                  channels: { type: "array", items: { type: "string" } },
+                  creatives: { type: "array", items: { type: "string" } },
+                  kpi: { type: "string" },
+                  budget_pct: { type: "number" },
+                },
+              },
+              fundo: {
+                type: "object",
+                properties: {
+                  goal: { type: "string" },
+                  channels: { type: "array", items: { type: "string" } },
+                  creatives: { type: "array", items: { type: "string" } },
+                  kpi: { type: "string" },
+                  budget_pct: { type: "number" },
+                },
+              },
+              reengajamento: {
+                type: "object",
+                properties: {
+                  goal: { type: "string" },
+                  channels: { type: "array", items: { type: "string" } },
+                  kpi: { type: "string" },
+                  budget_pct: { type: "number" },
+                },
+              },
+            },
+          },
+          budget_allocation: {
+            type: "object",
+            properties: {
+              total_monthly: { type: "number", description: "Investimento mensal total em R$" },
+              by_channel: { type: "object", description: "% por canal: { meta_ads: 50, google_ads: 30, ... }" },
+              by_phase: { type: "object", description: "% por etapa: { topo: 20, meio: 30, fundo: 50 }" },
+              reserve_pct: { type: "number", description: "% de reserva para experimentação" },
+            },
+          },
+          execution_plan: {
+            type: "object",
+            description: "Plano de execução com ondas (sprints) e governança.",
+            properties: {
+              waves: {
+                type: "array",
+                description: "Mínimo 3 ondas (ex: Mês 1, Mês 2, Mês 3).",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    period: { type: "string", description: "Ex: Mês 1 (Mai/26)" },
+                    deliverables: { type: "array", items: { type: "string" } },
+                    milestones: { type: "array", items: { type: "string" } },
+                  },
+                  required: ["name", "deliverables"],
+                },
+              },
+              governance: {
+                type: "object",
+                properties: {
+                  cadence: { type: "string", description: "Cadência de calls (semanal / quinzenal)" },
+                  reports: { type: "string", description: "Relatórios entregues e periodicidade" },
+                  tools: { type: "array", items: { type: "string" } },
+                  responsibles: { type: "array", items: { type: "string" } },
+                },
+              },
+            },
+          },
         },
-        required: ["title"],
+        required: ["title", "executive_summary", "personas", "objectives", "kpis", "funnel_strategy"],
       },
     },
   },
@@ -393,12 +548,24 @@ async function executeTool(
           created_by: userId,
           status: "draft",
         };
-        for (const key of ["objectives", "kpis", "personas", "funnel_strategy", "campaign_types", "timeline_start", "timeline_end", "budget_allocation"]) {
+        for (const key of [
+          "executive_summary",
+          "objectives",
+          "kpis",
+          "personas",
+          "funnel_strategy",
+          "campaign_types",
+          "timeline_start",
+          "timeline_end",
+          "budget_allocation",
+          "diagnostic",
+          "execution_plan",
+        ]) {
           if (args[key] !== undefined && args[key] !== null) planPayload[key] = args[key];
         }
         const { error } = await db.from("strategic_plans").insert(planPayload);
         if (error) throw error;
-        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho. Revise na seção Plano Estratégico.` };
+        return { success: true, message: `Plano estratégico "${args.title}" criado como rascunho com diagnóstico, ${(asArr(args.personas)).length} personas, ${(asArr(args.objectives)).length} objetivos SMART e ${(asArr(args.kpis)).length} KPIs. Revise na seção Plano Estratégico.` };
       }
 
       case "create_briefing": {
@@ -992,7 +1159,7 @@ serve(async (req) => {
         `- **upsert_traffic_metrics**: Registrar/atualizar métricas mensais.\n` +
         `- **create_campaign**: Estruturar campanhas técnicas (use briefing + plano + métricas para targeting, budget, copy, bidding). Nomenclatura: [Plataforma] Objetivo - Público - Período. Status: draft.\n` +
         `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
-        `- **create_strategic_plan**: Gerar plano completo (personas, KPIs SMART, funil topo/meio/fundo, alocação de budget % por canal, tipos de campanha) baseado em dados reais.\n` +
+        `- **create_strategic_plan**: Gera plano estratégico EDITORIAL e PROFUNDO. NÃO crie planos rasos. Mínimo OBRIGATÓRIO: sumário executivo, diagnóstico (situação + 3 oportunidades + 3 riscos + concorrência), 3+ personas profundas (demografia, dores, desejos, objeções, canais, mensagem-chave), 5+ objetivos SMART numéricos com baseline/meta/prazo, 6+ KPIs categorizados (aquisição/conversão/retenção), funil estruturado em topo/meio/fundo (goal, canais, criativos, KPI, % budget), alocação de budget por canal e por etapa, plano de execução com 3 ondas (90 dias, entregas e marcos) e governança (cadência, relatórios, ferramentas). Use SEMPRE briefing, métricas históricas, segmento e contexto real. Linguagem profissional de consultoria sênior.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
