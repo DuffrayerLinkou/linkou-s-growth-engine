@@ -183,6 +183,61 @@ const adminTools = [
     },
   },
 ];
+
+// Memory & state management tools (admin only)
+const memoryTools = [
+  {
+    type: "function",
+    function: {
+      name: "log_decision",
+      description: "Registra uma decisão estratégica/operacional importante tomada (com ou sem o bot) na memória de longo prazo do cliente. Use quando o usuário fechar uma escolha relevante: 'vamos pausar a campanha X', 'decidimos focar em Meta', 'aprovamos a alocação 60/40'. Não use para conversas casuais.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da decisão (ex: 'Pausar campanha PMax Q2')" },
+          decision: { type: "string", description: "A decisão em si, em 1-2 frases" },
+          rationale: { type: "string", description: "Justificativa/motivo (opcional, mas recomendado)" },
+          related_entity_type: { type: "string", description: "Tipo de entidade relacionada (ex: campaign, plan, task)" },
+          related_entity_id: { type: "string", description: "UUID da entidade relacionada (opcional)" },
+        },
+        required: ["title", "decision"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "record_insight",
+      description: "Registra um insight/conclusão da análise feita agora para que fique disponível depois e possa ser validado pelo time. Use no MODO AUDITOR ao identificar oportunidade, risco ou diagnóstico relevante baseado em evidências reais.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto do insight" },
+          body: { type: "string", description: "Corpo do insight com a análise completa" },
+          category: { type: "string", enum: ["audit", "opportunity", "risk", "performance"], description: "Categoria" },
+          urgency: { type: "string", enum: ["low", "medium", "high"], description: "Urgência. Padrão: medium" },
+          evidence: { type: "object", description: "Evidências em JSON (ex: { metric: 'CPL', from: 12, to: 28, period: 'Mar/26' })" },
+        },
+        required: ["title", "body", "category"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_conversation_state",
+      description: "Atualiza o estado contextual da conversa atual (tópico em foco, objetivo, pendências). Use quando o foco da conversa mudar de assunto ou quando o usuário definir um objetivo para a interação.",
+      parameters: {
+        type: "object",
+        properties: {
+          current_topic: { type: "string", description: "Tópico em foco (ex: 'Campanha Black Friday')" },
+          current_objective: { type: "string", description: "Objetivo desta conversa (ex: 'reduzir CPL Meta em 20%')" },
+          pending_items: { type: "array", items: { type: "object" }, description: "Pendências [{type, description, due}]" },
+        },
+      },
+    },
+  },
+];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
