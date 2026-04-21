@@ -217,6 +217,102 @@ const adminTools = [
   {
     type: "function",
     function: {
+      name: "list_projects",
+      description: "Lista os projetos do cliente atual (id, nome, status, datas, budget). Use para obter o UUID antes de chamar update_project, link_task_to_project, link_campaign_to_project, create_learning ou update_learning.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Máx. de projetos. Padrão 20." } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_project",
+      description: "Atualiza um projeto existente do cliente atual: status (planning/active/paused/completed), hipótese (description), datas ou budget.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_id: { type: "string", description: "UUID do projeto" },
+          name: { type: "string" },
+          description: { type: "string", description: "HIPÓTESE/OBJETIVO refinado" },
+          start_date: { type: "string", description: "YYYY-MM-DD" },
+          end_date: { type: "string", description: "YYYY-MM-DD" },
+          budget: { type: "number" },
+          status: { type: "string", enum: ["planning", "active", "paused", "completed"] },
+        },
+        required: ["project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_task_to_project",
+      description: "Vincula uma tarefa existente a um projeto (define task.project_id). Ambos devem pertencer ao cliente atual.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "UUID da tarefa" },
+          project_id: { type: "string", description: "UUID do projeto" },
+        },
+        required: ["task_id", "project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_campaign_to_project",
+      description: "Vincula uma campanha existente a um projeto (define campaign.project_id). Ambos devem pertencer ao cliente atual.",
+      parameters: {
+        type: "object",
+        properties: {
+          campaign_id: { type: "string", description: "UUID da campanha" },
+          project_id: { type: "string", description: "UUID do projeto" },
+        },
+        required: ["campaign_id", "project_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_learning",
+      description: "Registra um APRENDIZADO (hipótese validada/invalidada) vinculado a um projeto. NUNCA marque como aprovado — aprovação é exclusiva do Ponto Focal via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          project_id: { type: "string", description: "UUID do projeto fonte do aprendizado" },
+          title: { type: "string", description: "Título curto do aprendizado" },
+          description: { type: "string", description: "Detalhes do que foi testado, dados e contexto" },
+          impact: { type: "string", description: "Impacto observado (qualitativo + numérico)" },
+          category: { type: "string", description: "Categoria (ex: oferta, copy, criativo, público, funil, canal)" },
+          tags: { type: "array", items: { type: "string" }, description: "Tags para busca posterior" },
+        },
+        required: ["project_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_learning",
+      description: "Edita um aprendizado existente (texto, impacto, categoria, tags). NÃO altera approved_by_ponto_focal — só Ponto Focal aprova via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          learning_id: { type: "string", description: "UUID do aprendizado" },
+          title: { type: "string" },
+          description: { type: "string" },
+          impact: { type: "string" },
+          category: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["learning_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_strategic_plan",
       description: "Cria um plano estratégico PROFUNDO e EDITORIAL para o cliente atual. NÃO crie nada raso: gere ao menos 3 personas detalhadas, 5+ objetivos SMART numéricos, 6+ KPIs categorizados, funil topo/meio/fundo estruturado, diagnóstico (oportunidades + riscos + concorrência), alocação de budget por canal e por etapa, e plano de execução com 3 ondas (90 dias) + governança. Baseie-se em briefing, métricas históricas, segmento e contexto real do cliente.",
       parameters: {
@@ -658,6 +754,102 @@ async function executeTool(
         return { success: true, message: `Projeto "${args.name}" criado com sucesso em status "${projectPayload.status}".` };
       }
 
+      case "list_projects": {
+        const limit = Math.min(Number(args.limit) || 20, 50);
+        const { data, error } = await db
+          .from("projects")
+          .select("id, name, status, start_date, end_date, budget, description")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        const list = (data || []).map((p: any) =>
+          `- \`${p.id}\` [${p.status || "—"}] ${p.name}${p.budget ? ` — R$${Number(p.budget).toLocaleString("pt-BR")}` : ""}${p.start_date ? ` (${p.start_date}${p.end_date ? ` → ${p.end_date}` : ""})` : ""}`
+        ).join("\n");
+        return { success: true, message: data && data.length ? `Projetos do cliente:\n${list}` : "Nenhum projeto encontrado para este cliente." };
+      }
+
+      case "update_project": {
+        const projectId = args.project_id as string;
+        if (!projectId) return { success: false, message: "project_id é obrigatório." };
+        // Scope check
+        const { data: existing, error: chkErr } = await db
+          .from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (chkErr) throw chkErr;
+        if (!existing) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const update: Record<string, unknown> = {};
+        for (const key of ["name", "description", "start_date", "end_date", "budget", "status"]) {
+          if (args[key] !== undefined && args[key] !== null) update[key] = args[key];
+        }
+        if (Object.keys(update).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("projects").update(update).eq("id", projectId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Projeto "${existing.name}" atualizado (${Object.keys(update).join(", ")}).` };
+      }
+
+      case "link_task_to_project": {
+        const taskId = args.task_id as string;
+        const projectId = args.project_id as string;
+        if (!taskId || !projectId) return { success: false, message: "task_id e project_id são obrigatórios." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const { data: task } = await db.from("tasks").select("id, title").eq("id", taskId).eq("client_id", clientId).maybeSingle();
+        if (!task) return { success: false, message: "Tarefa não encontrada para este cliente." };
+        const { error } = await db.from("tasks").update({ project_id: projectId }).eq("id", taskId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Tarefa "${task.title}" vinculada ao projeto "${proj.name}".` };
+      }
+
+      case "link_campaign_to_project": {
+        const campaignId = args.campaign_id as string;
+        const projectId = args.project_id as string;
+        if (!campaignId || !projectId) return { success: false, message: "campaign_id e project_id são obrigatórios." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const { data: camp } = await db.from("campaigns").select("id, name").eq("id", campaignId).eq("client_id", clientId).maybeSingle();
+        if (!camp) return { success: false, message: "Campanha não encontrada para este cliente." };
+        const { error } = await db.from("campaigns").update({ project_id: projectId }).eq("id", campaignId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Campanha "${camp.name}" vinculada ao projeto "${proj.name}".` };
+      }
+
+      case "create_learning": {
+        const projectId = args.project_id as string;
+        if (!projectId) return { success: false, message: "project_id é obrigatório." };
+        const { data: proj } = await db.from("projects").select("id, name").eq("id", projectId).eq("client_id", clientId).maybeSingle();
+        if (!proj) return { success: false, message: "Projeto não encontrado para este cliente." };
+        const payload: Record<string, unknown> = {
+          client_id: clientId,
+          project_id: projectId,
+          title: args.title as string,
+          created_by: userId,
+          approved_by_ponto_focal: false,
+        };
+        for (const key of ["description", "impact", "category"]) {
+          if (args[key] !== undefined && args[key] !== null) payload[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) payload.tags = args.tags;
+        const { error } = await db.from("learnings").insert(payload);
+        if (error) throw error;
+        return { success: true, message: `Aprendizado "${args.title}" registrado no projeto "${proj.name}". Aguardando aprovação do Ponto Focal via UI.` };
+      }
+
+      case "update_learning": {
+        const learningId = args.learning_id as string;
+        if (!learningId) return { success: false, message: "learning_id é obrigatório." };
+        const { data: existing } = await db.from("learnings").select("id, title").eq("id", learningId).eq("client_id", clientId).maybeSingle();
+        if (!existing) return { success: false, message: "Aprendizado não encontrado para este cliente." };
+        const update: Record<string, unknown> = {};
+        for (const key of ["title", "description", "impact", "category"]) {
+          if (args[key] !== undefined && args[key] !== null) update[key] = args[key];
+        }
+        if (Array.isArray(args.tags)) update.tags = args.tags;
+        if (Object.keys(update).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("learnings").update(update).eq("id", learningId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Aprendizado "${existing.title}" atualizado (${Object.keys(update).join(", ")}).` };
+      }
+
       case "create_strategic_plan": {
         const planPayload: Record<string, unknown> = {
           client_id: clientId,
@@ -1092,6 +1284,7 @@ serve(async (req) => {
       clientRes, campaignsRes, metricsRes, plansRes, briefingsRes, tasksRes, filesRes,
       goalsRes, offersRes, channelsRes, constraintsRes, decisionsRes, actionsRes, insightsRes,
       convRes, creativeDemandsRes, creativeDeliverablesRes,
+      projectsRes, learningsRes,
     ] = await Promise.all([
       db.from("clients").select("name, segment, phase, status").eq("id", client_id).single(),
       db.from("campaigns")
@@ -1168,6 +1361,16 @@ serve(async (req) => {
         .neq("status", "delivered")
         .order("created_at", { ascending: false })
         .limit(40),
+      db.from("projects")
+        .select("id, name, status, start_date, end_date, budget, description")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      db.from("learnings")
+        .select("id, title, impact, category, project_id, approved_by_ponto_focal, created_at")
+        .eq("client_id", client_id)
+        .order("created_at", { ascending: false })
+        .limit(8),
     ]);
 
     const client = clientRes.data;
@@ -1187,6 +1390,8 @@ serve(async (req) => {
     const conversationState = convRes.data;
     const creativeDemands = creativeDemandsRes.data || [];
     const creativeDeliverables = creativeDeliverablesRes.data || [];
+    const projects = projectsRes.data || [];
+    const learnings = learningsRes.data || [];
 
     // Build context block
     const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1370,6 +1575,35 @@ serve(async (req) => {
       context += "\n";
     }
 
+    if (projects.length > 0) {
+      context += `## 📦 Projetos (${projects.length})\n`;
+      for (const p of projects) {
+        const linkedTasks = tasks.filter((t: any) => (t as any).project_id === p.id);
+        const doneTasks = linkedTasks.filter((t: any) => t.status === "completed" || t.status === "done").length;
+        const linkedCamps = campaigns.filter((c: any) => (c as any).project_id === p.id).length;
+        const linkedLearn = learnings.filter((l: any) => l.project_id === p.id).length;
+        const period = p.start_date ? `${p.start_date}${p.end_date ? ` → ${p.end_date}` : ""}` : "—";
+        const budget = p.budget ? `R$${Number(p.budget).toLocaleString("pt-BR")}` : "—";
+        context += `- \`${String(p.id).slice(0,8)}\` [${p.status || "—"}] **${p.name}** — ${budget} (${period})\n`;
+        if (p.description) context += `   └ hipótese: ${String(p.description).slice(0, 160)}\n`;
+        context += `   └ tarefas: ${linkedTasks.length} (${doneTasks} concluídas) • campanhas: ${linkedCamps} • aprendizados: ${linkedLearn}\n`;
+      }
+      context += "\n";
+    }
+
+    if (learnings.length > 0) {
+      context += `## 🎓 Aprendizados Recentes (${learnings.length})\n`;
+      for (const l of learnings) {
+        const d = l.created_at ? new Date(l.created_at as string).toLocaleDateString("pt-BR") : "";
+        const appr = l.approved_by_ponto_focal ? " ✅ aprovado" : " ⏳ aguardando aprovação";
+        const cat = l.category ? `[${l.category}] ` : "";
+        const proj = l.project_id ? ` • projeto \`${String(l.project_id).slice(0,8)}\`` : "";
+        context += `- \`${String(l.id).slice(0,8)}\` (${d}) ${cat}**${l.title}**${appr}${proj}\n`;
+        if (l.impact) context += `   └ impacto: ${String(l.impact).slice(0, 160)}\n`;
+      }
+      context += "\n";
+    }
+
     if (conversationState) {
       const stateBits: string[] = [];
       if (conversationState.current_topic) stateBits.push(`tópico: ${conversationState.current_topic}`);
@@ -1437,9 +1671,15 @@ serve(async (req) => {
         `- **create_task**: Criar tarefas com prioridade e prazo.\n` +
         `- **upsert_traffic_metrics**: Registrar/atualizar métricas mensais.\n` +
         `- **create_campaign**: Estruturar campanhas técnicas (use briefing + plano + métricas para targeting, budget, copy, bidding). Nomenclatura: [Plataforma] Objetivo - Público - Período. Status: draft.\n` +
-        `- **create_project**: Criar projetos (nome, escopo, datas, budget).\n` +
+        `- **create_project**: Criar projetos como ONDAS DE EXECUÇÃO (description = HIPÓTESE/OBJETIVO).\n` +
         `- **create_strategic_plan**: Gera plano estratégico EDITORIAL e PROFUNDO. NÃO crie planos rasos. Mínimo OBRIGATÓRIO: sumário executivo, diagnóstico (situação + 3 oportunidades + 3 riscos + concorrência), 3+ personas profundas (demografia, dores, desejos, objeções, canais, mensagem-chave), 5+ objetivos SMART numéricos com baseline/meta/prazo, 6+ KPIs categorizados (aquisição/conversão/retenção), funil estruturado em topo/meio/fundo (goal, canais, criativos, KPI, % budget), alocação de budget por canal e por etapa, plano de execução com 3 ondas (90 dias, entregas e marcos) e governança (cadência, relatórios, ferramentas). Use SEMPRE briefing, métricas históricas, segmento e contexto real. Linguagem profissional de consultoria sênior.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
+        `## 📦 Projetos & Aprendizados (ondas de execução do plano)\n` +
+        `- **list_projects**: liste antes de agir para obter o UUID correto.\n` +
+        `- **update_project**: mover status (planning/active/paused/completed), refinar hipótese (description), ajustar datas/budget.\n` +
+        `- **link_task_to_project** / **link_campaign_to_project**: amarra entregas (tasks/campaigns) à onda certa. Use IDs do contexto.\n` +
+        `- **create_learning**: registra hipótese validada/invalidada com impacto + categoria + tags. Sempre vinculado a um project_id.\n` +
+        `- **update_learning**: edita texto/tags. NUNCA marque como aprovado — só o Ponto Focal aprova pela UI em /admin/projetos.\n\n` +
         `## 🎨 Demandas Criativas (orquestração de produção)\n` +
         `- **create_creative_demand**: Cria a demanda (briefing pai). Use ao iniciar uma produção (vídeo, copy, arte, enxoval).\n` +
         `- **create_creative_deliverable**: Cria entregáveis vinculados (video_copy, static_copy, video, image, media_kit). Pode já incluir o conteúdo textual.\n` +
