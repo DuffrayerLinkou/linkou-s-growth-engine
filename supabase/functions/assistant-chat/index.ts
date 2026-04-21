@@ -913,6 +913,10 @@ serve(async (req) => {
         `- **create_strategic_plan**: Gerar plano completo (personas, KPIs SMART, funil topo/meio/fundo, alocação de budget % por canal, tipos de campanha) baseado em dados reais.\n` +
         `- **create_briefing**: Estruturar briefing (nicho, público, objetivos, diferenciais, concorrentes, budget).\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
+        `## Memória de longo prazo (use com critério)\n` +
+        `- **log_decision**: registre quando o usuário FECHAR uma decisão relevante (não use em conversas casuais).\n` +
+        `- **record_insight**: no MODO AUDITOR, ao identificar oportunidade/risco/diagnóstico com evidência real, persista para validação posterior.\n` +
+        `- **set_conversation_state**: atualize tópico/objetivo/pendências quando o foco mudar.\n\n` +
         `## Análise estratégica (suporte ao AUDITOR e ESTRATEGISTA)\n` +
         `Compare CPL/CPV entre meses, calcule variação %, identifique gargalos no funil (impressão→clique→lead→SQL→venda), aponte canais com melhor ROAS, sugira realocação de budget e projete cenários com base em histórico.\n\n` +
         `Ao inferir datas, use ano atual (${new Date().getFullYear()}) e mês atual como referência.\n\n` +
