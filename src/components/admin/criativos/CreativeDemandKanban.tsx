@@ -3,17 +3,19 @@ import { demandStatusConfig, priorityConfig, type DemandStatus, type Priority } 
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 
-interface Demand {
+type Demand = {
   id: string;
   client_id: string;
   title: string;
+  briefing: string | null;
+  objective: string | null;
   platform: string | null;
   format: string | null;
   deadline: string | null;
   priority: Priority;
   status: DemandStatus;
   created_at: string;
-}
+};
 
 interface Props {
   demands: Demand[];
