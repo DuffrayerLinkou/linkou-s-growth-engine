@@ -2,6 +2,7 @@ import { memo } from "react";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { AnimatedCTA } from "./AnimatedCTA";
+import linkouzinhoHero from "@/assets/linkouzinho-hero.png";
 
 const stats = [
   { value: "25-40%", label: "do orçamento de mídia é desperdiçado em campanhas mal configuradas" },
@@ -44,8 +45,8 @@ function HeroComponent() {
 
         {/* Decorative blob on the right */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[45%] h-[70%] hidden lg:block pointer-events-none">
-          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
-          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/15 to-accent/20 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
+          <div className="absolute inset-0 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] bg-gradient-to-br from-primary/15 via-primary/8 to-transparent blur-xl animate-[pulse_6s_ease-in-out_infinite]" />
+          <div className="absolute inset-8 rounded-[50%_50%_45%_55%/45%_55%_50%_50%] bg-gradient-to-tr from-primary/10 to-accent/15 blur-lg animate-[pulse_8s_ease-in-out_infinite_1s]" />
           <div className="absolute inset-16 rounded-[45%_55%_50%_50%/55%_45%_55%_45%] border border-primary/10" />
         </div>
 
@@ -120,7 +121,26 @@ function HeroComponent() {
             </div>
 
             {/* Right: Empty space for blob on desktop, hidden on mobile */}
-            <div className="hidden lg:block" />
+            <div className="hidden lg:flex items-center justify-center relative">
+              <m.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="relative z-10"
+              >
+                <m.img
+                  src={linkouzinhoHero}
+                  alt="Linkouzinho — assistente IA da Agência Linkou"
+                  loading="eager"
+                  // @ts-expect-error fetchpriority is a valid HTML attribute not yet in React types
+                  fetchpriority="high"
+                  className="w-full max-w-[420px] drop-shadow-2xl select-none"
+                  draggable={false}
+                  animate={{ y: [0, -12, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </m.div>
+            </div>
           </div>
 
           {/* Stats - grid 2x2 mobile, horizontal desktop */}
