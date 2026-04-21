@@ -612,6 +612,112 @@ const clientTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_keywords",
+      description: "Lista as palavras-chave (SEO) e clusters do cliente atual com id curto. Use ANTES de update_keyword/record_keyword_ranking para obter o UUID correto, ou quando o admin pedir 'mostra as keywords', 'lista palavras-chave', 'quais termos estamos monitorando'.",
+      parameters: {
+        type: "object",
+        properties: {
+          filter: { type: "string", description: "Filtro opcional por status (target/ranking/opportunity/archived) ou texto parcial do termo." },
+          limit: { type: "number", description: "Máx. de keywords. Padrão 30." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_keyword",
+      description: "Cria uma nova palavra-chave (SEO) para o cliente atual. Use quando o admin pedir 'cadastra a keyword X', 'adiciona o termo Y', 'monitorar essa palavra'. NUNCA invente volume/dificuldade/CPC — só preencha se o admin disser explicitamente; caso contrário deixe nulo e oriente importar de Semrush/Ahrefs/Keyword Planner.",
+      parameters: {
+        type: "object",
+        properties: {
+          term: { type: "string", description: "Termo da palavra-chave (ex: 'consultoria de tráfego')" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção de busca. Padrão: informational" },
+          search_volume: { type: "number", description: "Volume mensal de busca (opcional, só se fornecido pelo admin)" },
+          difficulty: { type: "number", description: "Dificuldade SEO 0-100 (opcional)" },
+          cpc: { type: "number", description: "CPC estimado em R$ (opcional)" },
+          target_url: { type: "string", description: "URL do site do cliente alvo desse termo (opcional)" },
+          cluster_id: { type: "string", description: "UUID do cluster/pillar (opcional)" },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"], description: "Status. Padrão: target" },
+          notes: { type: "string", description: "Notas livres (opcional)" },
+          tags: { type: "array", items: { type: "string" }, description: "Tags livres (opcional)" },
+        },
+        required: ["term"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_keyword",
+      description: "Atualiza qualquer campo de uma palavra-chave existente do cliente atual: posição, status, intenção, volume, dificuldade, CPC, URL alvo, cluster, vínculos com campanha/tarefa, tags, notas.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword_id: { type: "string", description: "UUID da keyword" },
+          term: { type: "string" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"] },
+          search_volume: { type: "number" },
+          difficulty: { type: "number" },
+          cpc: { type: "number" },
+          current_position: { type: "number", description: "Posição atual no Google (1-100). Atualiza apenas o campo, não cria histórico — para isso use record_keyword_ranking." },
+          target_url: { type: "string" },
+          cluster_id: { type: "string" },
+          campaign_id: { type: "string", description: "UUID de campanha vinculada (opcional)" },
+          task_id: { type: "string", description: "UUID de tarefa vinculada (opcional)" },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"] },
+          notes: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+        },
+        required: ["keyword_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_keyword_cluster",
+      description: "Cria um cluster/pillar de conteúdo SEO (agrupa keywords relacionadas em torno de um tema-pilar). Use ao organizar estratégia de conteúdo: 'cria um cluster para cursos online', 'novo pillar sobre gestão de tráfego'.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome do cluster (ex: 'Fundo de funil — cursos online')" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção dominante do cluster (opcional)" },
+          pillar_url: { type: "string", description: "URL do artigo pillar (opcional)" },
+          description: { type: "string", description: "Descrição/contexto do cluster (opcional)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "record_keyword_ranking",
+      description: "Registra um ponto histórico de posição para uma keyword (alimenta o sparkline de evolução) E atualiza o current_position. Use quando o admin disser 'a keyword X subiu pra posição Y', 'registra ranking', 'caiu pra posição N'.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword_id: { type: "string", description: "UUID da keyword" },
+          position: { type: "number", description: "Posição atual no Google (1-100)" },
+          notes: { type: "string", description: "Notas opcionais sobre a checagem" },
+          source: { type: "string", description: "Origem da medição (manual, gsc, serpapi). Padrão: manual" },
+        },
+        required: ["keyword_id", "position"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "analyze_keyword_opportunities",
+      description: "Lê todas as keywords do cliente, cruza volume × dificuldade × posição atual e devolve recomendações priorizadas: quick wins (pos 11-20), candidatas a artigo de blog (alto vol + baixa dif + sem ranking), candidatas a Google Ads (alta intenção comercial + baixo orgânico), gaps por cluster. Use quando o admin pedir 'analisa oportunidades de SEO', 'onde devemos focar', 'quick wins'.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
