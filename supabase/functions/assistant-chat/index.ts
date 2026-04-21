@@ -23,6 +23,91 @@ const adminTools = [
   {
     type: "function",
     function: {
+      name: "create_creative_demand",
+      description: "Cria uma DEMANDA CRIATIVA para o cliente atual (briefing de produção: copy de vídeo, copy estática, vídeo, arte ou enxoval de mídia). Use quando o admin pedir 'cria demanda criativa', 'novo briefing de criativo', 'pedir produção de vídeo/post/arte'. Status inicial: briefing.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da demanda (ex: 'Reel de lançamento Abril')" },
+          briefing: { type: "string", description: "Briefing detalhado (referências, tom, mensagem-chave)" },
+          objective: { type: "string", description: "Objetivo da peça (ex: gerar leads, branding, conversão)" },
+          platform: { type: "string", description: "Plataforma alvo (Instagram, TikTok, YouTube, Meta Ads, etc.)" },
+          format: { type: "string", description: "Formato (Reel, Stories, Feed, VSL, Carrossel, etc.)" },
+          deadline: { type: "string", description: "Prazo no formato YYYY-MM-DD" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"], description: "Prioridade. Padrão: medium" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_creative_deliverable",
+      description: "Cria um ENTREGÁVEL vinculado a uma demanda criativa (uma peça específica: copy de vídeo, copy estática, vídeo, imagem, enxoval). Use depois de criar/identificar a demanda. Pode incluir o conteúdo (texto/copy) já neste momento se o admin ditou.",
+      parameters: {
+        type: "object",
+        properties: {
+          demand_id: { type: "string", description: "UUID da demanda criativa pai" },
+          type: { type: "string", enum: ["video_copy", "static_copy", "video", "image", "media_kit"], description: "Tipo do entregável" },
+          title: { type: "string", description: "Título do entregável (ex: 'Roteiro Reel 30s')" },
+          content: { type: "string", description: "Conteúdo textual da peça (roteiro, copy, headline+corpo+CTA). Opcional." },
+          status: { type: "string", enum: ["in_production", "in_approval", "adjustments", "delivered"], description: "Status inicial. Padrão: in_production. NÃO use 'approved' (somente Ponto Focal via UI)." },
+        },
+        required: ["demand_id", "type", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_demand_status",
+      description: "Move o status de uma demanda criativa. Use para sinalizar que a demanda saiu do briefing, está em produção, em aprovação, em ajustes ou foi entregue. NÃO marca 'approved' — aprovação é exclusiva do Ponto Focal via UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          demand_id: { type: "string", description: "UUID da demanda" },
+          status: { type: "string", enum: ["briefing", "in_production", "in_approval", "adjustments", "delivered"], description: "Novo status" },
+        },
+        required: ["demand_id", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_deliverable_status",
+      description: "Move o status de um entregável criativo. NÃO permite 'approved' — aprovação só pelo Ponto Focal via UI em /cliente/criativos.",
+      parameters: {
+        type: "object",
+        properties: {
+          deliverable_id: { type: "string", description: "UUID do entregável" },
+          status: { type: "string", enum: ["in_production", "in_approval", "adjustments", "delivered"], description: "Novo status" },
+          feedback: { type: "string", description: "Notas/feedback opcional sobre a transição" },
+        },
+        required: ["deliverable_id", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_deliverable_version",
+      description: "Adiciona uma NOVA VERSÃO de copy/texto a um entregável criativo. Incrementa current_version. Use quando o admin ditar uma copy/roteiro novo no chat ou pedir 'atualiza a copy do entregável X com isso'. Para versões de arquivo (vídeo, arte), o upload deve ser feito pela UI.",
+      parameters: {
+        type: "object",
+        properties: {
+          deliverable_id: { type: "string", description: "UUID do entregável" },
+          content: { type: "string", description: "Texto/copy da nova versão (roteiro, headline+corpo+CTA, etc.)" },
+          notes: { type: "string", description: "Notas sobre o que mudou nessa versão (opcional)" },
+        },
+        required: ["deliverable_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_appointment",
       description: "Agenda uma reunião/compromisso para o cliente atual. Use quando o admin pedir para agendar, marcar reunião, call, etc.",
       parameters: {
