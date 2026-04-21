@@ -493,15 +493,47 @@ const memoryTools = [
     },
   },
 ];
+
+// ── Client-mode tools (limitadas) ──────────────────────────────────────
+const clientTools = [
+  {
+    type: "function",
+    function: {
+      name: "request_creative_demand",
+      description: "Cria uma nova DEMANDA CRIATIVA em status 'briefing' para o cliente atual. Use quando o usuário cliente pedir 'quero um vídeo', 'preciso de uma copy', 'cria um post', 'monta um briefing pra produção'. Pergunte pelos campos faltantes (título, formato, prazo) ANTES de chamar se a mensagem estiver vaga.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título curto da demanda (ex: 'Reel pro lançamento da semana que vem')" },
+          briefing: { type: "string", description: "Descrição do que o cliente quer (referências, tom, mensagem-chave)" },
+          objective: { type: "string", description: "Objetivo (ex: gerar leads, branding)" },
+          platform: { type: "string", description: "Plataforma alvo (Instagram, TikTok, etc.)" },
+          format: { type: "string", description: "Formato (Reel, Stories, Feed, Carrossel, VSL...)" },
+          deadline: { type: "string", description: "Prazo desejado (YYYY-MM-DD)" },
+          priority: { type: "string", enum: ["low", "medium", "high"], description: "Padrão: medium" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
   db: ReturnType<typeof createClient>,
   toolName: string,
   args: Record<string, unknown>,
   clientId: string,
-  userId: string
+  userId: string,
+  mode: string = "admin"
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // Client-mode allowlist: bloqueia qualquer tool fora do conjunto permitido
+    if (mode === "client") {
+      const allowed = new Set(["request_creative_demand", "set_conversation_state"]);
+      if (!allowed.has(toolName)) {
+        return { success: false, message: "Ação restrita à equipe interna." };
+      }
+    }
     switch (toolName) {
       case "create_appointment": {
         const { error } = await db.from("appointments").insert({
