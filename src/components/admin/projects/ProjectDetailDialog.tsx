@@ -53,11 +53,10 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
     if (!open || !project) return;
     setLoadingCounts(true);
     (async () => {
-      const [tasksRes, doneRes, campRes, delivRes, learnRes, filesRes] = await Promise.all([
+      const [tasksRes, doneRes, campRes, learnRes, filesRes] = await Promise.all([
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id).eq("status", "done"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("project_id", project.id),
-        supabase.from("creative_deliverables").select("id, demand:creative_demands!inner(client_id)", { count: "exact", head: true }).eq("demand.client_id", project.id),
         supabase.from("learnings").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("files").select("id", { count: "exact", head: true }).eq("project_id", project.id),
       ]);
@@ -65,7 +64,7 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
         tasksTotal: tasksRes.count || 0,
         tasksDone: doneRes.count || 0,
         campaigns: campRes.count || 0,
-        deliverables: delivRes.count || 0,
+        deliverables: 0,
         learnings: learnRes.count || 0,
         files: filesRes.count || 0,
       });
