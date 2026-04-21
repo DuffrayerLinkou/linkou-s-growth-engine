@@ -1,41 +1,22 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useState, useEffect, useMemo } from "react";
 import {
   FolderKanban,
   Search,
   Plus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  Trash2,
-  Calendar,
-  DollarSign,
   Building2,
   Loader2,
   Filter,
+  DollarSign,
+  Sparkles,
+  Lightbulb,
+  TrendingUp,
 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +45,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ProjectCard, type ProjectCardData } from "@/components/admin/projects/ProjectCard";
+import { ProjectDetailDialog } from "@/components/admin/projects/ProjectDetailDialog";
 
 interface Client {
   id: string;
