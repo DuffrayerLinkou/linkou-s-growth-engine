@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { demandStatusConfig, priorityConfig, type DemandStatus, type Priority } from "@/lib/creative-config";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { CreativeDemandActions } from "./CreativeDemandActions";
 
 type Demand = {
   id: string;
@@ -21,11 +22,12 @@ interface Props {
   demands: Demand[];
   clientNames: Record<string, string>;
   onSelect: (d: Demand) => void;
+  clients: { id: string; name: string }[];
 }
 
 const COLUMNS: DemandStatus[] = ["briefing", "in_production", "in_approval", "adjustments", "approved", "delivered"];
 
-export function CreativeDemandKanban({ demands, clientNames, onSelect }: Props) {
+export function CreativeDemandKanban({ demands, clientNames, onSelect, clients }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
       {COLUMNS.map((col) => {
@@ -39,14 +41,24 @@ export function CreativeDemandKanban({ demands, clientNames, onSelect }: Props) 
             </div>
             <div className="space-y-2 min-h-[200px] rounded-lg bg-muted/30 p-2">
               {items.map((d) => (
-                <button
+                <div
                   key={d.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelect(d)}
-                  className="w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 hover:shadow-sm transition-all"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(d); } }}
+                  className="group relative w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer"
                 >
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 truncate">
-                    {clientNames[d.client_id] || "Cliente"}
-                  </p>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate flex-1">
+                      {clientNames[d.client_id] || "Cliente"}
+                    </p>
+                    <CreativeDemandActions
+                      demand={d}
+                      clients={clients}
+                      onOpen={() => onSelect(d)}
+                    />
+                  </div>
                   <h4 className="text-sm font-semibold line-clamp-2 mb-2">{d.title}</h4>
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="secondary" className={`text-[9px] ${priorityConfig[d.priority].color}`}>
@@ -59,7 +71,7 @@ export function CreativeDemandKanban({ demands, clientNames, onSelect }: Props) 
                       </Badge>
                     )}
                   </div>
-                </button>
+                </div>
               ))}
               {items.length === 0 && (
                 <p className="text-[11px] text-center text-muted-foreground/60 py-4 italic">vazio</p>
