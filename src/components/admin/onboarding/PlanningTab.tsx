@@ -237,7 +237,16 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
     else if (plan.personas?.description) personas = [{ name: "Persona", demographics: plan.personas.description }];
     // funnel
     let funnel: FunnelStrategy = { topo: { ...emptyStage }, meio: { ...emptyStage }, fundo: { ...emptyStage } };
-    if (plan.funnel_strategy && typeof plan.funnel_strategy === "object") funnel = { ...funnel, ...plan.funnel_strategy };
+    let parsedFunnel: any = plan.funnel_strategy;
+    if (typeof parsedFunnel === "string") {
+      const trimmed = parsedFunnel.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try { parsedFunnel = JSON.parse(trimmed); } catch { /* keep as string */ }
+      }
+    }
+    if (parsedFunnel && typeof parsedFunnel === "object" && !Array.isArray(parsedFunnel)) {
+      funnel = { ...funnel, ...parsedFunnel };
+    }
 
     return {
       client_id: plan.client_id,

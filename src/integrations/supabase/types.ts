@@ -2396,7 +2396,7 @@ export type Database = {
           diagnostic: Json | null
           execution_plan: Json | null
           executive_summary: string | null
-          funnel_strategy: string | null
+          funnel_strategy: Json | null
           id: string
           kpis: Json | null
           objectives: Json | null
@@ -2416,7 +2416,7 @@ export type Database = {
           diagnostic?: Json | null
           execution_plan?: Json | null
           executive_summary?: string | null
-          funnel_strategy?: string | null
+          funnel_strategy?: Json | null
           id?: string
           kpis?: Json | null
           objectives?: Json | null
@@ -2436,7 +2436,7 @@ export type Database = {
           diagnostic?: Json | null
           execution_plan?: Json | null
           executive_summary?: string | null
-          funnel_strategy?: string | null
+          funnel_strategy?: Json | null
           id?: string
           kpis?: Json | null
           objectives?: Json | null
