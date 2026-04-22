@@ -223,46 +223,78 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
 
   // Migra estruturas antigas → novas ao abrir edição
   const normalizeFromDB = (plan: any): PlanForm => {
+    // Helper: tenta parsear JSON-string, senão devolve original
+    const tryParse = (v: any) => {
+      if (typeof v !== "string") return v;
+      const t = v.trim();
+      if (t.startsWith("{") || t.startsWith("[")) {
+        try { return JSON.parse(t); } catch { return v; }
+      }
+      return v;
+    };
+    const safePlan = plan || {};
     // objectives
     let objectives: Objective[] = [];
-    if (Array.isArray(plan.objectives)) objectives = plan.objectives;
-    else if (plan.objectives?.list) objectives = plan.objectives.list.map((s: string) => ({ name: s }));
+    const rawObjectives = tryParse(safePlan.objectives);
+    if (Array.isArray(rawObjectives)) {
+      objectives = rawObjectives.map((o: any) => typeof o === "string" ? { name: o } : (o && typeof o === "object" ? o : { name: String(o ?? "") }));
+    } else if (rawObjectives && typeof rawObjectives === "object" && Array.isArray((rawObjectives as any).list)) {
+      objectives = (rawObjectives as any).list.map((s: any) => ({ name: typeof s === "string" ? s : String(s ?? "") }));
+    }
     // kpis
     let kpis: KPI[] = [];
-    if (Array.isArray(plan.kpis)) kpis = plan.kpis;
-    else if (plan.kpis?.list) kpis = plan.kpis.list.map((s: string) => ({ name: s }));
+    const rawKpis = tryParse(safePlan.kpis);
+    if (Array.isArray(rawKpis)) {
+      kpis = rawKpis.map((k: any) => typeof k === "string" ? { name: k } : (k && typeof k === "object" ? k : { name: String(k ?? "") }));
+    } else if (rawKpis && typeof rawKpis === "object" && Array.isArray((rawKpis as any).list)) {
+      kpis = (rawKpis as any).list.map((s: any) => ({ name: typeof s === "string" ? s : String(s ?? "") }));
+    }
     // personas
     let personas: Persona[] = [];
-    if (Array.isArray(plan.personas)) personas = plan.personas;
-    else if (plan.personas?.description) personas = [{ name: "Persona", demographics: plan.personas.description }];
+    const rawPersonas = tryParse(safePlan.personas);
+    if (Array.isArray(rawPersonas)) {
+      personas = rawPersonas.map((p: any) => typeof p === "string" ? { name: p } : (p && typeof p === "object" ? p : { name: String(p ?? "") }));
+    } else if (rawPersonas && typeof rawPersonas === "object" && (rawPersonas as any).description) {
+      personas = [{ name: "Persona", demographics: String((rawPersonas as any).description) }];
+    }
     // funnel
     let funnel: FunnelStrategy = { topo: { ...emptyStage }, meio: { ...emptyStage }, fundo: { ...emptyStage } };
-    let parsedFunnel: any = plan.funnel_strategy;
-    if (typeof parsedFunnel === "string") {
-      const trimmed = parsedFunnel.trim();
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-        try { parsedFunnel = JSON.parse(trimmed); } catch { /* keep as string */ }
-      }
-    }
+    const parsedFunnel = tryParse(safePlan.funnel_strategy);
     if (parsedFunnel && typeof parsedFunnel === "object" && !Array.isArray(parsedFunnel)) {
       funnel = { ...funnel, ...parsedFunnel };
     }
 
+    // diagnostic / execution_plan / budget — defaults seguros se string/null/inválido
+    const parsedDiag = tryParse(safePlan.diagnostic);
+    const diagnostic: Diagnostic = (parsedDiag && typeof parsedDiag === "object" && !Array.isArray(parsedDiag))
+      ? { current_situation: "", competitors: [], opportunities: [], risks: [], positioning: "", ...parsedDiag }
+      : { current_situation: "", competitors: [], opportunities: [], risks: [], positioning: "" };
+
+    const parsedExec = tryParse(safePlan.execution_plan);
+    const execution_plan: ExecutionPlan = (parsedExec && typeof parsedExec === "object" && !Array.isArray(parsedExec))
+      ? { waves: Array.isArray((parsedExec as any).waves) ? (parsedExec as any).waves : [], governance: { call_cadence: "", reports: "", tools: "", responsibles: "", ...((parsedExec as any).governance || {}) } }
+      : { waves: [], governance: { call_cadence: "", reports: "", tools: "", responsibles: "" } };
+
+    const parsedBudget = tryParse(safePlan.budget_allocation);
+    const budget_allocation: BudgetAllocation = (parsedBudget && typeof parsedBudget === "object" && !Array.isArray(parsedBudget))
+      ? { total_monthly: 0, by_channel: {}, by_phase: { topo: 30, meio: 40, fundo: 30 }, reserve_pct: 10, ...parsedBudget }
+      : { total_monthly: 0, by_channel: {}, by_phase: { topo: 30, meio: 40, fundo: 30 }, reserve_pct: 10 };
+
     return {
-      client_id: plan.client_id,
-      title: plan.title || "",
-      status: plan.status || "draft",
-      timeline_start: plan.timeline_start || "",
-      timeline_end: plan.timeline_end || "",
-      executive_summary: plan.executive_summary || "",
+      client_id: safePlan.client_id || "",
+      title: safePlan.title || "",
+      status: safePlan.status || "draft",
+      timeline_start: safePlan.timeline_start || "",
+      timeline_end: safePlan.timeline_end || "",
+      executive_summary: safePlan.executive_summary || "",
       objectives,
       kpis,
       personas,
       funnel_strategy: funnel,
-      campaign_types: plan.campaign_types || [],
-      diagnostic: plan.diagnostic || { current_situation: "", competitors: [], opportunities: [], risks: [], positioning: "" },
-      execution_plan: plan.execution_plan || { waves: [], governance: { call_cadence: "", reports: "", tools: "", responsibles: "" } },
-      budget_allocation: plan.budget_allocation || { total_monthly: 0, by_channel: {}, by_phase: { topo: 30, meio: 40, fundo: 30 }, reserve_pct: 10 },
+      campaign_types: Array.isArray(safePlan.campaign_types) ? safePlan.campaign_types : [],
+      diagnostic,
+      execution_plan,
+      budget_allocation,
     };
   };
 
