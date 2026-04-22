@@ -787,12 +787,11 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
           </DialogHeader>
           {viewingPlan && (() => {
             const v = normalizeFromDB(viewingPlan);
+            const vStatus = statusConfig[viewingPlan.status as keyof typeof statusConfig] || statusConfig.draft;
             return (
               <div className="space-y-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge className={statusConfig[viewingPlan.status as keyof typeof statusConfig]?.color}>
-                    {statusConfig[viewingPlan.status as keyof typeof statusConfig]?.label}
-                  </Badge>
+                  <Badge className={vStatus.color}>{vStatus.label}</Badge>
                   <span className="text-xs text-muted-foreground">{getClientName(viewingPlan.client_id)}</span>
                 </div>
                 {v.executive_summary && <div className="p-3 bg-muted/50 rounded-lg"><p className="text-xs text-muted-foreground mb-1">Sumário</p><p>{v.executive_summary}</p></div>}
