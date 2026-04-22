@@ -1,62 +1,57 @@
 
 
-## Bug: "Estratégia de Funil" mostra JSON cru no Plano Estratégico
+## Tela branca ao abrir "Plano" no Onboarding — diagnóstico + correção defensiva
 
-### Diagnóstico
+### Cenário atual
 
-A coluna `strategic_plans.funnel_strategy` está como **TEXT** no banco, enquanto as outras seções estruturadas (`objectives`, `kpis`, `personas`, `budget_allocation`, `diagnostic`, `execution_plan`) estão como **JSONB**.
+- Você relatou **tela branca** ao clicar em **Ver / Editar** na aba **Plano** do Onboarding (admin).
+- Não há logs de erro de runtime capturados, e o banco hoje está com **0 planos** (`strategic_plans` vazio).
+- Sem o erro exato, vou aplicar **dois passes**: ativar instrumentação para capturar o crash + blindar os pontos mais prováveis de quebra com base nas mudanças recentes.
 
-Quando o admin salva o funil estruturado (`{topo, meio, fundo}`) pelo `PlanningTab`, o Supabase serializa o objeto como string JSON (porque a coluna é TEXT). Na hora de exibir, o componente faz:
+### O que vou fazer
 
-```ts
-const isFunnelObject = funnel && typeof funnel === "object" && !Array.isArray(funnel);
-// ...
-{!isFunnelObject ? <p>{String(funnel)}</p> : <Cards estruturados/>}
-```
+**1. Capturar o erro real (instrumentação leve)**
 
-Como o valor volta como **string** (`"{\"topo\":..."`), `isFunnelObject` é `false` e cai no fallback que joga o JSON inteiro na tela — exatamente o que aparece na sua screenshot.
+- Envolver a aba **Plano** (`PlanningTab`) em um **ErrorBoundary** local que mostra a mensagem do erro em vez de tela branca, com botão "Recarregar".
+- Esse boundary já vai destravar a navegação e revelar a causa raiz na próxima tentativa, sem precisar abrir DevTools.
 
-Efeito colateral: o editor (`PlanningTab` linha 240) também ignora a string ao carregar (`typeof === "object"` falha), então o admin abre o formulário com os campos do funil **em branco**, mesmo tendo salvo antes.
+**2. Blindar `normalizeFromDB` (suspeito principal)**
 
-### Correção
+A função que prepara o plano para os diálogos Ver/Editar foi atualizada recentemente para o funil JSONB, mas ainda tem pontos onde um valor inesperado (string, null, número) pode crashar:
 
-**1. Migração SQL** — converter coluna para JSONB preservando dados existentes:
-```sql
-ALTER TABLE public.strategic_plans
-  ALTER COLUMN funnel_strategy TYPE jsonb
-  USING CASE
-    WHEN funnel_strategy IS NULL THEN NULL
-    WHEN funnel_strategy ~ '^\s*[\{\[]' THEN funnel_strategy::jsonb
-    ELSE to_jsonb(funnel_strategy)
-  END;
-```
-Lida com 3 casos: nulo, JSON válido (objeto/array), texto livre legado (vira string JSON).
+- `plan.diagnostic`, `plan.execution_plan`, `plan.budget_allocation`: hoje assume objeto. Vou aplicar o mesmo padrão defensivo do `funnel_strategy` (parse se string, fallback para default se inválido).
+- `plan.objectives`/`plan.kpis`/`plan.personas`: já tratam array vs `.list`, mas não tratam `null` profundo nem itens não-string em `.list.map`.
+- Defaults garantidos para todos os campos do `PlanForm` mesmo quando o registro do DB vier incompleto (planos antigos pré-migração).
 
-**2. Regenerar `src/integrations/supabase/types.ts`** — passa a refletir `funnel_strategy: Json | null`.
+**3. Blindar a renderização**
 
-**3. Defesa em profundidade nos 3 leitores** — caso ainda exista algum registro string em outro ambiente, normalizar antes de renderizar:
-- `src/components/admin/client-detail/ClientPlanTab.tsx`
-- `src/pages/cliente/PlanoEstrategico.tsx`
-- `src/lib/pdf-generator.ts` (a função `drawFunnel` usa `plan.funnel_strategy` direto)
+- `ClientPlanTab.tsx` e `PlanoEstrategico.tsx` (cliente): mesmo helper defensivo aplicado a `diagnostic`, `execution_plan`, `budget_allocation` (hoje só `funnel_strategy` está protegido).
+- Diálogo de visualização (`viewingPlan`) no `PlanningTab`: garantir que `statusConfig[plan.status]` nunca seja `undefined` (status fora do mapa hoje quebra `.color` / `.label`).
 
-Helper compartilhado:
-```ts
-const parseFunnel = (v: unknown) => {
-  if (typeof v === "string") {
-    try { return JSON.parse(v); } catch { return v; }
-  }
-  return v;
-};
-```
+**4. Verificar PDF generator**
 
-**4. Verificar `assistant-chat`** — linha 1711 já usa o valor como string no contexto da IA. Após virar JSONB, trocar para `JSON.stringify(plan.funnel_strategy)` para manter o contexto legível pra IA.
+- `generateStrategicPlanPDF` é chamado tanto no Ver quanto no botão PDF. Vou confirmar que ele aceita um plano com campos `null` sem crashar (passe rápido pelo `drawFunnel`, `drawDiagnostic`, etc. com guards).
+
+### Arquivos a modificar
+
+- `src/components/admin/onboarding/PlanningTab.tsx` — ErrorBoundary local + `normalizeFromDB` defensivo + guards no diálogo Ver
+- `src/components/admin/client-detail/ClientPlanTab.tsx` — parse defensivo nas demais seções
+- `src/pages/cliente/PlanoEstrategico.tsx` — mesmo tratamento
+- `src/lib/pdf-generator.ts` — guards nos `draw*` que dependem de objetos
+- `src/components/ErrorBoundary.tsx` (novo, pequeno e reutilizável)
 
 ### Sem mudanças
 
-- Nenhuma alteração visual nos cards "Topo / Meio / Fundo" — eles já estão prontos e funcionarão assim que o dado chegar como objeto.
-- Outras seções do plano (objetivos, KPIs, personas, budget) não são afetadas.
+- Banco de dados (schema OK após a migração anterior do `funnel_strategy`).
+- Layout/estilo dos cards.
+- Lógica de salvamento (`saveMutation`).
 
-### Risco
+### Resultado esperado
 
-Baixo. A migração preserva dados (texto livre vira string JSON, JSON estruturado vira jsonb). Após aplicar, planos antigos com funil em texto livre continuam exibindo corretamente (o helper `parseFunnel` retorna a string e o fallback `<p>` renderiza como antes).
+- Se o erro persistir após o fix defensivo, a tela mostrará a mensagem real (ex: "Cannot read properties of null") em vez de ficar branca, e eu corrijo na sequência sem precisar do console.
+- Em 90% dos casos de tela branca causados por dados inesperados, o passe defensivo já resolve.
+
+### Próximo passo
+
+Aprove para eu executar. Após aplicar, abra novamente Onboarding → aba Plano → clique em Novo Plano (ou Ver/Editar se aparecer). Se ainda houver tela vermelha do boundary, me mande a mensagem que aparecer.
 
