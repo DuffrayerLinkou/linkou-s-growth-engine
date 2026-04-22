@@ -12,6 +12,7 @@ import { PaymentsTab } from "@/components/admin/onboarding/PaymentsTab";
 import { CalculatorsTab } from "@/components/admin/onboarding/CalculatorsTab";
 import { GuideTab } from "@/components/admin/onboarding/GuideTab";
 import { OnboardingProgress } from "@/components/admin/onboarding/OnboardingProgress";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function Onboarding() {
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
@@ -196,7 +197,9 @@ export default function Onboarding() {
         </TabsContent>
 
         <TabsContent value="planning" className="mt-6">
-          <PlanningTab clientId={selectedClientId !== "all" ? selectedClientId : undefined} />
+          <ErrorBoundary fallbackTitle="Erro ao carregar a aba Plano">
+            <PlanningTab clientId={selectedClientId !== "all" ? selectedClientId : undefined} />
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="payments" className="mt-6">
