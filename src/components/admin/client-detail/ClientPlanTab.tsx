@@ -86,7 +86,16 @@ export default function ClientPlanTab({ clientId }: { clientId: string }) {
   const budget = plan.budget_allocation as any;
   const diagnostic = plan.diagnostic as any;
   const execPlan = plan.execution_plan as any;
-  const funnel = plan.funnel_strategy as any;
+  const rawFunnel = plan.funnel_strategy as any;
+  const funnel = (() => {
+    if (typeof rawFunnel === "string") {
+      const trimmed = rawFunnel.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try { return JSON.parse(trimmed); } catch { return rawFunnel; }
+      }
+    }
+    return rawFunnel;
+  })();
   const isFunnelObject = funnel && typeof funnel === "object" && !Array.isArray(funnel);
 
   return (
