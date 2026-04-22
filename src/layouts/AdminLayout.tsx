@@ -96,15 +96,58 @@ export function AdminLayout() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [navSearch, setNavSearch] = useState("");
 
   // Track which groups are open - default all open
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(GROUPS_STATE_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch {
+        /* ignore */
+      }
+    }
     const initial: Record<string, boolean> = {};
     navGroups.forEach((g) => {
       if (g.label) initial[g.label] = true;
     });
     return initial;
   });
+
+  // Persist group state per user
+  useEffect(() => {
+    try {
+      localStorage.setItem(GROUPS_STATE_KEY, JSON.stringify(openGroups));
+    } catch {
+      /* ignore */
+    }
+  }, [openGroups]);
+
+  // Auto-open the group containing the active route
+  useEffect(() => {
+    const activeGroup = navGroups.find(
+      (g) => g.label && g.items.some((i) => location.pathname === i.href || location.pathname.startsWith(i.href + "/"))
+    );
+    if (activeGroup?.label && !openGroups[activeGroup.label]) {
+      setOpenGroups((prev) => ({ ...prev, [activeGroup.label!]: true }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Filter nav groups based on search
+  const filteredGroups = useMemo(() => {
+    const q = navSearch.trim().toLowerCase();
+    if (!q) return navGroups;
+    return navGroups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((i) => i.label.toLowerCase().includes(q)),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [navSearch]);
+
+  const isSearching = navSearch.trim().length > 0;
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
