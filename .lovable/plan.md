@@ -1,80 +1,82 @@
 
 
-## Auditoria: cache antigo + performance
+## Ações básicas no Kanban de Criativos (Editar, Apagar, Mover, Duplicar)
 
-### Diagnóstico — causa raiz confirmada
+### Diagnóstico
 
-**Você tem um Service Worker (SW) ativo em produção** (`public/sw.js`) que está servindo a versão antiga da aplicação. Isso explica 100% do sintoma:
+Hoje no Kanban admin de Demandas Criativas (`/admin/criativos`) só dá para **clicar no card e abrir a tela de detalhe**. Faltam ações rápidas:
 
-- Em navegadores normais → SW cacheado serve build antiga (`linkou-assets-v2`, `linkou-pages-v2`).
-- Em aba anônima → sem SW registrado, sem cache → versão atual.
+- **Editar** dados da demanda (título, briefing, plataforma, formato, prazo, prioridade, cliente)
+- **Apagar** demanda (com cascata para entregáveis)
+- **Mover de coluna** sem precisar abrir a tela de detalhe
+- **Duplicar** demanda (útil para campanhas similares)
 
-**Por que o auto-update não funciona:**
+Mesma carência existe nos **entregáveis** dentro da demanda (hoje só edita conteúdo, não dá para apagar nem duplicar).
 
-1. `sw.js` está versionado manualmente (`CACHE_VERSION = 'v2'`). Como esse número **não muda a cada deploy**, o navegador considera o SW idêntico, **não dispara `updatefound`** e o `window.location.reload()` em `main.tsx` nunca roda.
-2. O SW intercepta navegações com `networkFirst`, mas em caso de sucesso ele **substitui o HTML em cache** — porém o HTML já carregado em memória continua referenciando hashes de JS/CSS antigos, que vêm do `ASSETS_CACHE` via `staleWhileRevalidate` (serve cacheado primeiro, atualiza em segundo plano → próxima visita).
-3. Resultado: precisa de **2-3 reloads** para pegar a versão nova, e mesmo assim chunks antigos podem ficar presos.
+### O que vou implementar
 
-**Pontos secundários de peso/lentidão:**
+**1. Menu de ações rápidas no card do Kanban (`CreativeDemandKanban.tsx`)**
+- Ícone de três pontinhos no canto superior direito de cada card → `DropdownMenu` com:
+  - **Abrir** (comportamento atual, padrão ao clicar no card)
+  - **Editar** → abre dialog de edição (reaproveita o form de "Nova demanda")
+  - **Mover para…** → submenu com as 6 colunas (Briefing, Em Produção, Em Aprovação, Ajustes, Aprovado, Entregue)
+  - **Duplicar** → cria nova demanda copiando todos os campos, status volta para "briefing", título recebe "(cópia)"
+  - **Apagar** → `AlertDialog` de confirmação, depois `delete` em `creative_demands` (entregáveis caem por cascata via FK ou exclusão manual prévia)
 
-- Service Worker não traz benefício real aqui (app é 100% autenticada, sem uso offline declarado), mas adiciona complexidade e bugs de cache.
-- Bundle: 40+ rotas lazy-loaded (bom), mas `Index`, `Auth` e `App.tsx` carregam eager + Toaster + Sonner + Splash + 2 prompts PWA imediatamente.
-- React Query com `staleTime: 5min` está OK. Não é a causa.
+O clique no corpo do card continua abrindo o detalhe. O menu não propaga o clique.
 
-### Correção — abordagem recomendada
+**2. Dialog de edição reutilizável (`CreativeDemandFormDialog.tsx` — novo)**
+- Extrai o formulário de "Nova demanda" (atualmente inline em `Criativos.tsx`) para um componente único que serve para **criar** e **editar**.
+- Recebe `demand?: Demand` opcional. Se vier, faz `update`; se não, `insert`.
+- Substitui o dialog inline atual em `Criativos.tsx` e é usado também pelo card do Kanban.
 
-**Opção escolhida: remover o Service Worker** (manter PWA "instalável" via manifest, sem SW).
+**3. Mesmas ações na tela de detalhe (`CreativeDemandDetail.tsx`)**
+- Botão **Editar** ao lado do título → abre o mesmo dialog.
+- Botão **Apagar** (ícone lixeira, vermelho discreto) → confirmação + redireciona pra lista.
+- Para **entregáveis** (`CreativeDeliverableEditor`): adicionar menu com **Apagar entregável** e **Duplicar entregável**.
 
-Justificativa:
-- Você não usa offline real (todas as queries vão para Supabase, que está no `BYPASS_DOMAINS` do SW de qualquer forma → SW não acelera nada de dado).
-- Push notifications **não exigem** o SW de cache de assets — basta um SW dedicado e mínimo só para `push`/`notificationclick`.
-- Manifest + ícones continuam → app continua instalável (Add to Home Screen).
-- Elimina 100% do problema de cache antigo, agora e no futuro.
+**4. Mesmas ações na visão de Lista**
+- A aba "Lista" também ganha o menu de três pontinhos no canto direito de cada linha.
 
-### O que vou fazer
+### Confirmações e segurança
 
-**1. Substituir `public/sw.js` por uma versão mínima**
-- Remove todo cache de assets/páginas (`ASSETS_CACHE`, `PAGES_CACHE`, `staleWhileRevalidate`, `networkFirst`).
-- Mantém apenas os handlers de `push`, `notificationclick`, `notificationclose` (push notifications continuam funcionando).
-- No `install`/`activate`: `skipWaiting` + `clients.claim` + **deleta TODOS os caches antigos** (`linkou-assets-*`, `linkou-pages-*`) → primeira visita após o deploy limpa o cache acumulado de todos os usuários automaticamente.
+- **Apagar** sempre passa por `AlertDialog` ("Tem certeza? Esta ação não pode ser desfeita. Os entregáveis vinculados também serão apagados.").
+- Apenas admins e account_managers conseguem editar/apagar/mover (RLS já garante isso na tabela `creative_demands`).
+- **Cliente** continua com permissão limitada do lado deles (só editam demandas próprias em status `briefing`, conforme RLS atual). Não vou tocar nas RLS.
 
-**2. Ajustar `src/main.tsx`**
-- Mantém o registro do SW (necessário para push), mas remove o handler de `updatefound`/reload (não precisa mais — não há cache de assets para invalidar).
-- Adiciona `reg.update()` no load para forçar verificação de SW novo.
+### Arquivos
 
-**3. Adicionar headers no `index.html`**
-- `<meta http-equiv="Cache-Control" content="no-cache">` no HTML para garantir que o documento principal sempre revalide (a Vercel/Lovable já faz isso para `index.html`, mas reforça).
+**Novos:**
+- `src/components/admin/criativos/CreativeDemandFormDialog.tsx` — dialog reutilizável criar/editar
+- `src/components/admin/criativos/CreativeDemandActions.tsx` — menu dropdown reutilizável (Kanban + Lista + Detail)
 
-**4. Comunicar ao usuário (você)**
-- Após o deploy, na **primeira visita** de cada navegador, o SW novo vai limpar o cache antigo e recarregar. Pode ser preciso **um único reload manual** em cada browser que já tem o SW antigo cacheado, mas a partir dali o problema some para sempre.
-- Alternativa imediata se quiser forçar agora: DevTools → Application → Service Workers → **Unregister** + Clear storage.
-
-### Impacto e risco
-
-| Item | Antes | Depois |
-|---|---|---|
-| Versão sempre atualizada | ❌ (cache trava) | ✅ |
-| Push notifications | ✅ | ✅ |
-| App instalável (PWA) | ✅ | ✅ |
-| Offline | ⚠️ parcial e quebrado | ❌ (não usa mesmo) |
-| Tela de offline.html | ✅ | ❌ removida |
-
-**Risco**: baixíssimo. A página `/offline.html` deixa de ser servida, mas só aparecia quando o usuário estava offline (caso raro num app que depende 100% de Supabase online).
-
-### Sobre "lentidão em anônimo"
-
-A primeira carga em anônimo é naturalmente mais lenta porque:
-- Não tem nenhum asset cacheado (cache HTTP normal do browser).
-- Carrega Inter font + chunks lazy + Supabase auth bootstrap em paralelo.
-
-Após esse primeiro fix, posso fazer um segundo passe de performance se ainda achar lento (analisar bundle size, mover Toaster/Sonner para depois do mount, preconnect para Supabase, etc). Mas **primeiro resolvemos o cache** — é o problema real que você está vivendo.
-
-### Arquivos a modificar
-
-- `public/sw.js` — reescrito (mínimo, só push)
-- `src/main.tsx` — simplificar registro
+**Editados:**
+- `src/components/admin/criativos/CreativeDemandKanban.tsx` — adiciona menu de ações no card
+- `src/components/admin/criativos/CreativeDemandDetail.tsx` — botões editar/apagar + menu nos entregáveis
+- `src/components/admin/criativos/CreativeDeliverableEditor.tsx` — menu apagar/duplicar entregável
+- `src/pages/admin/Criativos.tsx` — usa o novo `CreativeDemandFormDialog` no lugar do form inline; passa callbacks de ação para Kanban/Lista
 
 ### Sem mudanças
 
-- `manifest.webmanifest`, ícones, rotas, lógica de auth, queries, banco.
+- Banco de dados (tabelas, colunas, RLS).
+- Painel do cliente (`src/pages/cliente/Criativos.tsx`) — fora do escopo deste pedido. Posso adicionar depois se você quiser.
+
+### Resultado visual
+
+```text
+┌─ Card Kanban ─────────────┐
+│ DRA REGEANE         ⋯    │ ← novo menu
+│ Vídeo 01 – Hook Pré...   │
+│ [Alta]  📅 23/04         │
+└───────────────────────────┘
+       ↓ clicando ⋯
+       ┌────────────────┐
+       │ Abrir          │
+       │ Editar         │
+       │ Mover para  ▶  │
+       │ Duplicar       │
+       │ ─────────      │
+       │ Apagar    🗑   │
+       └────────────────┘
+```
 
