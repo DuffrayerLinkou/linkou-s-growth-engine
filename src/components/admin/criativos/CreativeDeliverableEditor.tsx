@@ -10,8 +10,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { deliverableStatusConfig, deliverableTypeConfig, type DeliverableStatus, type DeliverableType } from "@/lib/creative-config";
-import { Send, Upload, History, Loader2, MessageSquare } from "lucide-react";
+import { Send, Upload, History, Loader2, MessageSquare, MoreVertical, Copy, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Deliverable {
   id: string;
@@ -37,6 +54,7 @@ export function CreativeDeliverableEditor({ deliverable }: Props) {
   const [content, setContent] = useState(deliverable.content || "");
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const typeCfg = deliverableTypeConfig[deliverable.type];
   const statusCfg = deliverableStatusConfig[deliverable.status];
@@ -103,6 +121,47 @@ export function CreativeDeliverableEditor({ deliverable }: Props) {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
+  const duplicateDeliverable = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("creative_deliverables").insert({
+        demand_id: deliverable.demand_id,
+        client_id: deliverable.client_id,
+        type: deliverable.type,
+        title: `${deliverable.title} (cópia)`,
+        content: deliverable.content,
+        status: "in_production",
+        current_version: 1,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Entregável duplicado" });
+      qc.invalidateQueries({ queryKey: ["admin-creative-deliverables", deliverable.demand_id] });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const removeDeliverable = useMutation({
+    mutationFn: async () => {
+      await supabase
+        .from("creative_deliverable_versions")
+        .delete()
+        .eq("deliverable_id", deliverable.id);
+      const { error } = await supabase
+        .from("creative_deliverables")
+        .delete()
+        .eq("id", deliverable.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Entregável apagado" });
+      qc.invalidateQueries({ queryKey: ["admin-creative-deliverables", deliverable.demand_id] });
+      setDeleteOpen(false);
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -138,7 +197,28 @@ export function CreativeDeliverableEditor({ deliverable }: Props) {
               <p className="text-xs text-muted-foreground mt-0.5">{typeCfg.label} · v{deliverable.current_version}</p>
             </div>
           </div>
-          <Badge variant="outline" className={statusCfg.color}>{statusCfg.label}</Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className={statusCfg.color}>{statusCfg.label}</Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Ações do entregável">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => duplicateDeliverable.mutate()} disabled={duplicateDeliverable.isPending}>
+                  <Copy className="h-4 w-4" /> Duplicar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4" /> Apagar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -230,6 +310,27 @@ export function CreativeDeliverableEditor({ deliverable }: Props) {
           </div>
         )}
       </CardContent>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar este entregável?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todas as versões salvas de <span className="font-medium">"{deliverable.title}"</span> serão apagadas.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); removeDeliverable.mutate(); }}
+              disabled={removeDeliverable.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removeDeliverable.isPending ? "Apagando…" : "Apagar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
