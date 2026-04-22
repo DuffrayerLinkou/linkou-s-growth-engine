@@ -101,25 +101,27 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="mt-4">
-          <TabsList className="grid grid-cols-5 w-full">
-            <TabsTrigger value="overview">Visão geral</TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1.5">
-              <ListChecks className="h-3.5 w-3.5" />
-              Tarefas
-            </TabsTrigger>
-            <TabsTrigger value="campaigns" className="gap-1.5">
-              <Megaphone className="h-3.5 w-3.5" />
-              Campanhas
-            </TabsTrigger>
-            <TabsTrigger value="learnings" className="gap-1.5">
-              <Lightbulb className="h-3.5 w-3.5" />
-              Aprendizados
-            </TabsTrigger>
-            <TabsTrigger value="files" className="gap-1.5">
-              <FileText className="h-3.5 w-3.5" />
-              Arquivos
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1 scrollbar-none">
+            <TabsList className="inline-flex md:grid md:grid-cols-5 md:w-full whitespace-nowrap">
+              <TabsTrigger value="overview">Visão geral</TabsTrigger>
+              <TabsTrigger value="tasks" className="gap-1.5">
+                <ListChecks className="h-3.5 w-3.5" />
+                Tarefas
+              </TabsTrigger>
+              <TabsTrigger value="campaigns" className="gap-1.5">
+                <Megaphone className="h-3.5 w-3.5" />
+                Campanhas
+              </TabsTrigger>
+              <TabsTrigger value="learnings" className="gap-1.5">
+                <Lightbulb className="h-3.5 w-3.5" />
+                Aprendizados
+              </TabsTrigger>
+              <TabsTrigger value="files" className="gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
+                Arquivos
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-5 mt-5">
             {project.description && (
