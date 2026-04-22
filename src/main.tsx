@@ -9,22 +9,15 @@ createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-// Register Service Worker in production only
+// Service Worker — necessário apenas para Push Notifications.
+// O SW NÃO faz cache de assets (ver public/sw.js).
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {
-        // Auto-reload when a new SW activates
-        reg.addEventListener("updatefound", () => {
-          const newSW = reg.installing;
-          if (!newSW) return;
-          newSW.addEventListener("statechange", () => {
-            if (newSW.state === "activated" && navigator.serviceWorker.controller) {
-              window.location.reload();
-            }
-          });
-        });
+        // Força verificação de atualização do SW a cada carregamento.
+        reg.update().catch(() => {});
       })
       .catch(() => {});
   });
