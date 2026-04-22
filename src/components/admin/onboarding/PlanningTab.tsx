@@ -356,8 +356,12 @@ export function PlanningTab({ clientId }: PlanningTabProps) {
               {plans.map((plan: any) => {
                 const status = statusConfig[plan.status as keyof typeof statusConfig] || statusConfig.draft;
                 const StatusIcon = status.icon;
-                const personasCount = Array.isArray(plan.personas) ? plan.personas.length : (plan.personas?.description ? 1 : 0);
-                const objectivesCount = Array.isArray(plan.objectives) ? plan.objectives.length : (plan.objectives?.list?.length || 0);
+                const personasCount = Array.isArray(plan.personas)
+                  ? plan.personas.length
+                  : (plan.personas && typeof plan.personas === "object" && (plan.personas as any).description ? 1 : 0);
+                const objectivesCount = Array.isArray(plan.objectives)
+                  ? plan.objectives.length
+                  : (plan.objectives && typeof plan.objectives === "object" && Array.isArray((plan.objectives as any).list) ? (plan.objectives as any).list.length : 0);
                 return (
                   <Card key={plan.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="p-3 sm:pb-2">
