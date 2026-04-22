@@ -595,7 +595,13 @@ export function generateStrategicPlanPDF(plan: StrategicPlanData, clientName: st
   }
 
   // ─── Funnel ───
-  const funnel = plan.funnel_strategy;
+  let funnel: any = plan.funnel_strategy;
+  if (typeof funnel === "string") {
+    const trimmed = funnel.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try { funnel = JSON.parse(trimmed); } catch { /* keep as string */ }
+    }
+  }
   if (funnel) {
     y += 2;
     y = ensureSpace(pdf, y, 30, addFooter);

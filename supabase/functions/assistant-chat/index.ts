@@ -1708,7 +1708,7 @@ serve(async (req) => {
       context += `- Status: ${plan.status}\n`;
       if (plan.objectives) context += `- Objetivos: ${JSON.stringify(plan.objectives)}\n`;
       if (plan.kpis) context += `- KPIs: ${JSON.stringify(plan.kpis)}\n`;
-      if (plan.funnel_strategy) context += `- Estratégia de Funil: ${plan.funnel_strategy}\n`;
+      if (plan.funnel_strategy) context += `- Estratégia de Funil: ${typeof plan.funnel_strategy === "string" ? plan.funnel_strategy : JSON.stringify(plan.funnel_strategy)}\n`;
       if (plan.campaign_types) context += `- Tipos de Campanha: ${(plan.campaign_types as string[]).join(", ")}\n`;
       context += "\n";
     }
