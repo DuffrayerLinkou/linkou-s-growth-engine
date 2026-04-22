@@ -15,6 +15,7 @@ import { demandStatusConfig, deliverableTypeConfig, priorityConfig, type DemandS
 import { ArrowLeft, Plus, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { CreativeDemandActions } from "./CreativeDemandActions";
 
 interface Demand {
   id: string;
@@ -34,9 +35,10 @@ interface Props {
   demand: Demand;
   clientName?: string;
   onBack: () => void;
+  clients: { id: string; name: string }[];
 }
 
-export function CreativeDemandDetail({ demand, clientName, onBack }: Props) {
+export function CreativeDemandDetail({ demand, clientName, onBack, clients }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -107,16 +109,24 @@ export function CreativeDemandDetail({ demand, clientName, onBack }: Props) {
               <CardTitle className="text-2xl">{demand.title}</CardTitle>
               {demand.objective && <p className="text-muted-foreground mt-1">{demand.objective}</p>}
             </div>
-            <Select value={demand.status} onValueChange={(v) => updateStatus.mutate(v as DemandStatus)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(demandStatusConfig).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={demand.status} onValueChange={(v) => updateStatus.mutate(v as DemandStatus)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(demandStatusConfig).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <CreativeDemandActions
+                demand={demand}
+                clients={clients}
+                variant="button"
+                onDeleted={onBack}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
