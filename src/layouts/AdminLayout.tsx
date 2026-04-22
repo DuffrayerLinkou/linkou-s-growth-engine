@@ -234,7 +234,24 @@ export function AdminLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navGroups.map((group, gi) => {
+            {/* Quick search */}
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={navSearch}
+                onChange={(e) => setNavSearch(e.target.value)}
+                placeholder="Buscar no menu..."
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+
+            {filteredGroups.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Nada encontrado para "{navSearch}"
+              </p>
+            )}
+
+            {filteredGroups.map((group, gi) => {
               // Ungrouped items (Dashboard)
               if (!group.label) {
                 return group.items.map((item) => {
@@ -260,15 +277,16 @@ export function AdminLayout() {
 
               // Grouped items with collapsible
               const isGroupActive = group.items.some((item) => location.pathname === item.href);
+              const isOpen = isSearching ? true : !!openGroups[group.label];
               return (
                 <Collapsible
                   key={group.label}
-                  open={openGroups[group.label]}
-                  onOpenChange={() => toggleGroup(group.label)}
+                  open={isOpen}
+                  onOpenChange={() => !isSearching && toggleGroup(group.label!)}
                 >
                   <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                     <span className={cn(isGroupActive && "text-primary")}>{group.label}</span>
-                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openGroups[group.label] && "rotate-180")} />
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-0.5 mt-0.5">
                     {group.items.map((item) => {
@@ -277,7 +295,10 @@ export function AdminLayout() {
                         <Link
                           key={item.href}
                           to={item.href}
-                          onClick={() => setIsSidebarOpen(false)}
+                          onClick={() => {
+                            setIsSidebarOpen(false);
+                            setNavSearch("");
+                          }}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors pl-5",
                             isActive
