@@ -19,6 +19,7 @@ import {
   difficultyColor,
   positionColor,
 } from "@/lib/keyword-config";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface KeywordRow {
   id: string;
@@ -45,11 +46,83 @@ interface Props {
 
 export function KeywordTable({ keywords, onEdit, onDelete, onViewHistory }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   if (keywords.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
         Nenhuma palavra-chave encontrada com os filtros atuais.
+      </div>
+    );
+  }
+
+  // Mobile: card list view
+  if (isMobile) {
+    return (
+      <div className="space-y-2">
+        {keywords.map((k) => (
+          <div
+            key={k.id}
+            className="rounded-lg border bg-card p-3 active:bg-muted/40 transition-colors"
+            onClick={() => onViewHistory(k)}
+          >
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm leading-tight truncate">{k.term}</p>
+                {k.cluster_name && (
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                    {k.cluster_name}
+                  </p>
+                )}
+              </div>
+              <Badge variant="outline" className={`text-[10px] shrink-0 ${keywordStatusColors[k.status] || ""}`}>
+                {keywordStatusLabels[k.status] || k.status}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 text-[11px]">
+              <div>
+                <p className="text-muted-foreground">Pos</p>
+                <p className={`font-semibold tabular-nums ${positionColor(k.current_position)}`}>
+                  {k.current_position != null ? `#${k.current_position}` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Vol</p>
+                <p className="font-semibold tabular-nums">
+                  {k.search_volume?.toLocaleString("pt-BR") || "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Dif</p>
+                <p className={`font-semibold tabular-nums ${difficultyColor(k.difficulty)}`}>
+                  {k.difficulty != null ? k.difficulty : "—"}
+                </p>
+              </div>
+              <div className="flex items-end justify-end">
+                <MiniSparkline data={k.history || []} />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-2 pt-2 border-t">
+              {k.intent ? (
+                <Badge variant="outline" className={`text-[10px] ${intentColors[k.intent] || ""}`}>
+                  {intentLabels[k.intent] || k.intent}
+                </Badge>
+              ) : (
+                <span />
+              )}
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => onEdit(k)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => onDelete(k)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
