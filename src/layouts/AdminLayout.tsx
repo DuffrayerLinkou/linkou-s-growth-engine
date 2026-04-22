@@ -26,9 +26,11 @@ import {
   BarChart3,
   Sparkles,
   KeyRound,
+  Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import logoRoxo from "@/assets/logo-linkou-horizontal-roxo.png";
 import logoBranca from "@/assets/logo-linkou-horizontal-branca.png";
 import { LinkouzinhoInternal } from "@/components/LinkouzinhoInternal";
+
+const GROUPS_STATE_KEY = "linkou:admin:nav-groups";
 
 const navGroups = [
   {
