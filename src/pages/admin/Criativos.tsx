@@ -1,19 +1,16 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
 import { CreativeDemandKanban } from "@/components/admin/criativos/CreativeDemandKanban";
 import { CreativeDemandDetail } from "@/components/admin/criativos/CreativeDemandDetail";
-import { demandStatusConfig, platformOptions, formatOptions, type DemandStatus, type Priority } from "@/lib/creative-config";
+import { CreativeDemandFormDialog } from "@/components/admin/criativos/CreativeDemandFormDialog";
+import { CreativeDemandActions } from "@/components/admin/criativos/CreativeDemandActions";
+import { demandStatusConfig, type DemandStatus, type Priority } from "@/lib/creative-config";
 import { Sparkles, Plus, Search } from "lucide-react";
 
 interface Demand {
@@ -31,23 +28,11 @@ interface Demand {
 }
 
 export default function AdminCriativos() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
   const [selected, setSelected] = useState<Demand | null>(null);
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
-
-  // form
-  const [fClient, setFClient] = useState("");
-  const [fTitle, setFTitle] = useState("");
-  const [fObjective, setFObjective] = useState("");
-  const [fBriefing, setFBriefing] = useState("");
-  const [fPlatform, setFPlatform] = useState("");
-  const [fFormat, setFFormat] = useState("");
-  const [fDeadline, setFDeadline] = useState("");
-  const [fPriority, setFPriority] = useState<Priority>("medium");
 
   const { data: clients = [] } = useQuery({
     queryKey: ["admin-clients-list"],
@@ -88,36 +73,16 @@ export default function AdminCriativos() {
     });
   }, [demands, clientFilter, statusFilter, search]);
 
-  const create = useMutation({
-    mutationFn: async () => {
-      if (!fClient || !fTitle || !user?.id) throw new Error("Preencha cliente e título");
-      const { error } = await supabase.from("creative_demands").insert({
-        client_id: fClient,
-        title: fTitle,
-        objective: fObjective || null,
-        briefing: fBriefing || null,
-        platform: fPlatform || null,
-        format: fFormat || null,
-        deadline: fDeadline || null,
-        priority: fPriority,
-        status: "in_production",
-        requested_by: user.id,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: "Demanda criada" });
-      qc.invalidateQueries({ queryKey: ["admin-creative-demands"] });
-      setCreateOpen(false);
-      setFClient(""); setFTitle(""); setFObjective(""); setFBriefing("");
-      setFPlatform(""); setFFormat(""); setFDeadline(""); setFPriority("medium");
-    },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
-  });
-
   if (selected) {
     const fresh = demands.find((d) => d.id === selected.id) || selected;
-    return <CreativeDemandDetail demand={fresh} clientName={clientNames[fresh.client_id]} onBack={() => setSelected(null)} />;
+    return (
+      <CreativeDemandDetail
+        demand={fresh}
+        clientName={clientNames[fresh.client_id]}
+        clients={clients}
+        onBack={() => setSelected(null)}
+      />
+    );
   }
 
   return (
