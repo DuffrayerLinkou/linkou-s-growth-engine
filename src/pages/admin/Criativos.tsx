@@ -134,7 +134,7 @@ export default function AdminCriativos() {
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
-            <CreativeDemandKanban demands={filtered} clientNames={clientNames} onSelect={setSelected} />
+            <CreativeDemandKanban demands={filtered} clientNames={clientNames} onSelect={setSelected} clients={clients} />
           )}
         </TabsContent>
         <TabsContent value="list" className="mt-4">
@@ -143,99 +143,36 @@ export default function AdminCriativos() {
           ) : (
             <div className="space-y-2">
               {filtered.map((d) => (
-                <button
+                <div
                   key={d.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelected(d)}
-                  className="w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 transition-all flex items-center justify-between gap-3"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(d); } }}
+                  className="w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 transition-all flex items-center justify-between gap-3 cursor-pointer"
                 >
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground truncate">{clientNames[d.client_id]}</p>
                     <p className="font-medium truncate">{d.title}</p>
                   </div>
-                  <span className={`shrink-0 text-xs px-2 py-1 rounded-md border ${demandStatusConfig[d.status].color}`}>
-                    {demandStatusConfig[d.status].label}
-                  </span>
-                </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs px-2 py-1 rounded-md border ${demandStatusConfig[d.status].color}`}>
+                      {demandStatusConfig[d.status].label}
+                    </span>
+                    <CreativeDemandActions demand={d} clients={clients} onOpen={() => setSelected(d)} />
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </TabsContent>
       </Tabs>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nova demanda criativa</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Cliente *</Label>
-              <Select value={fClient} onValueChange={setFClient}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Título *</Label>
-              <Input value={fTitle} onChange={(e) => setFTitle(e.target.value)} />
-            </div>
-            <div>
-              <Label>Objetivo</Label>
-              <Input value={fObjective} onChange={(e) => setFObjective(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Plataforma</Label>
-                <Select value={fPlatform} onValueChange={setFPlatform}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {platformOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Formato</Label>
-                <Select value={fFormat} onValueChange={setFFormat}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {formatOptions.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Prazo</Label>
-                <Input type="date" value={fDeadline} onChange={(e) => setFDeadline(e.target.value)} />
-              </div>
-              <div>
-                <Label>Prioridade</Label>
-                <Select value={fPriority} onValueChange={(v) => setFPriority(v as Priority)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Briefing</Label>
-              <Textarea value={fBriefing} onChange={(e) => setFBriefing(e.target.value)} rows={5} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={() => create.mutate()} disabled={!fClient || !fTitle || create.isPending}>
-              Criar demanda
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreativeDemandFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        clients={clients}
+      />
     </div>
   );
 }
