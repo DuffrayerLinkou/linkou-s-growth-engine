@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreativeDemandKanban } from "@/components/admin/criativos/CreativeDemandKanban";
 import { CreativeDemandDetail } from "@/components/admin/criativos/CreativeDemandDetail";
 import { CreativeDemandFormDialog } from "@/components/admin/criativos/CreativeDemandFormDialog";
+import { CreativeBatchCreateDialog } from "@/components/admin/criativos/CreativeBatchCreateDialog";
 import { CreativeDemandActions } from "@/components/admin/criativos/CreativeDemandActions";
 import { demandStatusConfig, type DemandStatus, type Priority } from "@/lib/creative-config";
-import { Sparkles, Plus, Search } from "lucide-react";
+import { Sparkles, Plus, Search, Layers, Megaphone } from "lucide-react";
 
 interface Demand {
   id: string;
@@ -25,6 +27,7 @@ interface Demand {
   priority: Priority;
   status: DemandStatus;
   created_at: string;
+  campaign_id?: string | null;
 }
 
 export default function AdminCriativos() {
@@ -32,7 +35,10 @@ export default function AdminCriativos() {
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: clients = [] } = useQuery({
     queryKey: ["admin-clients-list"],
@@ -61,17 +67,57 @@ export default function AdminCriativos() {
     },
   });
 
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["admin-criativos-campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, name, client_id")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as { id: string; name: string; client_id: string }[];
+    },
+  });
+
+  const campaignNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    campaigns.forEach((c) => { m[c.id] = c.name; });
+    return m;
+  }, [campaigns]);
+
+  const visibleCampaigns = useMemo(() => {
+    if (clientFilter === "all") return campaigns;
+    return campaigns.filter((c) => c.client_id === clientFilter);
+  }, [campaigns, clientFilter]);
+
+  // Deep link from Campaigns: ?demand=<id>
+  useEffect(() => {
+    const id = searchParams.get("demand");
+    if (!id || demands.length === 0) return;
+    const found = demands.find((d) => d.id === id);
+    if (found) {
+      setSelected(found);
+      searchParams.delete("demand");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, demands, setSearchParams]);
+
   const filtered = useMemo(() => {
     return demands.filter((d) => {
       if (clientFilter !== "all" && d.client_id !== clientFilter) return false;
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
+      if (campaignFilter !== "all") {
+        if (campaignFilter === "none") {
+          if (d.campaign_id) return false;
+        } else if (d.campaign_id !== campaignFilter) return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         if (!d.title.toLowerCase().includes(q) && !d.objective?.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [demands, clientFilter, statusFilter, search]);
+  }, [demands, clientFilter, statusFilter, campaignFilter, search]);
 
   if (selected) {
     const fresh = demands.find((d) => d.id === selected.id) || selected;
@@ -97,9 +143,14 @@ export default function AdminCriativos() {
             Gestão da produção de criativos por cliente.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto shrink-0">
-          <Plus className="h-4 w-4" /> Nova demanda
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+          <Button variant="outline" onClick={() => setBatchOpen(true)} className="w-full sm:w-auto">
+            <Layers className="h-4 w-4" /> Criar em lote
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" /> Nova demanda
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2">
@@ -123,6 +174,14 @@ export default function AdminCriativos() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+          <SelectTrigger className="w-full lg:w-48"><SelectValue placeholder="Campanha" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as campanhas</SelectItem>
+            <SelectItem value="none">Sem campanha</SelectItem>
+            {visibleCampaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="kanban">
@@ -134,7 +193,7 @@ export default function AdminCriativos() {
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
-            <CreativeDemandKanban demands={filtered} clientNames={clientNames} onSelect={setSelected} clients={clients} />
+            <CreativeDemandKanban demands={filtered} clientNames={clientNames} campaignNames={campaignNames} onSelect={setSelected} clients={clients} />
           )}
         </TabsContent>
         <TabsContent value="list" className="mt-4">
@@ -154,6 +213,12 @@ export default function AdminCriativos() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground truncate">{clientNames[d.client_id]}</p>
                     <p className="font-medium truncate">{d.title}</p>
+                    {d.campaign_id && campaignNames[d.campaign_id] && (
+                      <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Megaphone className="h-3 w-3 shrink-0" />
+                        {campaignNames[d.campaign_id]}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-2 sm:shrink-0">
                     <span className={`text-xs px-2 py-1 rounded-md border ${demandStatusConfig[d.status].color}`}>
@@ -171,6 +236,11 @@ export default function AdminCriativos() {
       <CreativeDemandFormDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        clients={clients}
+      />
+      <CreativeBatchCreateDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
         clients={clients}
       />
     </div>

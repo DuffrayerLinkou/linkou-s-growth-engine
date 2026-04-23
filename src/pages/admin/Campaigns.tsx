@@ -24,6 +24,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { CommentSection } from "@/components/cliente/CommentSection";
+import { CampaignCreativesSection } from "@/components/admin/criativos/CampaignCreativesSection";
+import { CreativeBatchCreateDialog } from "@/components/admin/criativos/CreativeBatchCreateDialog";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,6 +225,7 @@ export default function AdminCampaigns() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("basic");
   const [selectedPlacements, setSelectedPlacements] = useState<string[]>([]);
+  const [batchOpen, setBatchOpen] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -1355,10 +1358,25 @@ export default function AdminCampaigns() {
                   clientId={detailCampaign.client_id}
                 />
               </div>
+
+              {/* Linked creative demands */}
+              <CampaignCreativesSection
+                campaignId={detailCampaign.id}
+                clientId={detailCampaign.client_id}
+                onAddBatch={() => setBatchOpen(true)}
+              />
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <CreativeBatchCreateDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        clients={clients}
+        initialClientId={detailCampaign?.client_id}
+        initialCampaignId={detailCampaign?.id}
+      />
     </div>
   );
 }
