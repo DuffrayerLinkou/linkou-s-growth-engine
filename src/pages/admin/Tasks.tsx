@@ -432,9 +432,21 @@ export default function AdminTasks() {
                   <Label>Cliente *</Label>
                   <Select
                     value={formData.client_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, client_id: value })
-                    }
+                    onValueChange={(value) => {
+                      // When client changes, reset journey_phase if it doesn't belong to the new service flow
+                      const nextClient = clients.find((cl: any) => cl.id === value);
+                      const nextService = ((nextClient as any)?.service_type as ServiceType) || "auditoria";
+                      const nextPhases = getPhasesByService(nextService).map((p) => p.value);
+                      const keepPhase =
+                        formData.journey_phase &&
+                        formData.journey_phase !== "none" &&
+                        nextPhases.includes(formData.journey_phase);
+                      setFormData({
+                        ...formData,
+                        client_id: value,
+                        journey_phase: keepPhase ? formData.journey_phase : "",
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
