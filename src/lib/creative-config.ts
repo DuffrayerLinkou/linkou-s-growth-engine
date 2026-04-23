@@ -131,11 +131,14 @@ export const platformOptions = [
 
 export const formatOptions = [
   "Reel",
+  "Shorts (YouTube)",
+  "Shorts vertical (9:16)",
   "Story",
   "Feed (1:1)",
   "Feed (4:5)",
   "Vídeo curto (<60s)",
   "Vídeo longo (>60s)",
+  "YouTube horizontal (16:9)",
   "Carrossel",
   "Anúncio estático",
   "Banner",
