@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { CreativeDemandKanban } from "@/components/admin/criativos/CreativeDemandKanban";
 import { CreativeDemandDetail } from "@/components/admin/criativos/CreativeDemandDetail";
 import { CreativeDemandFormDialog } from "@/components/admin/criativos/CreativeDemandFormDialog";
+import { CreativeBatchCreateDialog } from "@/components/admin/criativos/CreativeBatchCreateDialog";
 import { CreativeDemandActions } from "@/components/admin/criativos/CreativeDemandActions";
 import { demandStatusConfig, type DemandStatus, type Priority } from "@/lib/creative-config";
-import { Sparkles, Plus, Search } from "lucide-react";
+import { Sparkles, Plus, Search, Layers, Megaphone } from "lucide-react";
 
 interface Demand {
   id: string;
@@ -25,6 +27,7 @@ interface Demand {
   priority: Priority;
   status: DemandStatus;
   created_at: string;
+  campaign_id: string | null;
 }
 
 export default function AdminCriativos() {
@@ -32,7 +35,10 @@ export default function AdminCriativos() {
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: clients = [] } = useQuery({
     queryKey: ["admin-clients-list"],
