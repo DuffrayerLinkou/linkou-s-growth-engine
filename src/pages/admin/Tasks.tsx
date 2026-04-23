@@ -227,7 +227,7 @@ export default function AdminTasks() {
         description: data.description || null,
         execution_guide: data.execution_guide || null,
         client_id: data.client_id,
-        project_id: data.project_id || null,
+        project_id: data.project_id === "none" ? null : data.project_id || null,
         assigned_to: data.assigned_to || null,
         priority: data.priority,
         due_date: data.due_date || null,
