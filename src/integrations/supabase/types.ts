@@ -1122,6 +1122,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           briefing: string | null
+          campaign_id: string | null
           client_id: string
           created_at: string
           deadline: string | null
@@ -1138,6 +1139,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           briefing?: string | null
+          campaign_id?: string | null
           client_id: string
           created_at?: string
           deadline?: string | null
@@ -1154,6 +1156,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           briefing?: string | null
+          campaign_id?: string | null
           client_id?: string
           created_at?: string
           deadline?: string | null
@@ -1168,6 +1171,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "creative_demands_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "creative_demands_client_id_fkey"
             columns: ["client_id"]
