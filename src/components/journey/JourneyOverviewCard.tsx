@@ -4,31 +4,38 @@ import { motion } from "framer-motion";
 import { Calendar, Clock, Target, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Phase, getPhaseLabel, getAllPhases } from "./JourneyStepper";
+import { Phase, getPhaseLabelForService, getAllPhasesForService } from "./JourneyStepper";
 import { PhaseDates } from "./JourneyTimeline";
+import { ServiceType } from "@/lib/service-phases-config";
 
 interface JourneyOverviewCardProps {
   currentPhase: Phase;
   phaseDates: PhaseDates;
   phaseStartDate?: string | null;
+  serviceType?: ServiceType;
 }
 
-export function JourneyOverviewCard({ currentPhase, phaseDates, phaseStartDate }: JourneyOverviewCardProps) {
-  const phases = getAllPhases();
+export function JourneyOverviewCard({ currentPhase, phaseDates, phaseStartDate, serviceType = "auditoria" }: JourneyOverviewCardProps) {
+  const phases = getAllPhasesForService(serviceType);
   const currentPhaseIndex = phases.findIndex((p) => p.id === currentPhase) + 1;
   const totalPhases = phases.length;
-  const progressPercentage = Math.round((currentPhaseIndex / totalPhases) * 100);
+  const progressPercentage = totalPhases > 0
+    ? Math.round((currentPhaseIndex / totalPhases) * 100)
+    : 0;
 
   // Calculate days in current phase
-  const currentPhaseDates = phaseDates[currentPhase];
+  const currentPhaseDates = phaseDates[currentPhase] ?? { start: null, end: null, completed_at: null };
   const startDate = currentPhaseDates.start || phaseStartDate;
   const daysInPhase = startDate 
     ? differenceInDays(new Date(), parseISO(startDate)) 
     : 0;
 
-  // Calculate journey end prediction
-  const lastPhase = phaseDates.transferencia;
-  const journeyEndDate = lastPhase.end;
+  // Calculate journey end prediction (last phase of the service flow)
+  const lastPhaseId = phases[phases.length - 1]?.id;
+  const lastPhase = lastPhaseId ? phaseDates[lastPhaseId] : undefined;
+  const journeyEndDate = lastPhase?.end ?? null;
+  const lastPhaseLabel = phases[phases.length - 1]?.label ?? "Final";
+  const firstPhaseLabel = phases[0]?.label ?? "Início";
 
   // Calculate days until deadline
   const currentPhaseEnd = currentPhaseDates.end;
@@ -40,7 +47,7 @@ export function JourneyOverviewCard({ currentPhase, phaseDates, phaseStartDate }
     {
       icon: Target,
       label: "Fase Atual",
-      value: getPhaseLabel(currentPhase),
+      value: getPhaseLabelForService(currentPhase, serviceType),
       subtext: `${currentPhaseIndex} de ${totalPhases}`,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -121,8 +128,8 @@ export function JourneyOverviewCard({ currentPhase, phaseDates, phaseStartDate }
           </div>
           <Progress value={progressPercentage} className="h-1.5 sm:h-2" />
           <div className="flex justify-between mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-muted-foreground">
-            <span>Início</span>
-            <span>Transferência</span>
+            <span>{firstPhaseLabel}</span>
+            <span>{lastPhaseLabel}</span>
           </div>
         </div>
       </CardContent>
