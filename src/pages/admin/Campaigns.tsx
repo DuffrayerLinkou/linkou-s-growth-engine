@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -261,8 +261,11 @@ export default function AdminCampaigns() {
       const [campaignsRes, clientsRes, projectsRes] = await Promise.all([
         supabase
           .from("campaigns")
-          .select("*, clients(id, name), projects:project_id(id, name)")
-          .order("created_at", { ascending: false }),
+          .select(
+            "id, client_id, project_id, name, status, platform, objective, budget, start_date, end_date, created_at, approved_by_ponto_focal, clients(id, name), projects:project_id(id, name)"
+          )
+          .order("created_at", { ascending: false })
+          .limit(500),
         supabase.from("clients").select("id, name").eq("status", "ativo"),
         supabase.from("projects").select("id, name").eq("status", "active"),
       ]);
@@ -273,9 +276,23 @@ export default function AdminCampaigns() {
 
       setCampaigns((campaignsRes.data || []).map(c => ({
         ...c,
-        placements: Array.isArray(c.placements) ? c.placements as string[] : null,
-        metrics: (c.metrics && typeof c.metrics === "object" && !Array.isArray(c.metrics)) ? c.metrics as Record<string, unknown> : null,
-      })));
+        // Fields not loaded in list payload — filled on demand by openForm/detail
+        description: null,
+        campaign_type: null,
+        objective_detail: null,
+        strategy: null,
+        targeting: null,
+        placements: null,
+        headline: null,
+        ad_copy: null,
+        call_to_action: null,
+        daily_budget: null,
+        bidding_strategy: null,
+        target_cpa: null,
+        target_roas: null,
+        results: null,
+        metrics: null,
+      } as Campaign)));
       setClients(clientsRes.data || []);
       setProjects(projectsRes.data || []);
     } catch (error) {
