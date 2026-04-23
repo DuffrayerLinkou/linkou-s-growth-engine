@@ -372,7 +372,7 @@ export default function ClienteTarefas() {
               <div>
                 <p className="text-sm text-muted-foreground">Fase Atual da Jornada</p>
                 <p className="font-semibold">
-                  {journeyPhaseConfig[currentClientPhase]?.label || "Diagnóstico"}
+                  {currentPhaseDef?.label || getAnyPhaseLabel(currentClientPhase, "—")}
                 </p>
               </div>
             </div>
