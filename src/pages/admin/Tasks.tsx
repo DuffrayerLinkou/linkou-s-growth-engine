@@ -461,6 +461,7 @@ export default function AdminTasks() {
                         ...formData,
                         client_id: value,
                         journey_phase: keepPhase ? formData.journey_phase : "",
+                        project_id: "",
                       });
                     }}
                   >
