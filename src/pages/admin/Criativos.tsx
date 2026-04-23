@@ -67,17 +67,57 @@ export default function AdminCriativos() {
     },
   });
 
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["admin-criativos-campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, name, client_id")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as { id: string; name: string; client_id: string }[];
+    },
+  });
+
+  const campaignNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    campaigns.forEach((c) => { m[c.id] = c.name; });
+    return m;
+  }, [campaigns]);
+
+  const visibleCampaigns = useMemo(() => {
+    if (clientFilter === "all") return campaigns;
+    return campaigns.filter((c) => c.client_id === clientFilter);
+  }, [campaigns, clientFilter]);
+
+  // Deep link from Campaigns: ?demand=<id>
+  useEffect(() => {
+    const id = searchParams.get("demand");
+    if (!id || demands.length === 0) return;
+    const found = demands.find((d) => d.id === id);
+    if (found) {
+      setSelected(found);
+      searchParams.delete("demand");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, demands, setSearchParams]);
+
   const filtered = useMemo(() => {
     return demands.filter((d) => {
       if (clientFilter !== "all" && d.client_id !== clientFilter) return false;
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
+      if (campaignFilter !== "all") {
+        if (campaignFilter === "none") {
+          if (d.campaign_id) return false;
+        } else if (d.campaign_id !== campaignFilter) return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         if (!d.title.toLowerCase().includes(q) && !d.objective?.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [demands, clientFilter, statusFilter, search]);
+  }, [demands, clientFilter, statusFilter, campaignFilter, search]);
 
   if (selected) {
     const fresh = demands.find((d) => d.id === selected.id) || selected;
