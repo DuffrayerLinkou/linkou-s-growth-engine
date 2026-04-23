@@ -182,6 +182,27 @@ export default function AdminTasks() {
     return map;
   }, [internalAssignees, clientUsers]);
 
+  // ---------- Service-aware phases for the form ----------
+  // Phases that match the client selected in the form (defaults to auditoria when no client picked)
+  const formServiceType: ServiceType = useMemo(() => {
+    const c = clients.find((cl: any) => cl.id === formData.client_id);
+    return ((c as any)?.service_type as ServiceType) || "auditoria";
+  }, [clients, formData.client_id]);
+
+  const formPhases = useMemo(() => getPhasesByService(formServiceType), [formServiceType]);
+
+  // Phases for the top filter: depend on client filter (or union when "all")
+  const filterServiceType: ServiceType | null = useMemo(() => {
+    if (clientFilter === "all") return null;
+    const c = clients.find((cl: any) => cl.id === clientFilter);
+    return ((c as any)?.service_type as ServiceType) || "auditoria";
+  }, [clients, clientFilter]);
+
+  const filterPhases = useMemo(
+    () => (filterServiceType ? getPhasesByService(filterServiceType) : getAllPhasesUnion()),
+    [filterServiceType],
+  );
+
   // Create/Update task mutation
   const taskMutation = useMutation({
     mutationFn: async (data: typeof formData & { id?: string }) => {
