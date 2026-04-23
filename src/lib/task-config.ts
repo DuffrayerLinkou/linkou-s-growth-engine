@@ -28,8 +28,15 @@ export const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: st
 export const statusColumns: TaskStatus[] = ["todo", "backlog", "in_progress", "blocked", "completed"];
 export const allPhases: JourneyPhase[] = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
 
-// Helper to check if a task is overdue
+// Helper to check if a task is overdue (timezone-safe for `date` columns)
+import { parseDateOnly } from "@/lib/utils";
 export const isTaskOverdue = (dueDate: string | null, status: string | null): boolean => {
   if (!dueDate || status === "completed") return false;
-  return new Date(dueDate) < new Date();
+  const due = parseDateOnly(dueDate);
+  if (!due) return false;
+  // Compare date-only: a task with due_date = today is NOT overdue.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
 };
