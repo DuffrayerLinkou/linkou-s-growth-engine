@@ -451,6 +451,11 @@ export default function AdminProjects() {
                 setSelectedProject(project);
                 setIsViewOpen(true);
               }}
+              onEdit={() => openForm(project)}
+              onDelete={() => {
+                setSelectedProject(project);
+                setIsDeleteOpen(true);
+              }}
             />
           ))}
         </div>

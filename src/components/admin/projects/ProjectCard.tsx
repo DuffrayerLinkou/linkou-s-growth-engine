@@ -1,10 +1,18 @@
 import { motion } from "framer-motion";
-import { Calendar, DollarSign, Building2, Megaphone, Sparkles, Lightbulb, ListChecks } from "lucide-react";
+import { Calendar, DollarSign, Building2, Megaphone, Sparkles, Lightbulb, ListChecks, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { projectStatusLabels, projectStatusColors } from "@/lib/status-config";
 
 export interface ProjectCardData {
@@ -27,6 +35,8 @@ interface Props {
   project: ProjectCardData;
   index: number;
   onOpen: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const statusBorderColor: Record<string, string> = {
@@ -41,7 +51,7 @@ const formatCurrency = (value: number | null) => {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
 };
 
-export function ProjectCard({ project, index, onOpen }: Props) {
+export function ProjectCard({ project, index, onOpen, onEdit, onDelete }: Props) {
   const status = project.status || "planning";
   const progress = project.tasksTotal > 0 ? Math.round((project.tasksDone / project.tasksTotal) * 100) : 0;
 
@@ -64,9 +74,42 @@ export function ProjectCard({ project, index, onOpen }: Props) {
                 <span className="truncate">{project.client_name || "Sem cliente"}</span>
               </div>
             </div>
-            <Badge variant="secondary" className={`${projectStatusColors[status]} shrink-0`}>
-              {projectStatusLabels[status]}
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge variant="secondary" className={projectStatusColors[status]}>
+                {projectStatusLabels[status]}
+              </Badge>
+              {(onEdit || onDelete) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="Ações do projeto"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {onEdit && (
+                      <DropdownMenuItem onSelect={onEdit}>
+                        <Pencil className="h-4 w-4 mr-2" /> Editar
+                      </DropdownMenuItem>
+                    )}
+                    {onEdit && onDelete && <DropdownMenuSeparator />}
+                    {onDelete && (
+                      <DropdownMenuItem
+                        onSelect={onDelete}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Apagar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
 
           {project.description && (
