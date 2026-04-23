@@ -46,6 +46,11 @@ import {
   journeyPhaseConfig,
   allPhases,
   isTaskOverdue,
+  getPhasesByService,
+  getAnyPhaseLabel,
+  getAnyPhaseColor,
+  findPhaseAcrossServices,
+  ServiceType,
 } from "@/lib/task-config";
 import { TasksKanbanClient } from "@/components/cliente/TasksKanbanClient";
 import { TaskFileAttachment } from "@/components/cliente/TaskFileAttachment";
