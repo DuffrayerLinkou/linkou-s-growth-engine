@@ -1,51 +1,49 @@
 
 
-## Refletir o serviço do cliente na aba "Jornada" do Admin
+## Fases da jornada por serviço no formulário de Tarefas (Admin)
 
 ### Problema
 
-Na aba **Jornada** do painel admin do cliente (rota `/admin/clientes/:id`), o stepper visual e o histórico de fases estão **fixos no fluxo de Auditoria** (Diagnóstico → Estruturação → Op. Guiada → Transferência), independente do serviço do cliente.
+Em `Admin → Tarefas`, ao criar/editar uma tarefa o seletor **"Fase da Jornada"** sempre mostra apenas as 4 fases legadas de Auditoria (Diagnóstico, Estruturação, Operação Guiada, Transferência). O mesmo acontece no filtro de fase no topo da página. Como agora cada cliente tem seu próprio fluxo (Auditoria, Gestão, Produção, Design, Site, WebApp), tarefas para a Dra Regeane (gestão) não conseguem ser vinculadas às fases reais — Onboarding/Setup/Otimização/Escala.
 
-Por isso a Dra Regeane — agora `service_type = gestao`, `phase = onboarding` — aparece com o stepper de Auditoria e nenhuma das 4 bolinhas fica destacada (porque "onboarding" não existe no fluxo de Auditoria). O diálogo "Alterar Fase" até oferece as fases corretas de Gestão, mas o stepper de fundo nunca atualiza.
+### Causa
 
-### Causa raiz
+`src/pages/admin/Tasks.tsx` lê `allPhases` e `journeyPhaseConfig` de `src/lib/task-config.ts`, que estão hard-coded no fluxo de auditoria. As fases corretas por serviço já existem em `src/lib/service-phases-config.ts` (`getPhasesByService(serviceType)`), mas não são usadas aqui.
 
-Em `src/pages/admin/ClientDetail.tsx`:
+### Mudanças
 
-1. `<JourneyStepper currentPhase={client.phase} />` é chamado **sem** `serviceType`, então cai no default `"auditoria"`.
-2. Os badges do "Histórico de Alterações" usam `getPhaseLabel(...)`, que também é hard-coded para auditoria.
-3. O toast de sucesso ao trocar de fase usa o mesmo helper antigo.
+**1. `src/pages/admin/Tasks.tsx` — formulário (criar/editar tarefa)**
+- Ampliar a query `clients-list` para trazer também `service_type`:
+  ```ts
+  .select("id, name, service_type")
+  ```
+- Calcular o serviço do cliente selecionado no formulário:
+  ```ts
+  const selectedClient = clients.find(c => c.id === formData.client_id);
+  const selectedServiceType = (selectedClient?.service_type as ServiceType) || "auditoria";
+  const phasesForForm = getPhasesByService(selectedServiceType);
+  ```
+- Trocar o `<Select>` de "Fase da Jornada" para iterar `phasesForForm` (usando `phase.value` e `phase.label`).
+- Quando o usuário trocar o cliente, resetar `journey_phase` para `"none"` se a fase atual não pertencer ao novo serviço, evitando salvar uma fase incompatível.
 
-### Mudanças (somente `src/pages/admin/ClientDetail.tsx`)
+**2. `src/pages/admin/Tasks.tsx` — filtro do topo "Todas as Fases"**
+- Hoje filtra só pelas 4 fases de auditoria. Comportamento novo:
+  - Se o filtro de cliente (`clientFilter`) estiver selecionado, mostrar as fases daquele cliente (`getPhasesByService(client.service_type)`).
+  - Se for "Todos os Clientes", mostrar a união de todas as fases de todos os serviços (deduplicadas por `value`), com label do serviço entre parênteses quando houver colisão de label, para evitar ambiguidade.
 
-1. Trocar o import:
-   ```ts
-   import { JourneyStepper, Phase, getPhaseLabelForService } from "@/components/journey/JourneyStepper";
-   ```
-   (remover `getPhaseLabel` e `getAllPhases` que não serão mais usados)
+**3. `src/components/admin/TasksKanban.tsx` (se aplicável)**
+- Verificar/ajustar para também derivar fases por serviço quando agrupar tarefas por fase no Kanban admin (mesma lógica do filtro: por cliente quando filtrado, união quando "todos").
 
-2. Calcular o serviço atual logo antes do render da aba:
-   ```ts
-   const currentServiceType = (client.service_type as ServiceType) || "auditoria";
-   ```
+**4. Sem alterações no banco**
+- A coluna `tasks.journey_phase` já é `text` livre, então aceita qualquer valor de fase de qualquer serviço.
 
-3. Passar `serviceType` ao stepper:
-   ```tsx
-   <JourneyStepper currentPhase={client.phase} serviceType={currentServiceType} />
-   ```
-
-4. Substituir os dois `getPhaseLabel(fromPhase)` / `getPhaseLabel(toPhase)` no histórico por `getPhaseLabelForService(fromPhase, currentServiceType)` e idem para `toPhase`.
-
-5. Substituir o `getPhaseLabel(toPhase)` do toast em `handleChangePhase` por `getPhaseLabelForService(toPhase, currentServiceType)`.
+**5. Lado cliente (`/cliente/tarefas`)**
+- `src/pages/cliente/Tarefas.tsx` já agrupa por `journey_phase`, mas usa `journeyPhaseConfig` hard-coded de auditoria para labels/cores. Trocar para `getPhasesByService(clientInfo.service_type)` para que o cliente veja seus grupos com os nomes corretos do próprio serviço (Onboarding, Setup, etc.) — caso contrário tarefas com fase "onboarding" cairão num grupo "sem fase" ou sem label.
 
 ### Resultado esperado
 
-- A aba **Jornada** da Dra Regeane vai mostrar **Onboarding → Setup → Otimização → Escala** com o passo "Onboarding" destacado.
-- O botão **Alterar Fase** continua oferecendo as 4 fases de Gestão (já estava correto).
-- O **Histórico de Alterações** mostra os labels corretos do serviço atual.
-- Zero impacto em outros clientes (auditoria continua funcionando porque `currentServiceType` cai no default quando `service_type` é nulo).
-
-### Observação
-
-Nenhuma migração de banco é necessária — o problema é só de UI no admin. As fases de Gestão já estão salvas corretamente para a Dra Regeane.
+- Criar/editar tarefa para a Dra Regeane (gestão) → o seletor "Fase da Jornada" mostra **Onboarding / Setup / Otimização / Escala**.
+- Criar/editar tarefa para um cliente de auditoria → mantém **Diagnóstico / Estruturação / Op. Guiada / Transferência**.
+- Filtro de fases do topo se adapta ao cliente selecionado.
+- Painel do cliente agrupa tarefas pelas fases corretas do seu serviço.
 
