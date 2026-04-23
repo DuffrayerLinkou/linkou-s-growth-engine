@@ -143,9 +143,14 @@ export default function AdminCriativos() {
             Gestão da produção de criativos por cliente.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto shrink-0">
-          <Plus className="h-4 w-4" /> Nova demanda
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+          <Button variant="outline" onClick={() => setBatchOpen(true)} className="w-full sm:w-auto">
+            <Layers className="h-4 w-4" /> Criar em lote
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" /> Nova demanda
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2">
@@ -169,6 +174,14 @@ export default function AdminCriativos() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+          <SelectTrigger className="w-full lg:w-48"><SelectValue placeholder="Campanha" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as campanhas</SelectItem>
+            <SelectItem value="none">Sem campanha</SelectItem>
+            {visibleCampaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="kanban">
@@ -180,7 +193,7 @@ export default function AdminCriativos() {
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
-            <CreativeDemandKanban demands={filtered} clientNames={clientNames} onSelect={setSelected} clients={clients} />
+            <CreativeDemandKanban demands={filtered} clientNames={clientNames} campaignNames={campaignNames} onSelect={setSelected} clients={clients} />
           )}
         </TabsContent>
         <TabsContent value="list" className="mt-4">
@@ -200,6 +213,12 @@ export default function AdminCriativos() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground truncate">{clientNames[d.client_id]}</p>
                     <p className="font-medium truncate">{d.title}</p>
+                    {d.campaign_id && campaignNames[d.campaign_id] && (
+                      <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Megaphone className="h-3 w-3 shrink-0" />
+                        {campaignNames[d.campaign_id]}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-2 sm:shrink-0">
                     <span className={`text-xs px-2 py-1 rounded-md border ${demandStatusConfig[d.status].color}`}>
@@ -217,6 +236,11 @@ export default function AdminCriativos() {
       <CreativeDemandFormDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        clients={clients}
+      />
+      <CreativeBatchCreateDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
         clients={clients}
       />
     </div>
