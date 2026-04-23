@@ -1,71 +1,66 @@
 
 
-## Card de projeto: contagem de criativos desconectada
+## Jornada flexível por tipo de serviço
 
-### O que está acontecendo
+### O problema
 
-No card de Projetos (admin e cliente) e na visão geral do projeto existe um tile **"Criativos"** com ícone de estrela. Esse número está **hard-coded como `0`** em três lugares — nunca foi conectado ao banco. Como agora demandas criativas são vinculadas a campanhas (e campanhas pertencem a projetos), faz sentido finalmente popular esse número de verdade, em vez de mostrar zero.
+A página **Minha Jornada** assume que todo cliente segue o fluxo de **Auditoria** (Diagnóstico → Estruturação → Operação Guiada → Transferência). Mas você atende seis serviços diferentes (Auditoria, Produção, Gestão, Design, Site, Web App) e cada um tem seu próprio fluxo — já definidos em `src/lib/service-phases-config.ts`, **só que ninguém usa esse arquivo na jornada do cliente**. Resultado: cliente de Produção de Mídia vê "Diagnóstico/Transferência" que não fazem sentido pra ele.
 
-### Decisão
+### A solução (sem quebrar nada)
 
-**Popular o contador via campanhas do projeto.** A cadeia é:
+Adicionar **tipo de serviço por cliente** e fazer a Jornada renderizar as fases corretas conforme o serviço. Quem já existe continua em "auditoria" como padrão — **zero migração de dados, zero perda de histórico**.
 
-```text
-project → campaigns (project_id) → creative_demands (campaign_id) → creative_deliverables (demand_id)
-```
+### Mudanças no banco
 
-Vamos contar **demandas criativas** vinculadas às campanhas do projeto (mais útil que entregáveis individuais — uma demanda = "um criativo solicitado", entregáveis são as versões/peças produzidas dentro dela).
+**Tabela `clients`** — duas colunas novas:
 
-### O que muda
+- `service_type text not null default 'auditoria'` — qual fluxo o cliente segue (`auditoria | producao | gestao | design | site | webapp`)
+- `phase_dates jsonb default '{}'` — substitui as 8 colunas hard-coded (`phase_diagnostico_start`, etc.) por um mapa flexível: `{ "diagnostico": { start, end, completed_at }, "briefing": {...}, ... }`
 
-**1. `src/pages/admin/Projects.tsx`** — listagem de projetos
-- Após buscar `campaigns` do projeto, fazer uma segunda query agregando `creative_demands` por `campaign_id IN (...)`.
-- Construir `demandsByProject: Map<projectId, count>` somando demandas das campanhas daquele projeto.
-- Substituir `deliverablesCount: 0` por esse valor.
+As 8 colunas antigas **continuam existindo** (não removo agora). O frontend lê de `phase_dates` quando preenchido, senão cai nas colunas antigas como fallback. Isso garante que clientes existentes não percam datas.
 
-**2. `src/pages/cliente/Projetos.tsx`** — mesma lógica para o painel do cliente (RLS já filtra por client).
+### Mudanças no frontend
 
-**3. `src/components/admin/projects/ProjectCard.tsx`** — apenas trocar o label do tile de **"criativos"** para algo mais preciso. Sugestão: manter **"criativos"** (linguagem do usuário) — sem mudança visual, só passa a mostrar número real.
+**1. `src/lib/service-phases-config.ts`** — já existe e tem os 6 fluxos. Vou usar como fonte única de verdade.
 
-**4. `src/components/admin/projects/ProjectDetailDialog.tsx`** — na visão geral:
-- Buscar `campaigns.id` do projeto, depois `creative_demands` agregadas por essas campanhas.
-- Popular `counts.deliverables` com o total real (hoje fixo em 0).
-- Renomear o `StatBox` de "Criativos" mantendo o ícone `Sparkles`.
+**2. `src/components/journey/JourneyStepper.tsx`** — receber `phases` como prop (array dinâmico) em vez de hard-coded. As funções `getPhaseLabel`, `getPhaseDescription`, `getAllPhases` passam a aceitar `serviceType` como argumento.
 
-**5. (Opcional) Aba Campanhas do projeto** — em `ProjectCampaignsTab.tsx`, exibir ao lado de cada campanha o badge "N criativos" (mesma lógica usada em `CampaignCreativesSection`). Isso fecha o loop visual: o usuário vê quantos criativos cada campanha do projeto tem.
+**3. `src/components/journey/JourneyTimeline.tsx`** — `PhaseDates` vira `Record<string, PhaseDate>` em vez de objeto fixo com 4 chaves. Loop renderiza N fases (4, 5, ou o que vier do config).
 
-### Implementação técnica (resumo)
+**4. `src/components/journey/JourneyOverviewCard.tsx`** — mesma adaptação: lê fases dinâmicas em vez de assumir `transferencia` como última.
 
-```ts
-// pseudo, dentro do load de Projects.tsx
-const campaignIds = (campaignsRes.data || []).map(c => c.id);
-const campaignToProject = new Map(campaignsRes.data.map(c => [c.id, c.project_id]));
+**5. `src/pages/cliente/MinhaJornada.tsx`** — busca `service_type` do cliente, deriva fases via `getPhasesByService(serviceType)`, passa para todos os componentes filhos. Título passa a ser **"Minha Jornada — {Nome do Serviço}"** (ex: "Minha Jornada — Produção de Mídia").
 
-const { data: demands } = await supabase
-  .from("creative_demands")
-  .select("campaign_id")
-  .in("campaign_id", campaignIds);
+**6. `src/hooks/useAuth.tsx`** — `ClientInfo` ganha `service_type`.
 
-const demandsByProject = new Map<string, number>();
-demands?.forEach(d => {
-  const pid = campaignToProject.get(d.campaign_id);
-  if (pid) demandsByProject.set(pid, (demandsByProject.get(pid) || 0) + 1);
-});
-// usar demandsByProject.get(p.id) || 0 no lugar do 0 fixo
-```
+**7. `src/pages/admin/ClientDetail.tsx`** + form de criação de cliente — admin pode escolher o `service_type` e editar datas das fases do serviço escolhido. Quando troca o tipo, mantém o histórico mas mostra as fases novas.
 
-Demandas **sem campanha** (`campaign_id null`) ficam de fora propositalmente — elas não pertencem a nenhum projeto. Isso é coerente com o modelo atual.
+**8. `src/lib/task-config.ts`** — `journeyPhaseConfig` deixa de ser hard-coded de 4 fases. Helper `getJourneyPhaseConfig(serviceType, phase)` retorna label/cor a partir do `service-phases-config`.
+
+**9. Onde `journey_phase` aparece em tasks** (Tarefas, Templates, Kanban) — passa a respeitar as fases do serviço do cliente. Sem cliente associado (tarefa interna), continua mostrando as 4 fases padrão como hoje.
+
+### Compatibilidade e fallback
+
+- Cliente sem `service_type` → assume `'auditoria'` (default no banco). Nada muda visualmente.
+- Cliente sem `phase_dates` populado → lê das 8 colunas antigas. Nada muda.
+- Tarefas existentes com `journey_phase` de auditoria continuam válidas (auditoria mantém os 4 valores atuais).
+- Audit logs e acknowledgements continuam funcionando — usam o valor de `phase` como string opaca.
+
+### O que o usuário vê
+
+- **Cliente de Auditoria**: idêntico ao hoje.
+- **Cliente de Produção**: vê **Briefing → Produção → Revisão → Entrega** com as cores do config.
+- **Cliente de Site**: vê 5 fases (Briefing → Wireframe → Desenvolvimento → Revisão → Publicação).
+- **Admin**: ao criar/editar cliente, escolhe o tipo de serviço e configura datas das fases corretas.
 
 ### Fora do escopo
 
-- Não vamos criar vínculo direto `creative_demands.project_id` (redundante — já chega via campanha).
-- Não vamos mexer em RLS, kanban de criativos, nem fluxo de aprovação.
-- Não vamos contar entregáveis (versões) — usamos demandas (1 demanda = 1 criativo solicitado).
+- Não vou remover as 8 colunas antigas agora (descontinuar depois, em migração separada).
+- Não vou criar UI de gestão de fases customizadas pelo cliente (as fases vêm do config — você edita o `.ts` se quiser ajustar).
+- Não vou suportar **múltiplos serviços simultâneos por cliente** (um cliente = um service_type por enquanto; se quiser múltiplos, fica como evolução futura via tabela `client_services`).
+- Não mexo em RLS, comentários, kanban de tarefas (apenas labels).
 
-### Resultado esperado
+### Resultado
 
-- Card de projeto mostra o número **real** de criativos solicitados via campanhas daquele projeto.
-- Visão geral do projeto idem.
-- Aba Campanhas (opcional) mostra "N criativos" por campanha.
-- Zero queries pesadas: 1 SELECT extra agregado por listagem.
+A página Minha Jornada deixa de forçar o fluxo de Auditoria. Cada cliente vê a jornada certa do serviço dele, com nomes, ordem, cores e quantidade de fases corretos — mantendo a metáfora visual de stepper + timeline + KPIs que já está consolidada.
 
