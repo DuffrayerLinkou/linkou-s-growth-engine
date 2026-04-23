@@ -54,7 +54,7 @@ export function NotificationBell() {
       return data as Notification[];
     },
     enabled: !!user?.id,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 120000, // Refetch a cada 2 min (realtime cobre updates incrementais)
   });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -114,8 +114,21 @@ export function NotificationBell() {
           table: "notifications",
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        (payload) => {
+          // Prepend incremental — evita refetch redundante
+          const newRow = payload.new as Notification | undefined;
+          if (!newRow) {
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            return;
+          }
+          queryClient.setQueryData<Notification[]>(
+            ["notifications", user.id],
+            (old) => {
+              const list = old || [];
+              if (list.some((n) => n.id === newRow.id)) return list;
+              return [newRow, ...list].slice(0, 20);
+            }
+          );
         }
       )
       .subscribe();

@@ -118,65 +118,39 @@ export default function AdminProjects() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [projectsRes, clientsRes, tasksRes, campRes, learnRes] = await Promise.all([
+      const [projectsRes, clientsRes, statsRes] = await Promise.all([
         supabase
           .from("projects")
-          .select("*, clients(id, name)")
+          .select("id, client_id, name, description, status, start_date, end_date, budget, created_at, clients(id, name)")
           .order("created_at", { ascending: false }),
         supabase.from("clients").select("id, name").eq("status", "ativo"),
-        supabase.from("tasks").select("project_id, status"),
-        supabase.from("campaigns").select("id, project_id"),
-        supabase.from("learnings").select("project_id"),
+        supabase.rpc("get_project_stats", { _client_id: null }),
       ]);
 
       if (projectsRes.error) throw projectsRes.error;
       if (clientsRes.error) throw clientsRes.error;
 
-      const tasksByProject = new Map<string, { total: number; done: number }>();
-      (tasksRes.data || []).forEach((t: any) => {
-        if (!t.project_id) return;
-        const cur = tasksByProject.get(t.project_id) || { total: 0, done: 0 };
-        cur.total += 1;
-        if (t.status === "done") cur.done += 1;
-        tasksByProject.set(t.project_id, cur);
-      });
-      const countBy = (rows: any[]) => {
-        const m = new Map<string, number>();
-        rows.forEach((r) => {
-          if (!r.project_id) return;
-          m.set(r.project_id, (m.get(r.project_id) || 0) + 1);
+      const statsByProject = new Map<string, {
+        tasksTotal: number; tasksDone: number; campaignsCount: number;
+        deliverablesCount: number; learningsCount: number;
+      }>();
+      (statsRes.data || []).forEach((s: any) => {
+        statsByProject.set(s.project_id, {
+          tasksTotal: s.tasks_total || 0,
+          tasksDone: s.tasks_done || 0,
+          campaignsCount: s.campaigns_count || 0,
+          deliverablesCount: s.deliverables_count || 0,
+          learningsCount: s.learnings_count || 0,
         });
-        return m;
-      };
-      const campMap = countBy(campRes.data || []);
-      const learnMap = countBy(learnRes.data || []);
-
-      // Contar criativos (creative_demands) via campanhas do projeto
-      const campaignToProject = new Map<string, string>();
-      (campRes.data || []).forEach((c: any) => {
-        if (c.id && c.project_id) campaignToProject.set(c.id, c.project_id);
       });
-      const campaignIds = Array.from(campaignToProject.keys());
-      const demandsByProject = new Map<string, number>();
-      if (campaignIds.length > 0) {
-        const { data: demandsData } = await supabase
-          .from("creative_demands")
-          .select("campaign_id")
-          .in("campaign_id", campaignIds);
-        (demandsData || []).forEach((d: any) => {
-          const pid = campaignToProject.get(d.campaign_id);
-          if (!pid) return;
-          demandsByProject.set(pid, (demandsByProject.get(pid) || 0) + 1);
-        });
-      }
 
       const enriched: ProjectWithStats[] = (projectsRes.data || []).map((p: any) => ({
         ...p,
-        tasksTotal: tasksByProject.get(p.id)?.total || 0,
-        tasksDone: tasksByProject.get(p.id)?.done || 0,
-        campaignsCount: campMap.get(p.id) || 0,
-        deliverablesCount: demandsByProject.get(p.id) || 0,
-        learningsCount: learnMap.get(p.id) || 0,
+        tasksTotal: statsByProject.get(p.id)?.tasksTotal || 0,
+        tasksDone: statsByProject.get(p.id)?.tasksDone || 0,
+        campaignsCount: statsByProject.get(p.id)?.campaignsCount || 0,
+        deliverablesCount: statsByProject.get(p.id)?.deliverablesCount || 0,
+        learningsCount: statsByProject.get(p.id)?.learningsCount || 0,
       }));
       setProjects(enriched);
       setClients(clientsRes.data || []);

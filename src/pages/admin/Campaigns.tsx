@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -261,8 +261,11 @@ export default function AdminCampaigns() {
       const [campaignsRes, clientsRes, projectsRes] = await Promise.all([
         supabase
           .from("campaigns")
-          .select("*, clients(id, name), projects:project_id(id, name)")
-          .order("created_at", { ascending: false }),
+          .select(
+            "id, client_id, project_id, name, status, platform, objective, budget, start_date, end_date, created_at, approved_by_ponto_focal, clients(id, name), projects:project_id(id, name)"
+          )
+          .order("created_at", { ascending: false })
+          .limit(500),
         supabase.from("clients").select("id, name").eq("status", "ativo"),
         supabase.from("projects").select("id, name").eq("status", "active"),
       ]);
@@ -273,9 +276,23 @@ export default function AdminCampaigns() {
 
       setCampaigns((campaignsRes.data || []).map(c => ({
         ...c,
-        placements: Array.isArray(c.placements) ? c.placements as string[] : null,
-        metrics: (c.metrics && typeof c.metrics === "object" && !Array.isArray(c.metrics)) ? c.metrics as Record<string, unknown> : null,
-      })));
+        // Fields not loaded in list payload — filled on demand by openForm/detail
+        description: null,
+        campaign_type: null,
+        objective_detail: null,
+        strategy: null,
+        targeting: null,
+        placements: null,
+        headline: null,
+        ad_copy: null,
+        call_to_action: null,
+        daily_budget: null,
+        bidding_strategy: null,
+        target_cpa: null,
+        target_roas: null,
+        results: null,
+        metrics: null,
+      } as Campaign)));
       setClients(clientsRes.data || []);
       setProjects(projectsRes.data || []);
     } catch (error) {
@@ -294,35 +311,53 @@ export default function AdminCampaigns() {
     fetchData();
   }, []);
 
-  const openForm = (campaign?: Campaign) => {
+  const fetchFullCampaign = async (id: string): Promise<Campaign | null> => {
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*, clients(id, name), projects:project_id(id, name)")
+      .eq("id", id)
+      .single();
+    if (error || !data) return null;
+    return {
+      ...data,
+      placements: Array.isArray((data as any).placements) ? (data as any).placements as string[] : null,
+      metrics: ((data as any).metrics && typeof (data as any).metrics === "object" && !Array.isArray((data as any).metrics))
+        ? (data as any).metrics as Record<string, unknown>
+        : null,
+    } as Campaign;
+  };
+
+  const openForm = async (campaign?: Campaign) => {
     if (campaign) {
-      setSelectedCampaign(campaign);
+      // Fetch full record (list payload is enxuto for performance)
+      const full = (await fetchFullCampaign(campaign.id)) || campaign;
+      setSelectedCampaign(full);
       setFormData({
-        client_id: campaign.client_id,
-        project_id: campaign.project_id || "none",
-        name: campaign.name,
-        description: campaign.description || "",
-        platform: campaign.platform || "",
-        campaign_type: campaign.campaign_type || "",
-        objective: campaign.objective || "",
-        objective_detail: campaign.objective_detail || "",
-        strategy: campaign.strategy || "",
-        headline: campaign.headline || "",
-        ad_copy: campaign.ad_copy || "",
-        call_to_action: campaign.call_to_action || "",
-        budget: campaign.budget?.toString() || "",
-        daily_budget: campaign.daily_budget?.toString() || "",
-        bidding_strategy: campaign.bidding_strategy || "",
-        target_cpa: campaign.target_cpa?.toString() || "",
-        target_roas: campaign.target_roas?.toString() || "",
-        start_date: campaign.start_date || "",
-        end_date: campaign.end_date || "",
-        status: campaign.status || "draft",
+        client_id: full.client_id,
+        project_id: full.project_id || "none",
+        name: full.name,
+        description: full.description || "",
+        platform: full.platform || "",
+        campaign_type: full.campaign_type || "",
+        objective: full.objective || "",
+        objective_detail: full.objective_detail || "",
+        strategy: full.strategy || "",
+        headline: full.headline || "",
+        ad_copy: full.ad_copy || "",
+        call_to_action: full.call_to_action || "",
+        budget: full.budget?.toString() || "",
+        daily_budget: full.daily_budget?.toString() || "",
+        bidding_strategy: full.bidding_strategy || "",
+        target_cpa: full.target_cpa?.toString() || "",
+        target_roas: full.target_roas?.toString() || "",
+        start_date: full.start_date || "",
+        end_date: full.end_date || "",
+        status: full.status || "draft",
       });
-      setSelectedPlacements((campaign.placements as string[]) || []);
-      setResultsText(campaign.results || "");
+      setSelectedPlacements((full.placements as string[]) || []);
+      setResultsText(full.results || "");
       // Load existing metrics into form
-      const m = campaign.metrics || {};
+      const m = full.metrics || {};
       const mForm: Record<string, string> = {};
       for (const [k, v] of Object.entries(m)) {
         mForm[k] = v != null ? String(v) : "";
@@ -478,14 +513,18 @@ export default function AdminCampaigns() {
     }
   };
 
-  const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch =
-      campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      campaign.clients?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || campaign.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCampaigns = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return campaigns.filter((campaign) => {
+      const matchesSearch =
+        !q ||
+        campaign.name.toLowerCase().includes(q) ||
+        campaign.clients?.name.toLowerCase().includes(q);
+      const matchesStatus =
+        statusFilter === "all" || campaign.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchQuery, statusFilter]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
@@ -610,7 +649,7 @@ export default function AdminCampaigns() {
                     key={campaign.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
+                    transition={{ duration: 0.15 }}
                     className="group"
                   >
                     <TableCell>
@@ -685,9 +724,11 @@ export default function AdminCampaigns() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
+                          <DropdownMenuItem onClick={async () => {
                             setDetailCampaign(campaign);
                             setIsDetailOpen(true);
+                            const full = await fetchFullCampaign(campaign.id);
+                            if (full) setDetailCampaign(full);
                           }}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalhes
