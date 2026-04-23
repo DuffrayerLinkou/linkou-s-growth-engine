@@ -39,6 +39,7 @@ import { DateRangeFilter, presets } from "@/components/admin/DateRangeFilter";
 import { ExportDashboard } from "@/components/admin/ExportDashboard";
 
 import {
+import { parseDateOnly } from "@/lib/utils";
   leadStatusLabels as statusLabels,
   leadStatusColors as statusColors,
   phaseLabels,
@@ -592,7 +593,7 @@ export default function AdminDashboard() {
       severelyOverdueTasks: (severeOverdueTasks || []).map((task: any) => ({
         title: task.title,
         clientName: task.clients?.name || "Sem cliente",
-        dueDate: task.due_date ? format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR }) : "",
+        dueDate: task.due_date ? format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR }) : "",
       })),
     },
     appointments: (weekAppointments || []).map((apt: any) => ({

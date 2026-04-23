@@ -238,7 +238,7 @@ export function TasksKanbanClient({ tasks, onStatusChange, currentUserId, onTask
                                         )}
                                       >
                                         <Clock className="h-3 w-3" />
-                                        {format(new Date(task.due_date), "dd/MM", {
+                                        {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM", {
                                           locale: ptBR,
                                         })}
                                         {overdue && <AlertCircle className="h-3 w-3" />}

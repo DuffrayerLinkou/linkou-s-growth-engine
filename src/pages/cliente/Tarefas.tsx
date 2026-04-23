@@ -322,7 +322,7 @@ export default function ClienteTarefas() {
                                 overdue ? "text-red-600 font-medium" : ""
                               )}>
                                 <Clock className="h-3 w-3" />
-                                {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                                {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM", { locale: ptBR })}
                               </span>
                             )}
                           </div>
@@ -555,7 +555,7 @@ export default function ClienteTarefas() {
                                       overdue ? "text-red-600 font-medium" : "text-muted-foreground"
                                     )}>
                                       <Clock className="h-3 w-3" />
-                                      {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                      {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}
                                       {overdue && <AlertCircle className="h-3 w-3" />}
                                     </span>
                                   )}
@@ -661,7 +661,7 @@ export default function ClienteTarefas() {
                                   overdue ? "text-red-600 font-medium" : "text-muted-foreground"
                                 )}>
                                   <Clock className="h-3 w-3" />
-                                  {format(new Date(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                  {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}
                                   {overdue && <AlertCircle className="h-3 w-3" />}
                                 </span>
                               )}
@@ -823,7 +823,7 @@ export default function ClienteTarefas() {
                       <div>
                         <p className="text-sm text-muted-foreground">Prazo de Entrega</p>
                         <p className={cn("font-medium", overdue && "text-red-600")}>
-                          {format(new Date(selectedTask.due_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          {format((parseDateOnly(selectedTask.due_date) ?? new Date(0)), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                           {overdue && " (Atrasada)"}
                         </p>
                       </div>

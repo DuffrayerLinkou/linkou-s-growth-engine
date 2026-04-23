@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, CreditCard, Clock, CheckCircle, AlertCircle, XCircle, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { parseDateOnly } from "@/lib/utils";
 
 const statusConfig = {
   pending: { label: "Pendente", color: "bg-yellow-500/20 text-yellow-600", icon: Clock },
@@ -304,7 +305,7 @@ export function PaymentsTab({ clientId }: PaymentsTabProps) {
                             R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
-                            {payment.due_date ? format(new Date(payment.due_date), "dd/MM/yy") : "-"}
+                            {payment.due_date ? format((parseDateOnly(payment.due_date) ?? new Date(0)), "dd/MM/yy") : "-"}
                           </TableCell>
                           <TableCell>
                             <Badge className={`${status.color} text-[10px] sm:text-xs px-1.5`}>
