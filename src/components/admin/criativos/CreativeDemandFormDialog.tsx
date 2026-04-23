@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ export interface DemandFormValue {
   deadline: string | null;
   priority: Priority;
   status: DemandStatus;
+  campaign_id?: string | null;
 }
 
 interface Props {
@@ -38,6 +39,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
   const isEdit = !!demand;
 
   const [fClient, setFClient] = useState("");
+  const [fCampaign, setFCampaign] = useState<string>("none");
   const [fTitle, setFTitle] = useState("");
   const [fObjective, setFObjective] = useState("");
   const [fBriefing, setFBriefing] = useState("");
@@ -51,6 +53,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
     if (!open) return;
     if (demand) {
       setFClient(demand.client_id);
+      setFCampaign(demand.campaign_id || "none");
       setFTitle(demand.title);
       setFObjective(demand.objective || "");
       setFBriefing(demand.briefing || "");
@@ -60,17 +63,33 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
       setFPriority(demand.priority);
       setFStatus(demand.status);
     } else {
-      setFClient(""); setFTitle(""); setFObjective(""); setFBriefing("");
+      setFClient(""); setFCampaign("none"); setFTitle(""); setFObjective(""); setFBriefing("");
       setFPlatform(""); setFFormat(""); setFDeadline(""); setFPriority("medium");
       setFStatus("in_production");
     }
   }, [open, demand]);
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["admin-client-campaigns", fClient],
+    queryFn: async () => {
+      if (!fClient) return [];
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, name")
+        .eq("client_id", fClient)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!fClient,
+  });
 
   const save = useMutation({
     mutationFn: async () => {
       if (!fClient || !fTitle.trim()) throw new Error("Preencha cliente e título");
       const payload = {
         client_id: fClient,
+        campaign_id: fCampaign !== "none" ? fCampaign : null,
         title: fTitle.trim(),
         objective: fObjective.trim() || null,
         briefing: fBriefing.trim() || null,
@@ -112,6 +131,18 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Campanha vinculada</Label>
+            <Select value={fCampaign} onValueChange={setFCampaign} disabled={!fClient}>
+              <SelectTrigger>
+                <SelectValue placeholder={fClient ? "Selecione (opcional)" : "Selecione um cliente primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem campanha</SelectItem>
+                {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
