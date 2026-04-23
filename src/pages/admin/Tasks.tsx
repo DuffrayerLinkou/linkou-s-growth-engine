@@ -133,7 +133,7 @@ export default function AdminTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name")
+        .select("id, name, service_type")
         .order("name");
       if (error) throw error;
       return data;
