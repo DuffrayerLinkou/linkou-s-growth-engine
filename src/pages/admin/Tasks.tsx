@@ -170,6 +170,22 @@ export default function AdminTasks() {
     enabled: !!formData.client_id,
   });
 
+  // Fetch projects of the client selected in the form (for project_id selector)
+  const { data: clientProjects = [] } = useQuery({
+    queryKey: ["client-projects-list", formData.client_id],
+    queryFn: async () => {
+      if (!formData.client_id) return [];
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, status")
+        .eq("client_id", formData.client_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formData.client_id,
+  });
+
   // Build assignee names map (internal + client users)
   const assigneeNames = useMemo(() => {
     const map = new Map<string, string>();
