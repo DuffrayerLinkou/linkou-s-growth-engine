@@ -170,6 +170,22 @@ export default function AdminTasks() {
     enabled: !!formData.client_id,
   });
 
+  // Fetch projects of the client selected in the form (for project_id selector)
+  const { data: clientProjects = [] } = useQuery({
+    queryKey: ["client-projects-list", formData.client_id],
+    queryFn: async () => {
+      if (!formData.client_id) return [];
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, status")
+        .eq("client_id", formData.client_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formData.client_id,
+  });
+
   // Build assignee names map (internal + client users)
   const assigneeNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -211,7 +227,7 @@ export default function AdminTasks() {
         description: data.description || null,
         execution_guide: data.execution_guide || null,
         client_id: data.client_id,
-        project_id: data.project_id || null,
+        project_id: data.project_id === "none" ? null : data.project_id || null,
         assigned_to: data.assigned_to || null,
         priority: data.priority,
         due_date: data.due_date || null,
@@ -445,6 +461,7 @@ export default function AdminTasks() {
                         ...formData,
                         client_id: value,
                         journey_phase: keepPhase ? formData.journey_phase : "",
+                        project_id: "",
                       });
                     }}
                   >
@@ -484,6 +501,39 @@ export default function AdminTasks() {
                     </div>
                   </RadioGroup>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Projeto (opcional)</Label>
+                <Select
+                  value={formData.project_id || "none"}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, project_id: value === "none" ? "" : value })
+                  }
+                  disabled={!formData.client_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        formData.client_id ? "Selecione um projeto" : "Selecione um cliente primeiro"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem projeto</SelectItem>
+                    {clientProjects.length === 0 && formData.client_id ? (
+                      <SelectItem value="__no_projects" disabled>
+                        Nenhum projeto cadastrado para este cliente
+                      </SelectItem>
+                    ) : (
+                      clientProjects.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
