@@ -504,6 +504,39 @@ export default function AdminTasks() {
               </div>
 
               <div className="space-y-2">
+                <Label>Projeto (opcional)</Label>
+                <Select
+                  value={formData.project_id || "none"}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, project_id: value === "none" ? "" : value })
+                  }
+                  disabled={!formData.client_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        formData.client_id ? "Selecione um projeto" : "Selecione um cliente primeiro"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem projeto</SelectItem>
+                    {clientProjects.length === 0 && formData.client_id ? (
+                      <SelectItem value="__no_projects" disabled>
+                        Nenhum projeto cadastrado para este cliente
+                      </SelectItem>
+                    ) : (
+                      clientProjects.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Responsável</Label>
                 <Select
                   value={formData.assigned_to}
