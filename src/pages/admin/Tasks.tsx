@@ -56,6 +56,10 @@ import {
   journeyPhaseConfig,
   statusColumns,
   allPhases,
+  getPhasesByService,
+  getAllPhasesUnion,
+  getAnyPhaseLabel,
+  ServiceType,
 } from "@/lib/task-config";
 
 interface Task {
