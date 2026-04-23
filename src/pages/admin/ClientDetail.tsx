@@ -108,6 +108,7 @@ interface Client {
   phase: Phase;
   autonomy: boolean;
   created_at: string;
+  service_type: string;
   phase_diagnostico_start: string | null;
   phase_diagnostico_end: string | null;
   phase_diagnostico_completed_at: string | null;
@@ -269,6 +270,7 @@ export default function ClientDetail() {
     name: "",
     segment: "",
     status: "ativo",
+    service_type: "auditoria",
     phase_diagnostico_start: "",
     phase_diagnostico_end: "",
     phase_estruturacao_start: "",
@@ -298,6 +300,7 @@ export default function ClientDetail() {
         name: data.name,
         segment: data.segment || "",
         status: data.status || "ativo",
+        service_type: (data as any).service_type || "auditoria",
         phase_diagnostico_start: data.phase_diagnostico_start || "",
         phase_diagnostico_end: data.phase_diagnostico_end || "",
         phase_estruturacao_start: data.phase_estruturacao_start || "",
@@ -813,6 +816,7 @@ export default function ClientDetail() {
           name: clientFormData.name,
           segment: clientFormData.segment || null,
           status: clientFormData.status,
+          service_type: clientFormData.service_type,
           phase_diagnostico_start: clientFormData.phase_diagnostico_start || null,
           phase_diagnostico_end: clientFormData.phase_diagnostico_end || null,
           phase_estruturacao_start: clientFormData.phase_estruturacao_start || null,
