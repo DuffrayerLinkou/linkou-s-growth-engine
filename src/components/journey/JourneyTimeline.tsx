@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { format, differenceInDays, isPast, isToday, isFuture, parseISO } from "date-fns";
+import { format, differenceInDays, isPast, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Check, Clock, Circle, AlertTriangle, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Phase, getAllPhases, getPhaseLabel } from "./JourneyStepper";
+import { Phase, getAllPhasesForService } from "./JourneyStepper";
+import { ServiceType } from "@/lib/service-phases-config";
 
 export interface PhaseDate {
   start: string | null;
@@ -12,32 +13,36 @@ export interface PhaseDate {
   completed_at: string | null;
 }
 
-export interface PhaseDates {
-  diagnostico: PhaseDate;
-  estruturacao: PhaseDate;
-  operacao_guiada: PhaseDate;
-  transferencia: PhaseDate;
-}
+// Mapa flexível: qualquer chave de fase pode existir
+export type PhaseDates = Record<string, PhaseDate>;
 
 interface JourneyTimelineProps {
   currentPhase: Phase;
   phaseDates: PhaseDates;
+  serviceType?: ServiceType;
   className?: string;
+}
+
+const EMPTY_PHASE_DATE: PhaseDate = { start: null, end: null, completed_at: null };
+
+function safeDate(dates: PhaseDates, key: string): PhaseDate {
+  return dates[key] ?? EMPTY_PHASE_DATE;
 }
 
 function getPhaseStatus(
   phaseId: Phase,
   currentPhase: Phase,
-  phaseDates: PhaseDates
+  phaseDates: PhaseDates,
+  serviceType: ServiceType
 ): "completed" | "current" | "upcoming" {
-  const phases = getAllPhases();
+  const phases = getAllPhasesForService(serviceType);
   const phaseIndex = phases.findIndex((p) => p.id === phaseId);
   const currentIndex = phases.findIndex((p) => p.id === currentPhase);
 
-  if (phaseDates[phaseId].completed_at) {
+  if (safeDate(phaseDates, phaseId).completed_at) {
     return "completed";
   }
-  if (phaseIndex < currentIndex) {
+  if (currentIndex >= 0 && phaseIndex < currentIndex) {
     return "completed";
   }
   if (phaseIndex === currentIndex) {
@@ -66,15 +71,17 @@ function getDeadlineStatus(
 
 function formatDateRange(start: string | null, end: string | null): string {
   if (!start && !end) return "Não definido";
-  
   const startStr = start ? format(parseISO(start), "dd/MM", { locale: ptBR }) : "?";
   const endStr = end ? format(parseISO(end), "dd/MM", { locale: ptBR }) : "?";
-  
   return `${startStr} - ${endStr}`;
 }
 
-export function JourneyTimeline({ currentPhase, phaseDates, className }: JourneyTimelineProps) {
-  const phases = getAllPhases();
+export function JourneyTimeline({ currentPhase, phaseDates, serviceType = "auditoria", className }: JourneyTimelineProps) {
+  const phases = getAllPhasesForService(serviceType);
+  const currentIndex = phases.findIndex((p) => p.id === currentPhase);
+  const progressWidth = currentIndex >= 0 && phases.length > 1
+    ? (currentIndex / (phases.length - 1)) * 100
+    : 0;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -83,31 +90,30 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
         <div className="relative">
           {/* Connection Line */}
           <div className="absolute top-6 left-8 right-8 h-1 bg-muted rounded-full" />
-          
+
           {/* Progress Line */}
           <motion.div
             className="absolute top-6 left-8 h-1 bg-primary rounded-full"
             initial={{ width: 0 }}
-            animate={{
-              width: `${(phases.findIndex((p) => p.id === currentPhase) / (phases.length - 1)) * 100}%`,
-            }}
+            animate={{ width: `${progressWidth}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
 
           {/* Phase Nodes */}
           <div className="relative flex justify-between">
             {phases.map((phase, index) => {
-              const status = getPhaseStatus(phase.id, currentPhase, phaseDates);
-              const dates = phaseDates[phase.id];
+              const status = getPhaseStatus(phase.id, currentPhase, phaseDates, serviceType);
+              const dates = safeDate(phaseDates, phase.id);
               const deadline = status === "current" ? getDeadlineStatus(dates.end) : { status: "none" as const, daysLeft: 0 };
-              
+
               return (
                 <motion.div
                   key={phase.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex flex-col items-center w-1/4"
+                  className="flex flex-col items-center"
+                  style={{ width: `${100 / phases.length}%` }}
                 >
                   {/* Node */}
                   <div
@@ -130,7 +136,7 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
                   {/* Label */}
                   <p
                     className={cn(
-                      "mt-3 font-medium text-sm text-center",
+                      "mt-3 font-medium text-sm text-center px-1",
                       status === "current" ? "text-primary" : status === "completed" ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
@@ -145,13 +151,7 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
 
                   {/* Status Badge */}
                   <div className="mt-2">
-                    {status === "completed" && dates.completed_at && (
-                      <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600">
-                        <Check className="h-3 w-3 mr-1" />
-                        Concluída
-                      </Badge>
-                    )}
-                    {status === "completed" && !dates.completed_at && (
+                    {status === "completed" && (
                       <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600">
                         <Check className="h-3 w-3 mr-1" />
                         Concluída
@@ -210,8 +210,8 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
       {/* Mobile Timeline - Vertical */}
       <div className="md:hidden space-y-0">
         {phases.map((phase, index) => {
-          const status = getPhaseStatus(phase.id, currentPhase, phaseDates);
-          const dates = phaseDates[phase.id];
+          const status = getPhaseStatus(phase.id, currentPhase, phaseDates, serviceType);
+          const dates = safeDate(phaseDates, phase.id);
           const deadline = status === "current" ? getDeadlineStatus(dates.end) : { status: "none" as const, daysLeft: 0 };
           const isLast = index === phases.length - 1;
 
@@ -262,8 +262,7 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
                   >
                     {phase.label}
                   </p>
-                  
-                  {/* Status Badge */}
+
                   {status === "completed" && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-600">
                       <Check className="h-2.5 w-2.5 mr-0.5" />
@@ -290,7 +289,7 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">Prev.</Badge>
                   )}
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                   <Calendar className="h-2.5 w-2.5" />
                   {formatDateRange(dates.start, dates.end)}
@@ -305,35 +304,50 @@ export function JourneyTimeline({ currentPhase, phaseDates, className }: Journey
 }
 
 export function getEmptyPhaseDates(): PhaseDates {
-  return {
-    diagnostico: { start: null, end: null, completed_at: null },
-    estruturacao: { start: null, end: null, completed_at: null },
-    operacao_guiada: { start: null, end: null, completed_at: null },
-    transferencia: { start: null, end: null, completed_at: null },
-  };
+  return {};
 }
 
+/**
+ * Extrai PhaseDates do registro do cliente.
+ * Prioridade:
+ *  1. coluna `phase_dates` (jsonb dinâmico) — formato canônico atual
+ *  2. fallback para colunas legadas `phase_<nome>_start/end/completed_at` (apenas auditoria)
+ */
 export function extractPhaseDatesFromClient(client: any): PhaseDates {
+  // 1. Formato novo (dinâmico)
+  if (client?.phase_dates && typeof client.phase_dates === "object" && Object.keys(client.phase_dates).length > 0) {
+    const result: PhaseDates = {};
+    for (const [key, value] of Object.entries(client.phase_dates as Record<string, any>)) {
+      result[key] = {
+        start: value?.start ?? null,
+        end: value?.end ?? null,
+        completed_at: value?.completed_at ?? null,
+      };
+    }
+    return result;
+  }
+
+  // 2. Fallback: colunas legadas (apenas auditoria)
   return {
     diagnostico: {
-      start: client.phase_diagnostico_start || null,
-      end: client.phase_diagnostico_end || null,
-      completed_at: client.phase_diagnostico_completed_at || null,
+      start: client?.phase_diagnostico_start || null,
+      end: client?.phase_diagnostico_end || null,
+      completed_at: client?.phase_diagnostico_completed_at || null,
     },
     estruturacao: {
-      start: client.phase_estruturacao_start || null,
-      end: client.phase_estruturacao_end || null,
-      completed_at: client.phase_estruturacao_completed_at || null,
+      start: client?.phase_estruturacao_start || null,
+      end: client?.phase_estruturacao_end || null,
+      completed_at: client?.phase_estruturacao_completed_at || null,
     },
     operacao_guiada: {
-      start: client.phase_operacao_guiada_start || null,
-      end: client.phase_operacao_guiada_end || null,
-      completed_at: client.phase_operacao_guiada_completed_at || null,
+      start: client?.phase_operacao_guiada_start || null,
+      end: client?.phase_operacao_guiada_end || null,
+      completed_at: client?.phase_operacao_guiada_completed_at || null,
     },
     transferencia: {
-      start: client.phase_transferencia_start || null,
-      end: client.phase_transferencia_end || null,
-      completed_at: client.phase_transferencia_completed_at || null,
+      start: client?.phase_transferencia_start || null,
+      end: client?.phase_transferencia_end || null,
+      completed_at: client?.phase_transferencia_completed_at || null,
     },
   };
 }
