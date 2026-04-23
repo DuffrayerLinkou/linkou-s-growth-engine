@@ -1,53 +1,51 @@
 
 
-## Atualizar a jornada da Dra Regeane para Gestão de Tráfego
+## Refletir o serviço do cliente na aba "Jornada" do Admin
 
-### Estado atual no banco
+### Problema
 
-- **Cliente**: Dra Regeane (`640b69d9-632e-4634-a09f-9c26f0b8c648`)
-- **Serviço atual**: `auditoria` (default aplicado pela migração)
-- **Fase atual**: `estruturacao`
-- **Datas**: todas vazias (8 colunas legadas vazias, `phase_dates` é objeto com chaves vazias)
-- **Autonomia**: `false`
+Na aba **Jornada** do painel admin do cliente (rota `/admin/clientes/:id`), o stepper visual e o histórico de fases estão **fixos no fluxo de Auditoria** (Diagnóstico → Estruturação → Op. Guiada → Transferência), independente do serviço do cliente.
 
-Não há histórico de datas para perder. A troca é segura.
+Por isso a Dra Regeane — agora `service_type = gestao`, `phase = onboarding` — aparece com o stepper de Auditoria e nenhuma das 4 bolinhas fica destacada (porque "onboarding" não existe no fluxo de Auditoria). O diálogo "Alterar Fase" até oferece as fases corretas de Gestão, mas o stepper de fundo nunca atualiza.
 
-### O que vou fazer
+### Causa raiz
 
-Uma única operação de UPDATE na linha da Dra Regeane, via tool de manipulação de dados do Supabase:
+Em `src/pages/admin/ClientDetail.tsx`:
 
-```sql
-UPDATE public.clients
-SET service_type = 'gestao',
-    phase = 'onboarding',
-    phase_dates = '{}'::jsonb
-WHERE id = '640b69d9-632e-4634-a09f-9c26f0b8c648';
-```
+1. `<JourneyStepper currentPhase={client.phase} />` é chamado **sem** `serviceType`, então cai no default `"auditoria"`.
+2. Os badges do "Histórico de Alterações" usam `getPhaseLabel(...)`, que também é hard-coded para auditoria.
+3. O toast de sucesso ao trocar de fase usa o mesmo helper antigo.
 
-Resultado:
+### Mudanças (somente `src/pages/admin/ClientDetail.tsx`)
 
-- **`service_type`** = `gestao` → fluxo: Onboarding → Setup → Otimização → Escala
-- **`phase`** = `onboarding` (primeira fase do fluxo de Gestão; você ajusta no painel admin para a fase real dela em 2 cliques se for diferente)
-- **`phase_dates`** = `{}` (limpo, pronto para receber datas das novas fases pelo painel admin)
-- **`autonomy`** permanece `false`
+1. Trocar o import:
+   ```ts
+   import { JourneyStepper, Phase, getPhaseLabelForService } from "@/components/journey/JourneyStepper";
+   ```
+   (remover `getPhaseLabel` e `getAllPhases` que não serão mais usados)
 
-### Por que isso não afeta nada
+2. Calcular o serviço atual logo antes do render da aba:
+   ```ts
+   const currentServiceType = (client.service_type as ServiceType) || "auditoria";
+   ```
 
-- A página **Minha Jornada** já lê `service_type` e renderiza o fluxo dinamicamente — vai mostrar "Minha Jornada — Gestão de Tráfego" com as 4 fases corretas (Onboarding, Setup, Otimização, Escala) nas cores do config.
-- O painel admin (`ClientDetail`) já tem o seletor "Tipo de Jornada" e o diálogo de mudança de fase já lista as fases do serviço escolhido — você consegue ajustar fase atual e datas direto pela interface.
-- Comentários, tarefas, campanhas, criativos, arquivos, audit logs, acknowledgements — **nada** depende do `service_type`. Continuam idênticos.
-- Outros clientes não são tocados.
-- Nenhuma alteração de schema, nenhuma alteração de código.
+3. Passar `serviceType` ao stepper:
+   ```tsx
+   <JourneyStepper currentPhase={client.phase} serviceType={currentServiceType} />
+   ```
 
-### Depois do UPDATE — como você ajusta o resto
+4. Substituir os dois `getPhaseLabel(fromPhase)` / `getPhaseLabel(toPhase)` no histórico por `getPhaseLabelForService(fromPhase, currentServiceType)` e idem para `toPhase`.
 
-Pelo painel admin → **Clientes → Dra Regeane**:
-
-1. Se ela não está em "Onboarding", clica em **"Mudar Fase"** e escolhe a fase real (Setup, Otimização ou Escala).
-2. Para preencher datas: edita os campos de data das fases dentro da aba do cliente — eles já vão refletir as 4 fases de Gestão.
+5. Substituir o `getPhaseLabel(toPhase)` do toast em `handleChangePhase` por `getPhaseLabelForService(toPhase, currentServiceType)`.
 
 ### Resultado esperado
 
-- No próximo login da Dra Regeane (ou refresh), ela vê **"Minha Jornada — Gestão de Tráfego"** com stepper, timeline e KPIs nas fases certas.
-- Zero impacto em qualquer outra parte da aplicação.
+- A aba **Jornada** da Dra Regeane vai mostrar **Onboarding → Setup → Otimização → Escala** com o passo "Onboarding" destacado.
+- O botão **Alterar Fase** continua oferecendo as 4 fases de Gestão (já estava correto).
+- O **Histórico de Alterações** mostra os labels corretos do serviço atual.
+- Zero impacto em outros clientes (auditoria continua funcionando porque `currentServiceType` cai no default quando `service_type` é nulo).
+
+### Observação
+
+Nenhuma migração de banco é necessária — o problema é só de UI no admin. As fases de Gestão já estão salvas corretamente para a Dra Regeane.
 
