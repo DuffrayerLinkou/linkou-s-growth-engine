@@ -2947,6 +2947,21 @@ export type Database = {
       client_has_ponto_focal: { Args: { _client_id: string }; Returns: boolean }
       count_client_users: { Args: { _client_id: string }; Returns: number }
       get_capture_page_by_slug: { Args: { _slug: string }; Returns: Json }
+      get_dashboard_kpis: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
+      get_project_stats: {
+        Args: { _client_id?: string }
+        Returns: {
+          campaigns_count: number
+          deliverables_count: number
+          learnings_count: number
+          project_id: string
+          tasks_done: number
+          tasks_total: number
+        }[]
+      }
       get_public_tracking_config: { Args: never; Returns: Json }
       get_user_client_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
