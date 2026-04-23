@@ -188,17 +188,17 @@ export function CreativeDeliverableEditor({ deliverable }: Props) {
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="rounded-lg bg-primary/10 p-2 text-primary shrink-0">
               <Icon className="h-5 w-5" />
             </div>
-            <div>
-              <CardTitle className="text-base">{deliverable.title}</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">{typeCfg.label} · v{deliverable.current_version}</p>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base truncate">{deliverable.title}</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{typeCfg.label} · v{deliverable.current_version}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={statusCfg.color}>{statusCfg.label}</Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge variant="outline" className={`${statusCfg.color} hidden sm:inline-flex`}>{statusCfg.label}</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Ações do entregável">

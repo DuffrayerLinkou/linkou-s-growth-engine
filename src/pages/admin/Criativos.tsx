@@ -87,35 +87,35 @@ export default function AdminCriativos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            Demandas Criativas
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+            <span className="truncate">Demandas Criativas</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Gestão da produção de criativos por cliente.
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto shrink-0">
           <Plus className="h-4 w-4" /> Nova demanda
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2">
+        <div className="relative col-span-full lg:flex-1 lg:min-w-[200px] lg:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={clientFilter} onValueChange={setClientFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Cliente" /></SelectTrigger>
+          <SelectTrigger className="w-full lg:w-48"><SelectValue placeholder="Cliente" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os clientes</SelectItem>
             {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full lg:w-48"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
             {Object.entries(demandStatusConfig).map(([k, v]) => (
@@ -149,13 +149,13 @@ export default function AdminCriativos() {
                   tabIndex={0}
                   onClick={() => setSelected(d)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(d); } }}
-                  className="w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 transition-all flex items-center justify-between gap-3 cursor-pointer"
+                  className="w-full text-left rounded-lg border bg-card p-3 hover:border-primary/40 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 cursor-pointer"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground truncate">{clientNames[d.client_id]}</p>
                     <p className="font-medium truncate">{d.title}</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 sm:shrink-0">
                     <span className={`text-xs px-2 py-1 rounded-md border ${demandStatusConfig[d.status].color}`}>
                       {demandStatusConfig[d.status].label}
                     </span>

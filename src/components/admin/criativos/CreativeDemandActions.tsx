@@ -124,7 +124,7 @@ export function CreativeDemandActions({
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
+                className="h-9 w-9 sm:h-8 sm:w-8 -mr-1 -mt-1 text-muted-foreground hover:text-foreground"
                 aria-label="Ações da demanda"
               >
                 <MoreVertical className="h-4 w-4" />

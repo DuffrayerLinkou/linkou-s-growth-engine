@@ -101,7 +101,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar demanda" : "Nova demanda criativa"}</DialogTitle>
         </DialogHeader>
@@ -123,7 +123,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
             <Label>Objetivo</Label>
             <Input value={fObjective} onChange={(e) => setFObjective(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Plataforma</Label>
               <Select value={fPlatform} onValueChange={setFPlatform}>
@@ -143,7 +143,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Prazo</Label>
               <Input type="date" value={fDeadline} onChange={(e) => setFDeadline(e.target.value)} />
@@ -179,9 +179,9 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
             <Textarea value={fBriefing} onChange={(e) => setFBriefing(e.target.value)} rows={5} />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => save.mutate()} disabled={!fClient || !fTitle.trim() || save.isPending}>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
+          <Button onClick={() => save.mutate()} disabled={!fClient || !fTitle.trim() || save.isPending} className="w-full sm:w-auto">
             {isEdit ? "Salvar alterações" : "Criar demanda"}
           </Button>
         </DialogFooter>
