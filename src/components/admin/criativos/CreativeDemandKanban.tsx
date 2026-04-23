@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { demandStatusConfig, priorityConfig, type DemandStatus, type Priority } from "@/lib/creative-config";
-import { Calendar } from "lucide-react";
+import { Calendar, Megaphone } from "lucide-react";
 import { format } from "date-fns";
 import { CreativeDemandActions } from "./CreativeDemandActions";
 import { parseDateOnly } from "@/lib/utils";
@@ -17,6 +17,7 @@ type Demand = {
   priority: Priority;
   status: DemandStatus;
   created_at: string;
+  campaign_id?: string | null;
 };
 
 interface Props {
@@ -24,11 +25,12 @@ interface Props {
   clientNames: Record<string, string>;
   onSelect: (d: Demand) => void;
   clients: { id: string; name: string }[];
+  campaignNames?: Record<string, string>;
 }
 
 const COLUMNS: DemandStatus[] = ["briefing", "in_production", "in_approval", "adjustments", "approved", "delivered"];
 
-export function CreativeDemandKanban({ demands, clientNames, onSelect, clients }: Props) {
+export function CreativeDemandKanban({ demands, clientNames, onSelect, clients, campaignNames = {} }: Props) {
   return (
     <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-6 xl:overflow-visible xl:px-0 xl:mx-0">
       {COLUMNS.map((col) => {

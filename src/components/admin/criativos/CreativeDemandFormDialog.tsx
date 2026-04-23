@@ -113,6 +113,7 @@ export function CreativeDemandFormDialog({ open, onOpenChange, clients, demand }
     onSuccess: () => {
       toast({ title: isEdit ? "Demanda atualizada" : "Demanda criada" });
       qc.invalidateQueries({ queryKey: ["admin-creative-demands"] });
+      qc.invalidateQueries({ queryKey: ["campaign-creative-demands"] });
       onOpenChange(false);
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
