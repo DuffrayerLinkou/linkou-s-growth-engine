@@ -27,7 +27,7 @@ interface Demand {
   priority: Priority;
   status: DemandStatus;
   created_at: string;
-  campaign_id: string | null;
+  campaign_id?: string | null;
 }
 
 export default function AdminCriativos() {
