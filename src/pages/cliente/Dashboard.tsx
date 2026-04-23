@@ -40,10 +40,10 @@ import {
   campaignStatusColors 
 } from "@/lib/status-config";
 import { 
-import { parseDateOnly } from "@/lib/utils";
   statusConfig, 
   priorityConfig 
 } from "@/lib/task-config";
+import { parseDateOnly } from "@/lib/utils";
 
 // Derivar labels e cores de task-config para manter consistência
 const taskStatusLabels: Record<string, string> = Object.fromEntries(
