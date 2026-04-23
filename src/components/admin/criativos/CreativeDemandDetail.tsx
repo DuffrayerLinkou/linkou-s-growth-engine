@@ -12,7 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { CreativeDeliverableEditor } from "./CreativeDeliverableEditor";
 import { demandStatusConfig, deliverableTypeConfig, priorityConfig, type DemandStatus, type DeliverableType, type Priority } from "@/lib/creative-config";
-import { ArrowLeft, Plus, Calendar } from "lucide-react";
+import { ArrowLeft, Plus, Calendar, Megaphone, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreativeDemandActions } from "./CreativeDemandActions";
@@ -30,6 +31,7 @@ interface Demand {
   priority: Priority;
   status: DemandStatus;
   created_at: string;
+  campaign_id?: string | null;
 }
 
 interface Props {
@@ -57,6 +59,21 @@ export function CreativeDemandDetail({ demand, clientName, onBack, clients }: Pr
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: campaign } = useQuery({
+    queryKey: ["creative-demand-campaign", demand.campaign_id],
+    queryFn: async () => {
+      if (!demand.campaign_id) return null;
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id, name")
+        .eq("id", demand.campaign_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!demand.campaign_id,
   });
 
   const updateStatus = useMutation({

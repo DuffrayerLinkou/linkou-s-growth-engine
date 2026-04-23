@@ -63,6 +63,12 @@ export function CreativeDemandKanban({ demands, clientNames, onSelect, clients, 
                     />
                   </div>
                   <h4 className="text-sm font-semibold line-clamp-2 mb-2">{d.title}</h4>
+                  {d.campaign_id && campaignNames[d.campaign_id] && (
+                    <div className="flex items-center gap-1 mb-2 text-[10px] text-muted-foreground">
+                      <Megaphone className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{campaignNames[d.campaign_id]}</span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="secondary" className={`text-[9px] ${priorityConfig[d.priority].color}`}>
                       {priorityConfig[d.priority].label}
