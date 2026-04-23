@@ -14,6 +14,9 @@ import {
   journeyPhaseConfig,
   statusColumns,
   isTaskOverdue,
+  getAnyPhaseLabel,
+  getAnyPhaseColor,
+  findPhaseAcrossServices,
 } from "@/lib/task-config";
 
 interface Task {
