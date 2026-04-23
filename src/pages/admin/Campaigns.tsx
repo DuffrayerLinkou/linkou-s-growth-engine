@@ -26,6 +26,7 @@ import {
 import { CommentSection } from "@/components/cliente/CommentSection";
 import { CampaignCreativesSection } from "@/components/admin/criativos/CampaignCreativesSection";
 import { CreativeBatchCreateDialog } from "@/components/admin/criativos/CreativeBatchCreateDialog";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
