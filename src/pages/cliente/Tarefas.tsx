@@ -196,14 +196,14 @@ export default function ClienteTarefas() {
   });
 
   // Group tasks by phase
-  const getTasksByPhase = (phase: JourneyPhase | null) =>
+  const getTasksByPhase = (phase: string | null) =>
     filteredTasks.filter((task) => task.journey_phase === phase);
 
   const getTasksWithoutPhase = () =>
     filteredTasks.filter((task) => !task.journey_phase);
 
   // Calculate progress for a phase
-  const getPhaseProgress = (phase: JourneyPhase) => {
+  const getPhaseProgress = (phase: string) => {
     const phaseTasks = tasks.filter((t) => t.journey_phase === phase);
     if (phaseTasks.length === 0) return { completed: 0, total: 0, percentage: 0 };
     const completed = phaseTasks.filter((t) => t.status === "completed").length;
