@@ -529,9 +529,9 @@ export default function AdminTasks() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sem fase</SelectItem>
-                      {allPhases.map((phase) => (
-                        <SelectItem key={phase} value={phase}>
-                          {journeyPhaseConfig[phase].label}
+                      {formPhases.map((phase) => (
+                        <SelectItem key={phase.value} value={phase.value}>
+                          {phase.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
