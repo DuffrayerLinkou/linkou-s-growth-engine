@@ -24,9 +24,10 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { JourneyStepper, Phase, getPhaseLabel, getPhaseDescription } from "@/components/journey/JourneyStepper";
+import { JourneyStepper, Phase, getPhaseLabelForService, getPhaseDescriptionForService } from "@/components/journey/JourneyStepper";
 import { JourneyTimeline, PhaseDates, extractPhaseDatesFromClient, getEmptyPhaseDates } from "@/components/journey/JourneyTimeline";
 import { JourneyOverviewCard } from "@/components/journey/JourneyOverviewCard";
+import { ServiceType, getServiceLabel } from "@/lib/service-phases-config";
 
 interface AuditLog {
   id: string;
@@ -70,6 +71,7 @@ export default function MinhaJornada() {
   const { toast } = useToast();
 
   const currentPhase = clientInfo?.phase as Phase || "diagnostico";
+  const serviceType = (clientInfo?.service_type as ServiceType) || "auditoria";
   const isPontoFocal = profile?.ponto_focal || false;
 
   const currentPhaseAck = acknowledgements.find(
@@ -159,7 +161,7 @@ export default function MinhaJornada() {
 
       toast({
         title: "Ciência registrada",
-        description: `Você confirmou ciência da fase "${getPhaseLabel(currentPhase)}".`,
+        description: `Você confirmou ciência da fase "${getPhaseLabelForService(currentPhase, serviceType)}".`,
       });
 
       fetchData();
@@ -229,7 +231,7 @@ export default function MinhaJornada() {
           transition={{ delay: 0.1 }}
           className="text-sm sm:text-base text-muted-foreground mt-1"
         >
-          Acompanhe o progresso da sua jornada com a Linkou.
+          Acompanhe o progresso da sua jornada com a Linkou — fluxo de {getServiceLabel(serviceType)}.
         </motion.p>
       </div>
 
@@ -242,7 +244,8 @@ export default function MinhaJornada() {
         <JourneyOverviewCard 
           currentPhase={currentPhase} 
           phaseDates={phaseDates}
-          phaseStartDate={phaseDates[currentPhase].start}
+          phaseStartDate={phaseDates[currentPhase]?.start ?? null}
+          serviceType={serviceType}
         />
       </motion.div>
 
@@ -265,7 +268,8 @@ export default function MinhaJornada() {
           <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             <JourneyTimeline 
               currentPhase={currentPhase} 
-              phaseDates={phaseDates} 
+              phaseDates={phaseDates}
+              serviceType={serviceType}
             />
           </CardContent>
         </Card>
@@ -279,14 +283,14 @@ export default function MinhaJornada() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Fase Atual: {getPhaseLabel(currentPhase)}</CardTitle>
+            <CardTitle>Fase Atual: {getPhaseLabelForService(currentPhase, serviceType)}</CardTitle>
             <CardDescription>
-              {getPhaseDescription(currentPhase)}
+              {getPhaseDescriptionForService(currentPhase, serviceType)}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {/* Compact Stepper */}
-            <JourneyStepper currentPhase={currentPhase} compact />
+            <JourneyStepper currentPhase={currentPhase} serviceType={serviceType} compact />
 
             {/* Phase Deadline Progress */}
             {phaseDates[currentPhase].start && phaseDates[currentPhase].end && (
@@ -411,7 +415,7 @@ export default function MinhaJornada() {
                   Tarefas desta Fase
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
-                  Tarefas da etapa "{getPhaseLabel(currentPhase)}"
+                  Tarefas da etapa "{getPhaseLabelForService(currentPhase, serviceType)}"
                 </CardDescription>
               </div>
               {totalTasks > 0 && (
@@ -562,11 +566,11 @@ export default function MinhaJornada() {
                         </p>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
                           <Badge variant="outline">
-                            {getPhaseLabel(fromPhase)}
+                            {getPhaseLabelForService(fromPhase, serviceType)}
                           </Badge>
                           <ArrowRight className="h-4 w-4 text-muted-foreground" />
                           <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-                            {getPhaseLabel(toPhase)}
+                            {getPhaseLabelForService(toPhase, serviceType)}
                           </Badge>
                           {duration && (
                             <span className="text-xs text-muted-foreground ml-2">

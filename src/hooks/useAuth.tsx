@@ -23,6 +23,7 @@ interface ClientInfo {
   segment: string | null;
   status: string | null;
   phase: string;
+  service_type: string;
 }
 
 interface AuthContextType {
@@ -71,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profileData.client_id) {
           const { data: clientData } = await supabase
             .from("clients")
-            .select("id, name, segment, status, phase")
+            .select("id, name, segment, status, phase, service_type")
             .eq("id", profileData.client_id)
             .maybeSingle();
 

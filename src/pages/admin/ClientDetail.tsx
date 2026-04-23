@@ -108,6 +108,7 @@ interface Client {
   phase: Phase;
   autonomy: boolean;
   created_at: string;
+  service_type: string;
   phase_diagnostico_start: string | null;
   phase_diagnostico_end: string | null;
   phase_diagnostico_completed_at: string | null;
@@ -269,6 +270,7 @@ export default function ClientDetail() {
     name: "",
     segment: "",
     status: "ativo",
+    service_type: "auditoria",
     phase_diagnostico_start: "",
     phase_diagnostico_end: "",
     phase_estruturacao_start: "",
@@ -298,6 +300,7 @@ export default function ClientDetail() {
         name: data.name,
         segment: data.segment || "",
         status: data.status || "ativo",
+        service_type: (data as any).service_type || "auditoria",
         phase_diagnostico_start: data.phase_diagnostico_start || "",
         phase_diagnostico_end: data.phase_diagnostico_end || "",
         phase_estruturacao_start: data.phase_estruturacao_start || "",
@@ -813,6 +816,7 @@ export default function ClientDetail() {
           name: clientFormData.name,
           segment: clientFormData.segment || null,
           status: clientFormData.status,
+          service_type: clientFormData.service_type,
           phase_diagnostico_start: clientFormData.phase_diagnostico_start || null,
           phase_diagnostico_end: clientFormData.phase_diagnostico_end || null,
           phase_estruturacao_start: clientFormData.phase_estruturacao_start || null,
@@ -855,7 +859,10 @@ export default function ClientDetail() {
 
       // Update client phase
       const updateData: any = { phase: toPhase };
-      if (toPhase === "transferencia") {
+      // Mark autonomy when moving to the LAST phase of the client's service flow
+      const flow = getPhasesByService((client.service_type as ServiceType) || "auditoria");
+      const lastPhaseValue = flow[flow.length - 1]?.value;
+      if (toPhase === lastPhaseValue) {
         updateData.autonomy = true;
       }
 
@@ -1519,7 +1526,7 @@ export default function ClientDetail() {
             <div className="space-y-2">
               <Label>Fase atual</Label>
               <Badge variant="outline" className="text-sm">
-                {getPhaseLabel(client.phase)}
+                {getPhasesByService((client.service_type as ServiceType) || "auditoria").find((p) => p.value === client.phase)?.label || client.phase}
               </Badge>
             </div>
 
@@ -1533,8 +1540,8 @@ export default function ClientDetail() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getAllPhases().map((phase) => (
-                    <SelectItem key={phase.id} value={phase.id}>
+                  {getPhasesByService((client.service_type as ServiceType) || "auditoria").map((phase) => (
+                    <SelectItem key={phase.value} value={phase.value}>
                       {phase.label}
                     </SelectItem>
                   ))}
@@ -1882,6 +1889,30 @@ export default function ClientDetail() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo de Jornada</Label>
+                <Select
+                  value={clientFormData.service_type}
+                  onValueChange={(value) =>
+                    setClientFormData({ ...clientFormData, service_type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o serviço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceTypes.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Define quais fases o cliente vê em <strong>Minha Jornada</strong>. Os campos de prazo abaixo são específicos do fluxo de <strong>Auditoria</strong>; para outros tipos, use a opção “Alterar Fase” para mover o cliente entre as etapas do serviço escolhido.
+                </p>
               </div>
             </div>
 

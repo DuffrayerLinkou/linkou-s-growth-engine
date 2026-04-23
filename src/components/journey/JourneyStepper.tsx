@@ -1,55 +1,66 @@
 import { motion } from "framer-motion";
 import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPhasesByService, ServiceType, ServicePhase } from "@/lib/service-phases-config";
 
-export type Phase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
+// Phase é uma string opaca — pode ser qualquer chave de qualquer fluxo de serviço.
+// Mantemos os antigos valores literais para compatibilidade com código que ainda usa "diagnostico" etc.
+export type Phase = string;
 
 interface JourneyStepperProps {
   currentPhase: Phase;
+  serviceType?: ServiceType;
   compact?: boolean;
 }
 
-const phases: { id: Phase; label: string; description: string }[] = [
-  {
-    id: "diagnostico",
-    label: "Diagnóstico",
-    description: "Estamos mapeando gargalos e desperdícios para corrigir o que impede performance.",
-  },
-  {
-    id: "estruturacao",
-    label: "Estruturação",
-    description: "Estamos montando base técnica e processo (dados, funil, integrações).",
-  },
-  {
-    id: "operacao_guiada",
-    label: "Operação Guiada",
-    description: "Estamos rodando testes e otimizações enquanto treinamos seu ponto focal.",
-  },
-  {
-    id: "transferencia",
-    label: "Transferência",
-    description: "Você tem o sistema documentado e pronto para operar com autonomia.",
-  },
-];
+// ---------- Helpers service-aware ----------
+
+export function getPhaseIndexForService(phase: Phase, serviceType: ServiceType = "auditoria"): number {
+  const phases = getPhasesByService(serviceType);
+  return phases.findIndex((p) => p.value === phase);
+}
+
+export function getPhaseLabelForService(phase: Phase, serviceType: ServiceType = "auditoria"): string {
+  const phases = getPhasesByService(serviceType);
+  return phases.find((p) => p.value === phase)?.label || phase;
+}
+
+export function getPhaseDescriptionForService(phase: Phase, serviceType: ServiceType = "auditoria"): string {
+  const phases = getPhasesByService(serviceType);
+  return phases.find((p) => p.value === phase)?.description || "";
+}
+
+export function getAllPhasesForService(serviceType: ServiceType = "auditoria"): Array<{ id: Phase; label: string; description: string }> {
+  return getPhasesByService(serviceType).map((p) => ({
+    id: p.value,
+    label: p.label,
+    description: p.description || "",
+  }));
+}
+
+// ---------- Compatibilidade retro (assume auditoria) ----------
 
 export function getPhaseIndex(phase: Phase): number {
-  return phases.findIndex((p) => p.id === phase);
+  return getPhaseIndexForService(phase, "auditoria");
 }
 
 export function getPhaseLabel(phase: Phase): string {
-  return phases.find((p) => p.id === phase)?.label || phase;
+  return getPhaseLabelForService(phase, "auditoria");
 }
 
 export function getPhaseDescription(phase: Phase): string {
-  return phases.find((p) => p.id === phase)?.description || "";
+  return getPhaseDescriptionForService(phase, "auditoria");
 }
 
 export function getAllPhases() {
-  return phases;
+  return getAllPhasesForService("auditoria");
 }
 
-export function JourneyStepper({ currentPhase, compact = false }: JourneyStepperProps) {
-  const currentIndex = getPhaseIndex(currentPhase);
+// ---------- Componente ----------
+
+export function JourneyStepper({ currentPhase, serviceType = "auditoria", compact = false }: JourneyStepperProps) {
+  const phases = getAllPhasesForService(serviceType);
+  const currentIndex = phases.findIndex((p) => p.id === currentPhase);
 
   if (compact) {
     return (
@@ -135,24 +146,26 @@ export function JourneyStepper({ currentPhase, compact = false }: JourneyStepper
       </div>
 
       {/* Current phase description */}
-      <motion.div
-        key={currentPhase}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-lg bg-primary/5 border border-primary/10"
-      >
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Circle className="h-4 w-4 text-primary fill-primary" />
+      {currentIndex >= 0 && (
+        <motion.div
+          key={currentPhase}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-lg bg-primary/5 border border-primary/10"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Circle className="h-4 w-4 text-primary fill-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-primary">{getPhaseLabelForService(currentPhase, serviceType)}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {getPhaseDescriptionForService(currentPhase, serviceType)}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium text-primary">{getPhaseLabel(currentPhase)}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {getPhaseDescription(currentPhase)}
-            </p>
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
