@@ -1,49 +1,44 @@
 
 
-## Fases da jornada por serviço no formulário de Tarefas (Admin)
+## Vincular tarefas a projetos (criar/editar)
 
 ### Problema
 
-Em `Admin → Tarefas`, ao criar/editar uma tarefa o seletor **"Fase da Jornada"** sempre mostra apenas as 4 fases legadas de Auditoria (Diagnóstico, Estruturação, Operação Guiada, Transferência). O mesmo acontece no filtro de fase no topo da página. Como agora cada cliente tem seu próprio fluxo (Auditoria, Gestão, Produção, Design, Site, WebApp), tarefas para a Dra Regeane (gestão) não conseguem ser vinculadas às fases reais — Onboarding/Setup/Otimização/Escala.
-
-### Causa
-
-`src/pages/admin/Tasks.tsx` lê `allPhases` e `journeyPhaseConfig` de `src/lib/task-config.ts`, que estão hard-coded no fluxo de auditoria. As fases corretas por serviço já existem em `src/lib/service-phases-config.ts` (`getPhasesByService(serviceType)`), mas não são usadas aqui.
+No formulário de **criar/editar tarefa** (Admin → Tarefas), o campo `project_id` já existe no estado e no banco, mas **não há um seletor visível na UI**. Hoje, ao criar uma tarefa para um cliente, não dá para vinculá-la a um projeto específico — então a aba "Tarefas" do `ProjectDetailDialog` (que filtra por `project_id`) sempre aparece vazia, mesmo quando o cliente tem tarefas.
 
 ### Mudanças
 
-**1. `src/pages/admin/Tasks.tsx` — formulário (criar/editar tarefa)**
-- Ampliar a query `clients-list` para trazer também `service_type`:
+**1. `src/pages/admin/Tasks.tsx` — adicionar seletor de Projeto**
+
+- Adicionar uma nova query `useQuery(["client-projects-list", formData.client_id])` que busca os projetos do cliente selecionado:
   ```ts
-  .select("id, name, service_type")
+  supabase.from("projects").select("id, name, status").eq("client_id", formData.client_id).order("created_at", { ascending: false })
   ```
-- Calcular o serviço do cliente selecionado no formulário:
-  ```ts
-  const selectedClient = clients.find(c => c.id === formData.client_id);
-  const selectedServiceType = (selectedClient?.service_type as ServiceType) || "auditoria";
-  const phasesForForm = getPhasesByService(selectedServiceType);
-  ```
-- Trocar o `<Select>` de "Fase da Jornada" para iterar `phasesForForm` (usando `phase.value` e `phase.label`).
-- Quando o usuário trocar o cliente, resetar `journey_phase` para `"none"` se a fase atual não pertencer ao novo serviço, evitando salvar uma fase incompatível.
+  Habilitada somente quando `formData.client_id` estiver preenchido.
+- Inserir um `<Select>` "Projeto (opcional)" logo abaixo do par Cliente / Tipo de Executor. Opções:
+  - `"none"` → "Sem projeto" (default)
+  - lista de projetos do cliente (mostrando nome + status entre parênteses se útil).
+- Quando o usuário trocar o **cliente**, resetar `project_id` para `""` (mesma lógica usada hoje para `journey_phase`), pois o projeto antigo não pertence ao novo cliente.
+- No `taskMutation`, manter o tratamento já existente: `project_id: data.project_id || null` (basta tratar `"none"` como `null`, igual ao `journey_phase`).
+- Em `openEditDialog`, o `project_id` já é carregado — ok.
+- Estado vazio: se o cliente não tiver projetos, mostrar item desabilitado "Nenhum projeto cadastrado para este cliente".
 
-**2. `src/pages/admin/Tasks.tsx` — filtro do topo "Todas as Fases"**
-- Hoje filtra só pelas 4 fases de auditoria. Comportamento novo:
-  - Se o filtro de cliente (`clientFilter`) estiver selecionado, mostrar as fases daquele cliente (`getPhasesByService(client.service_type)`).
-  - Se for "Todos os Clientes", mostrar a união de todas as fases de todos os serviços (deduplicadas por `value`), com label do serviço entre parênteses quando houver colisão de label, para evitar ambiguidade.
+**2. (Opcional, mesmo arquivo) — Filtro topo "Projeto"**
 
-**3. `src/components/admin/TasksKanban.tsx` (se aplicável)**
-- Verificar/ajustar para também derivar fases por serviço quando agrupar tarefas por fase no Kanban admin (mesma lógica do filtro: por cliente quando filtrado, união quando "todos").
+Adicionar um terceiro filtro `projectFilter` ao lado dos filtros de Cliente e Fase, ativo apenas quando há um cliente selecionado, listando os projetos daquele cliente. Aplicar como `.eq("project_id", projectFilter)` na query de `admin-tasks`. Isso facilita auditar tarefas de um projeto específico direto na página de Tarefas, sem abrir o dialog de projeto.
 
-**4. Sem alterações no banco**
-- A coluna `tasks.journey_phase` já é `text` livre, então aceita qualquer valor de fase de qualquer serviço.
+**3. Sem alterações no banco**
 
-**5. Lado cliente (`/cliente/tarefas`)**
-- `src/pages/cliente/Tarefas.tsx` já agrupa por `journey_phase`, mas usa `journeyPhaseConfig` hard-coded de auditoria para labels/cores. Trocar para `getPhasesByService(clientInfo.service_type)` para que o cliente veja seus grupos com os nomes corretos do próprio serviço (Onboarding, Setup, etc.) — caso contrário tarefas com fase "onboarding" cairão num grupo "sem fase" ou sem label.
+- A coluna `tasks.project_id` já existe (vista no `Task` interface e no schema). Sem migração.
+
+**4. Sem mudanças no painel do cliente**
+
+- `CreateTaskDialog` (cliente) cria tarefas internas do dia-a-dia sem projeto — manter como está. Caso a Dra Regeane queira no futuro vincular suas próprias tarefas a um projeto, isso pode ser uma segunda iteração.
 
 ### Resultado esperado
 
-- Criar/editar tarefa para a Dra Regeane (gestão) → o seletor "Fase da Jornada" mostra **Onboarding / Setup / Otimização / Escala**.
-- Criar/editar tarefa para um cliente de auditoria → mantém **Diagnóstico / Estruturação / Op. Guiada / Transferência**.
-- Filtro de fases do topo se adapta ao cliente selecionado.
-- Painel do cliente agrupa tarefas pelas fases corretas do seu serviço.
+- Ao criar/editar uma tarefa para a Dra Regeane (ou qualquer cliente), o admin pode escolher o projeto **"Escalabilidade e Qualificação"** (ou qualquer outro do cliente).
+- A aba **Tarefas** dentro do `ProjectDetailDialog` passa a listar essas tarefas vinculadas (já está implementada, só faltava o link na origem).
+- Os contadores de tarefas e o "Progresso de tarefas" no card de visão geral do projeto passam a refletir os números reais.
+- Filtro opcional por projeto na página Admin → Tarefas, quando útil.
 
