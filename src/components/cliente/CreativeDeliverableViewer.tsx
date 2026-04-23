@@ -31,7 +31,7 @@ interface Props {
 
 export function CreativeDeliverableViewer({ deliverable }: Props) {
   const { user } = useAuth();
-  const { canApprove, isPontoFocal } = useClientPermissions();
+  const { canApprove } = useClientPermissions();
   const qc = useQueryClient();
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
