@@ -26,7 +26,7 @@ interface DemandRow {
 }
 
 export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: Props) {
-  const { data: demands = [], isLoading } = useQuery({
+  const { data: demands = [], isLoading, error } = useQuery({
     queryKey: ["campaign-creative-demands", campaignId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -37,16 +37,19 @@ export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: P
       if (error) throw error;
       return (data || []) as DemandRow[];
     },
+    enabled: !!campaignId,
+    retry: false,
   });
 
+  const demandIds = demands.map((d) => d.id);
   const { data: deliverableCounts = {} } = useQuery({
-    queryKey: ["campaign-deliverable-counts", campaignId, demands.map((d) => d.id).join(",")],
+    queryKey: ["campaign-deliverable-counts", campaignId, demandIds.join(",")],
     queryFn: async () => {
-      if (demands.length === 0) return {};
+      if (demandIds.length === 0) return {};
       const { data, error } = await supabase
         .from("creative_deliverables")
         .select("demand_id, status")
-        .in("demand_id", demands.map((d) => d.id));
+        .in("demand_id", demandIds);
       if (error) throw error;
       const map: Record<string, { total: number; approved: number }> = {};
       (data || []).forEach((row) => {
@@ -57,7 +60,8 @@ export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: P
       });
       return map;
     },
-    enabled: demands.length > 0,
+    enabled: demandIds.length > 0,
+    retry: false,
   });
 
   return (
@@ -75,6 +79,10 @@ export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: P
 
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Carregando…</p>
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+          Erro ao carregar criativos: {(error as Error).message}
+        </div>
       ) : demands.length === 0 ? (
         <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
           Nenhum criativo vinculado a esta campanha.
@@ -85,7 +93,8 @@ export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: P
         <div className="space-y-2">
           {demands.map((d) => {
             const counts = deliverableCounts[d.id];
-            const statusCfg = demandStatusConfig[d.status];
+            const statusCfg = demandStatusConfig[d.status] ?? { label: d.status, color: "bg-muted text-muted-foreground border-border", description: "" };
+            const prioCfg = priorityConfig[d.priority] ?? { label: d.priority, color: "bg-muted text-muted-foreground" };
             return (
               <div
                 key={d.id}
@@ -97,8 +106,8 @@ export function CampaignCreativesSection({ campaignId, clientId, onAddBatch }: P
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md border ${statusCfg.color}`}>
                       {statusCfg.label}
                     </span>
-                    <Badge variant="secondary" className={`text-[9px] ${priorityConfig[d.priority].color}`}>
-                      {priorityConfig[d.priority].label}
+                    <Badge variant="secondary" className={`text-[9px] ${prioCfg.color}`}>
+                      {prioCfg.label}
                     </Badge>
                     {d.platform && <Badge variant="outline" className="text-[9px]">{d.platform}</Badge>}
                     {d.format && <Badge variant="outline" className="text-[9px]">{d.format}</Badge>}
