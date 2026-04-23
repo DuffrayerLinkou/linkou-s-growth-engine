@@ -14,6 +14,42 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
+// ============= CHUNK ERROR RECOVERY =============
+// Se o JS antigo (cacheado) tentar carregar um chunk lazy que não existe mais
+// na build atual, o import dinâmico falha e a tela fica preta. Detectamos
+// esse erro específico, limpamos caches e recarregamos UMA vez.
+if (typeof window !== "undefined") {
+  const RELOAD_KEY = "linkou-chunk-reloaded";
+  const isChunkError = (msg: string | undefined) =>
+    !!msg && /Loading chunk|dynamically imported module|Failed to fetch dynamically/i.test(msg);
+
+  const recover = async () => {
+    if (sessionStorage.getItem(RELOAD_KEY) === "1") return;
+    sessionStorage.setItem(RELOAD_KEY, "1");
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
+      }
+    } catch {}
+    location.reload();
+  };
+
+  window.addEventListener("error", (e) => {
+    if (isChunkError(e?.message)) recover();
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = (e?.reason && (e.reason.message || String(e.reason))) || "";
+    if (isChunkError(msg)) recover();
+  });
+
+  // Limpa o flag quando uma navegação completa de fato com sucesso
+  // (após algum tempo sem erro, podemos remover para permitir recovery futuro).
+  window.addEventListener("load", () => {
+    setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), 10000);
+  });
+}
+
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
