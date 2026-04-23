@@ -513,14 +513,18 @@ export default function AdminCampaigns() {
     }
   };
 
-  const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch =
-      campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      campaign.clients?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || campaign.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCampaigns = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return campaigns.filter((campaign) => {
+      const matchesSearch =
+        !q ||
+        campaign.name.toLowerCase().includes(q) ||
+        campaign.clients?.name.toLowerCase().includes(q);
+      const matchesStatus =
+        statusFilter === "all" || campaign.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchQuery, statusFilter]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
@@ -645,7 +649,7 @@ export default function AdminCampaigns() {
                     key={campaign.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
+                    transition={{ duration: 0.15 }}
                     className="group"
                   >
                     <TableCell>
@@ -720,9 +724,11 @@ export default function AdminCampaigns() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
+                          <DropdownMenuItem onClick={async () => {
                             setDetailCampaign(campaign);
                             setIsDetailOpen(true);
+                            const full = await fetchFullCampaign(campaign.id);
+                            if (full) setDetailCampaign(full);
                           }}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalhes
