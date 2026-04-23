@@ -57,15 +57,24 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
       const [tasksRes, doneRes, campRes, learnRes, filesRes] = await Promise.all([
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id).eq("status", "done"),
-        supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("project_id", project.id),
+        supabase.from("campaigns").select("id").eq("project_id", project.id),
         supabase.from("learnings").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("files").select("id", { count: "exact", head: true }).eq("project_id", project.id),
       ]);
+      const campaignIds = (campRes.data || []).map((c: any) => c.id);
+      let demandsCount = 0;
+      if (campaignIds.length > 0) {
+        const { count } = await supabase
+          .from("creative_demands")
+          .select("id", { count: "exact", head: true })
+          .in("campaign_id", campaignIds);
+        demandsCount = count || 0;
+      }
       setCounts({
         tasksTotal: tasksRes.count || 0,
         tasksDone: doneRes.count || 0,
-        campaigns: campRes.count || 0,
-        deliverables: 0,
+        campaigns: campaignIds.length,
+        deliverables: demandsCount,
         learnings: learnRes.count || 0,
         files: filesRes.count || 0,
       });
