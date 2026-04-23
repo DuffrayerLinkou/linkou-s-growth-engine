@@ -893,7 +893,7 @@ export default function ClientDetail() {
 
       toast({
         title: "Fase alterada",
-        description: `Cliente movido para "${getPhaseLabel(toPhase)}".`,
+        description: `Cliente movido para "${getPhaseLabelForService(toPhase, (client.service_type as ServiceType) || "auditoria")}".`,
       });
 
       setIsPhaseDialogOpen(false);
@@ -1146,7 +1146,10 @@ export default function ClientDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <JourneyStepper currentPhase={client.phase} />
+              <JourneyStepper
+                currentPhase={client.phase}
+                serviceType={(client.service_type as ServiceType) || "auditoria"}
+              />
 
               {/* Audit Log Timeline */}
               <div className="mt-8 pt-6 border-t">
@@ -1181,12 +1184,12 @@ export default function ClientDetail() {
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <span className="text-xs sm:text-sm text-muted-foreground">De</span>
                             <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
-                              {getPhaseLabel(fromPhase)}
+                              {getPhaseLabelForService(fromPhase, (client.service_type as ServiceType) || "auditoria")}
                             </Badge>
                             <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
                             <span className="text-xs sm:text-sm text-muted-foreground">para</span>
                             <Badge className="bg-primary/10 text-primary text-[10px] sm:text-xs px-1.5 sm:px-2">
-                              {getPhaseLabel(toPhase)}
+                              {getPhaseLabelForService(toPhase, (client.service_type as ServiceType) || "auditoria")}
                             </Badge>
                           </div>
                         </motion.div>
