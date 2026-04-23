@@ -24,9 +24,10 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { JourneyStepper, Phase, getPhaseLabel, getPhaseDescription } from "@/components/journey/JourneyStepper";
+import { JourneyStepper, Phase, getPhaseLabelForService, getPhaseDescriptionForService } from "@/components/journey/JourneyStepper";
 import { JourneyTimeline, PhaseDates, extractPhaseDatesFromClient, getEmptyPhaseDates } from "@/components/journey/JourneyTimeline";
 import { JourneyOverviewCard } from "@/components/journey/JourneyOverviewCard";
+import { ServiceType, getServiceLabel } from "@/lib/service-phases-config";
 
 interface AuditLog {
   id: string;
@@ -70,6 +71,7 @@ export default function MinhaJornada() {
   const { toast } = useToast();
 
   const currentPhase = clientInfo?.phase as Phase || "diagnostico";
+  const serviceType = (clientInfo?.service_type as ServiceType) || "auditoria";
   const isPontoFocal = profile?.ponto_focal || false;
 
   const currentPhaseAck = acknowledgements.find(
@@ -159,7 +161,7 @@ export default function MinhaJornada() {
 
       toast({
         title: "Ciência registrada",
-        description: `Você confirmou ciência da fase "${getPhaseLabel(currentPhase)}".`,
+        description: `Você confirmou ciência da fase "${getPhaseLabelForService(currentPhase, serviceType)}".`,
       });
 
       fetchData();
@@ -229,7 +231,7 @@ export default function MinhaJornada() {
           transition={{ delay: 0.1 }}
           className="text-sm sm:text-base text-muted-foreground mt-1"
         >
-          Acompanhe o progresso da sua jornada com a Linkou.
+          Acompanhe o progresso da sua jornada com a Linkou — fluxo de {getServiceLabel(serviceType)}.
         </motion.p>
       </div>
 
@@ -242,7 +244,8 @@ export default function MinhaJornada() {
         <JourneyOverviewCard 
           currentPhase={currentPhase} 
           phaseDates={phaseDates}
-          phaseStartDate={phaseDates[currentPhase].start}
+          phaseStartDate={phaseDates[currentPhase]?.start ?? null}
+          serviceType={serviceType}
         />
       </motion.div>
 
