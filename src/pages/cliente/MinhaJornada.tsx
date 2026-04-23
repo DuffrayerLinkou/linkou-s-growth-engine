@@ -293,17 +293,17 @@ export default function MinhaJornada() {
             <JourneyStepper currentPhase={currentPhase} serviceType={serviceType} compact />
 
             {/* Phase Deadline Progress */}
-            {phaseDates[currentPhase].start && phaseDates[currentPhase].end && (
+            {phaseDates[currentPhase]?.start && phaseDates[currentPhase]?.end && (
               <div className="mt-6 p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Progresso Temporal da Fase</span>
                   <span className="text-sm text-muted-foreground">
-                    {format(parseISO(phaseDates[currentPhase].start!), "dd/MM", { locale: ptBR })} - {format(parseISO(phaseDates[currentPhase].end!), "dd/MM", { locale: ptBR })}
+                    {format(parseISO(phaseDates[currentPhase]!.start!), "dd/MM", { locale: ptBR })} - {format(parseISO(phaseDates[currentPhase]!.end!), "dd/MM", { locale: ptBR })}
                   </span>
                 </div>
                 {(() => {
-                  const start = parseISO(phaseDates[currentPhase].start!);
-                  const end = parseISO(phaseDates[currentPhase].end!);
+                  const start = parseISO(phaseDates[currentPhase]!.start!);
+                  const end = parseISO(phaseDates[currentPhase]!.end!);
                   const today = new Date();
                   const totalDays = differenceInDays(end, start);
                   const elapsedDays = differenceInDays(today, start);
