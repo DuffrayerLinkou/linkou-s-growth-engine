@@ -444,8 +444,8 @@ export default function ClienteTarefas() {
             const phaseTasks = getTasksByPhase(phase);
             const progress = getPhaseProgress(phase);
             const isCurrentPhase = phase === currentClientPhase;
-            const phaseOrder = journeyPhaseConfig[phase].order;
-            const currentPhaseOrder = journeyPhaseConfig[currentClientPhase].order;
+            const phaseOrder = journeyPhaseConfig[phase]?.order ?? 0;
+            const currentPhaseOrder = journeyPhaseConfig[currentClientPhase]?.order ?? 0;
             const isCompletedPhase = phaseOrder < currentPhaseOrder;
             const isFuturePhase = phaseOrder > currentPhaseOrder;
 
