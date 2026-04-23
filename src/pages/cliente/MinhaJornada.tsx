@@ -268,7 +268,8 @@ export default function MinhaJornada() {
           <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             <JourneyTimeline 
               currentPhase={currentPhase} 
-              phaseDates={phaseDates} 
+              phaseDates={phaseDates}
+              serviceType={serviceType}
             />
           </CardContent>
         </Card>
@@ -282,14 +283,14 @@ export default function MinhaJornada() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>Fase Atual: {getPhaseLabel(currentPhase)}</CardTitle>
+            <CardTitle>Fase Atual: {getPhaseLabelForService(currentPhase, serviceType)}</CardTitle>
             <CardDescription>
-              {getPhaseDescription(currentPhase)}
+              {getPhaseDescriptionForService(currentPhase, serviceType)}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {/* Compact Stepper */}
-            <JourneyStepper currentPhase={currentPhase} compact />
+            <JourneyStepper currentPhase={currentPhase} serviceType={serviceType} compact />
 
             {/* Phase Deadline Progress */}
             {phaseDates[currentPhase].start && phaseDates[currentPhase].end && (
@@ -414,7 +415,7 @@ export default function MinhaJornada() {
                   Tarefas desta Fase
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
-                  Tarefas da etapa "{getPhaseLabel(currentPhase)}"
+                  Tarefas da etapa "{getPhaseLabelForService(currentPhase, serviceType)}"
                 </CardDescription>
               </div>
               {totalTasks > 0 && (
@@ -565,11 +566,11 @@ export default function MinhaJornada() {
                         </p>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
                           <Badge variant="outline">
-                            {getPhaseLabel(fromPhase)}
+                            {getPhaseLabelForService(fromPhase, serviceType)}
                           </Badge>
                           <ArrowRight className="h-4 w-4 text-muted-foreground" />
                           <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-                            {getPhaseLabel(toPhase)}
+                            {getPhaseLabelForService(toPhase, serviceType)}
                           </Badge>
                           {duration && (
                             <span className="text-xs text-muted-foreground ml-2">
