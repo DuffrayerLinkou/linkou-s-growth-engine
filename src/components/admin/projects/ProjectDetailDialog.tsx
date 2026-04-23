@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FolderKanban, Building2, Calendar, DollarSign, Pencil, Loader2, ListChecks, Megaphone, Lightbulb, FileText } from "lucide-react";
+import { FolderKanban, Building2, Calendar, DollarSign, Pencil, Loader2, ListChecks, Megaphone, Lightbulb, FileText, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -192,8 +192,9 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : counts && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <StatBox icon={<Megaphone className="h-4 w-4" />} label="Campanhas" value={counts.campaigns} />
+                <StatBox icon={<Sparkles className="h-4 w-4" />} label="Criativos" value={counts.deliverables} />
                 <StatBox icon={<ListChecks className="h-4 w-4" />} label="Tarefas" value={counts.tasksTotal} />
                 <StatBox icon={<Lightbulb className="h-4 w-4" />} label="Aprendizados" value={counts.learnings} />
                 <StatBox icon={<FileText className="h-4 w-4" />} label="Arquivos" value={counts.files} />
