@@ -1,4 +1,5 @@
 import { Circle, Loader2, Ban, CheckCircle2 } from "lucide-react";
+import { servicePhases, getPhasesByService, ServiceType, ServicePhase } from "@/lib/service-phases-config";
 
 export type TaskStatus = "todo" | "backlog" | "in_progress" | "blocked" | "completed";
 export type JourneyPhase = "diagnostico" | "estruturacao" | "operacao_guiada" | "transferencia";
@@ -27,6 +28,58 @@ export const journeyPhaseConfig: Record<JourneyPhase, { label: string; color: st
 
 export const statusColumns: TaskStatus[] = ["todo", "backlog", "in_progress", "blocked", "completed"];
 export const allPhases: JourneyPhase[] = ["diagnostico", "estruturacao", "operacao_guiada", "transferencia"];
+
+// ---------- Service-aware helpers ----------
+
+/**
+ * Look up a phase across ALL service flows. `journey_phase` is a free text in the DB,
+ * so a task can carry any phase value from any service (auditoria, gestao, design, ...).
+ * Returns the first match found.
+ */
+export const findPhaseAcrossServices = (
+  phaseValue: string | null | undefined,
+): (ServicePhase & { serviceType: ServiceType }) | null => {
+  if (!phaseValue) return null;
+  for (const [serviceType, phases] of Object.entries(servicePhases) as [ServiceType, ServicePhase[]][]) {
+    const found = phases.find((p) => p.value === phaseValue);
+    if (found) return { ...found, serviceType };
+  }
+  return null;
+};
+
+export const getAnyPhaseLabel = (phaseValue: string | null | undefined, fallback = "Sem fase"): string => {
+  if (!phaseValue) return fallback;
+  return findPhaseAcrossServices(phaseValue)?.label || phaseValue;
+};
+
+export const getAnyPhaseColor = (phaseValue: string | null | undefined): string => {
+  return findPhaseAcrossServices(phaseValue)?.color || "bg-muted text-muted-foreground border-muted";
+};
+
+export const getAnyPhaseOrder = (phaseValue: string | null | undefined): number => {
+  return findPhaseAcrossServices(phaseValue)?.order ?? 0;
+};
+
+/**
+ * All phases across all services, deduplicated by value. Useful for "all clients" filter.
+ * When the same value exists in multiple services with different labels, the first one wins.
+ */
+export const getAllPhasesUnion = (): ServicePhase[] => {
+  const seen = new Set<string>();
+  const out: ServicePhase[] = [];
+  for (const phases of Object.values(servicePhases)) {
+    for (const p of phases) {
+      if (!seen.has(p.value)) {
+        seen.add(p.value);
+        out.push(p);
+      }
+    }
+  }
+  return out;
+};
+
+export { getPhasesByService };
+export type { ServiceType, ServicePhase };
 
 // Helper to check if a task is overdue (timezone-safe for `date` columns)
 import { parseDateOnly } from "@/lib/utils";

@@ -56,6 +56,10 @@ import {
   journeyPhaseConfig,
   statusColumns,
   allPhases,
+  getPhasesByService,
+  getAllPhasesUnion,
+  getAnyPhaseLabel,
+  ServiceType,
 } from "@/lib/task-config";
 
 interface Task {
@@ -129,7 +133,7 @@ export default function AdminTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, name")
+        .select("id, name, service_type")
         .order("name");
       if (error) throw error;
       return data;
@@ -177,6 +181,27 @@ export default function AdminTasks() {
     });
     return map;
   }, [internalAssignees, clientUsers]);
+
+  // ---------- Service-aware phases for the form ----------
+  // Phases that match the client selected in the form (defaults to auditoria when no client picked)
+  const formServiceType: ServiceType = useMemo(() => {
+    const c = clients.find((cl: any) => cl.id === formData.client_id);
+    return ((c as any)?.service_type as ServiceType) || "auditoria";
+  }, [clients, formData.client_id]);
+
+  const formPhases = useMemo(() => getPhasesByService(formServiceType), [formServiceType]);
+
+  // Phases for the top filter: depend on client filter (or union when "all")
+  const filterServiceType: ServiceType | null = useMemo(() => {
+    if (clientFilter === "all") return null;
+    const c = clients.find((cl: any) => cl.id === clientFilter);
+    return ((c as any)?.service_type as ServiceType) || "auditoria";
+  }, [clients, clientFilter]);
+
+  const filterPhases = useMemo(
+    () => (filterServiceType ? getPhasesByService(filterServiceType) : getAllPhasesUnion()),
+    [filterServiceType],
+  );
 
   // Create/Update task mutation
   const taskMutation = useMutation({
@@ -407,9 +432,21 @@ export default function AdminTasks() {
                   <Label>Cliente *</Label>
                   <Select
                     value={formData.client_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, client_id: value })
-                    }
+                    onValueChange={(value) => {
+                      // When client changes, reset journey_phase if it doesn't belong to the new service flow
+                      const nextClient = clients.find((cl: any) => cl.id === value);
+                      const nextService = ((nextClient as any)?.service_type as ServiceType) || "auditoria";
+                      const nextPhases = getPhasesByService(nextService).map((p) => p.value);
+                      const keepPhase =
+                        formData.journey_phase &&
+                        formData.journey_phase !== "none" &&
+                        nextPhases.includes(formData.journey_phase);
+                      setFormData({
+                        ...formData,
+                        client_id: value,
+                        journey_phase: keepPhase ? formData.journey_phase : "",
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
@@ -504,9 +541,9 @@ export default function AdminTasks() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sem fase</SelectItem>
-                      {allPhases.map((phase) => (
-                        <SelectItem key={phase} value={phase}>
-                          {journeyPhaseConfig[phase].label}
+                      {formPhases.map((phase) => (
+                        <SelectItem key={phase.value} value={phase.value}>
+                          {phase.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -675,9 +712,9 @@ export default function AdminTasks() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as Fases</SelectItem>
-            {allPhases.map((phase) => (
-              <SelectItem key={phase} value={phase}>
-                {journeyPhaseConfig[phase].label}
+            {filterPhases.map((phase) => (
+              <SelectItem key={phase.value} value={phase.value}>
+                {phase.label}
               </SelectItem>
             ))}
           </SelectContent>

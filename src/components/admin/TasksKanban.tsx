@@ -14,6 +14,9 @@ import {
   journeyPhaseConfig,
   statusColumns,
   isTaskOverdue,
+  getAnyPhaseLabel,
+  getAnyPhaseColor,
+  findPhaseAcrossServices,
 } from "@/lib/task-config";
 
 interface Task {
@@ -154,13 +157,13 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                         Cliente
                                       </Badge>
                                     )}
-                                    {task.journey_phase && journeyPhaseConfig[task.journey_phase as JourneyPhase] && (
+                                    {task.journey_phase && findPhaseAcrossServices(task.journey_phase) && (
                                       <Badge
                                         variant="secondary"
-                                        className={`text-xs ${journeyPhaseConfig[task.journey_phase as JourneyPhase].color}`}
+                                        className={`text-xs ${getAnyPhaseColor(task.journey_phase)}`}
                                       >
                                         <Route className="h-3 w-3 mr-1" />
-                                        {journeyPhaseConfig[task.journey_phase as JourneyPhase].label}
+                                        {getAnyPhaseLabel(task.journey_phase)}
                                       </Badge>
                                     )}
                                   </div>

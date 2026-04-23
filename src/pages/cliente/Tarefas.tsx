@@ -46,6 +46,11 @@ import {
   journeyPhaseConfig,
   allPhases,
   isTaskOverdue,
+  getPhasesByService,
+  getAnyPhaseLabel,
+  getAnyPhaseColor,
+  findPhaseAcrossServices,
+  ServiceType,
 } from "@/lib/task-config";
 import { TasksKanbanClient } from "@/components/cliente/TasksKanbanClient";
 import { TaskFileAttachment } from "@/components/cliente/TaskFileAttachment";
@@ -81,7 +86,10 @@ export default function ClienteTarefas() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const currentClientPhase = clientInfo?.phase as JourneyPhase || "diagnostico";
+  const currentServiceType: ServiceType = (clientInfo?.service_type as ServiceType) || "auditoria";
+  const servicePhasesList = getPhasesByService(currentServiceType);
+  const currentClientPhase = clientInfo?.phase || servicePhasesList[0]?.value || "diagnostico";
+  const currentPhaseDef = servicePhasesList.find((p) => p.value === currentClientPhase);
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["client-tasks", clientInfo?.id],
@@ -188,14 +196,14 @@ export default function ClienteTarefas() {
   });
 
   // Group tasks by phase
-  const getTasksByPhase = (phase: JourneyPhase | null) =>
+  const getTasksByPhase = (phase: string | null) =>
     filteredTasks.filter((task) => task.journey_phase === phase);
 
   const getTasksWithoutPhase = () =>
     filteredTasks.filter((task) => !task.journey_phase);
 
   // Calculate progress for a phase
-  const getPhaseProgress = (phase: JourneyPhase) => {
+  const getPhaseProgress = (phase: string) => {
     const phaseTasks = tasks.filter((t) => t.journey_phase === phase);
     if (phaseTasks.length === 0) return { completed: 0, total: 0, percentage: 0 };
     const completed = phaseTasks.filter((t) => t.status === "completed").length;
@@ -354,17 +362,17 @@ export default function ClienteTarefas() {
       )}
 
       {/* Current Phase Banner */}
-      <Card className={`border ${journeyPhaseConfig[currentClientPhase]?.color || ""}`}>
+      <Card className={`border ${currentPhaseDef?.color || ""}`}>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${journeyPhaseConfig[currentClientPhase]?.color || "bg-muted"}`}>
+              <div className={`p-2 rounded-lg ${currentPhaseDef?.color || "bg-muted"}`}>
                 <Route className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Fase Atual da Jornada</p>
                 <p className="font-semibold">
-                  {journeyPhaseConfig[currentClientPhase]?.label || "Diagnóstico"}
+                  {currentPhaseDef?.label || getAnyPhaseLabel(currentClientPhase, "—")}
                 </p>
               </div>
             </div>
