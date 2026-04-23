@@ -459,6 +459,18 @@ export default function ClientDetail() {
 
   useEffect(() => {
     const loadData = async () => {
+      // Bail if user is not admin/account_manager — protected route will redirect,
+      // but during the brief mount window we must NOT call admin-only edge functions.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+      const userRoles = (roleRows || []).map((r) => r.role);
+      if (!userRoles.includes("admin") && !userRoles.includes("account_manager")) {
+        return;
+      }
       setIsLoading(true);
       await Promise.all([fetchClient(), fetchUsers(), fetchAuditLogs(), fetchAssignees(), fetchFiles()]);
       setIsLoading(false);
