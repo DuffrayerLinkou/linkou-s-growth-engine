@@ -36,7 +36,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import {
   TaskStatus,

@@ -5,7 +5,7 @@ import { Clock, AlertCircle, EyeOff, Route, Users, User, GripVertical } from "lu
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import {
   TaskStatus,
   JourneyPhase,

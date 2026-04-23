@@ -21,6 +21,7 @@ import { format, startOfMonth, endOfMonth, isSameDay, isAfter, parseISO } from "
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { RequestAppointmentDialog } from "@/components/cliente/RequestAppointmentDialog";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Appointment {
   id: string;

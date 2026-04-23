@@ -5,7 +5,7 @@ import { Clock, AlertCircle, Route, Star, CheckCircle2, GripVertical } from "luc
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   TaskStatus,
