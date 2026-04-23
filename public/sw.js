@@ -1,4 +1,4 @@
-// Service Worker minimalista: apenas Push Notifications.
+// Service Worker v3 — minimalista, apenas Push Notifications.
 // Cache de assets/páginas foi REMOVIDO porque estava servindo builds antigas.
 // O navegador + headers de hosting já gerenciam cache de assets corretamente.
 
