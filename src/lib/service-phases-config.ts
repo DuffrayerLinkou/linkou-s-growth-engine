@@ -5,6 +5,7 @@ export interface ServicePhase {
   label: string;
   color: string;
   order: number;
+  description?: string;
 }
 
 export interface ServiceConfig {
