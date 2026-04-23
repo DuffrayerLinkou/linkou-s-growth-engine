@@ -1361,11 +1361,13 @@ export default function AdminCampaigns() {
               </div>
 
               {/* Linked creative demands */}
-              <CampaignCreativesSection
-                campaignId={detailCampaign.id}
-                clientId={detailCampaign.client_id}
-                onAddBatch={() => setBatchOpen(true)}
-              />
+              <ErrorBoundary fallbackTitle="Erro ao carregar criativos da campanha">
+                <CampaignCreativesSection
+                  campaignId={detailCampaign.id}
+                  clientId={detailCampaign.client_id}
+                  onAddBatch={() => setBatchOpen(true)}
+                />
+              </ErrorBoundary>
             </div>
           )}
         </DialogContent>
