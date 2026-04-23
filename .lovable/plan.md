@@ -1,93 +1,107 @@
 
 
-## Cache antigo travando navegadores logados — fix definitivo
+## Varredura de usabilidade — foco mobile
 
-### Diagnóstico (causa real)
+Fiz uma varredura nas páginas e componentes mais usados do painel admin. Abaixo estão **os problemas reais encontrados**, agrupados por gravidade, e o plano de correção.
 
-A correção anterior do Service Worker está **correta no código**, mas tem um detalhe do ciclo de vida que está te travando:
+---
 
-1. **SW antigo continua no controle até todas as abas fecharem.** Mesmo com `skipWaiting()` + `clients.claim()`, o navegador só promove o novo SW depois que o usuário fecha 100% das abas do domínio. Como você mantém abas abertas, **continua pegando o SW antigo** que serve `index.html` cacheado da build velha.
-2. **Tela preta ao abrir card novo:** o `index.html` velho referencia chunks JS com hash que **não existem mais** no servidor (build nova tem hashes diferentes). Resultado: `import()` de uma rota lazy falha → React quebra → tela preta. Não é bug de componente, é chunk 404.
-3. **Aba anônima funciona** porque não tem SW antigo registrado.
+### 1. Problemas críticos em mobile (quebram a experiência)
 
-A correção atual depende do usuário fechar tudo. Precisamos de uma estratégia que **force a saída do SW antigo na primeira visita** e **se recupere de chunks 404**.
+**a) Filtros do Kanban de Criativos não funcionam em mobile**
+`src/pages/admin/Criativos.tsx` — os 2 `Select` de cliente e status estão com largura fixa `w-48` (192px) lado a lado. Em telas <400px estouram a linha sem grid responsivo, e o de "Cliente" trunca o nome.
+**Fix:** trocar para `w-full sm:w-48` e empilhar com `grid grid-cols-1 sm:grid-cols-2 lg:flex` igual ao padrão do Projects.
 
-### O que vou implementar
+**b) Kanban de Criativos vira coluna única em mobile e fica gigante**
+`CreativeDemandKanban.tsx` usa `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6`. Em mobile vira **6 colunas empilhadas verticais** ocupando a tela inteira — você precisa rolar uma eternidade para ver outro status.
+**Fix:** adotar o mesmo padrão dos Kanbans de Tarefas e Leads: `flex overflow-x-auto` com colunas de largura fixa (220-260px) para deslizar lateralmente. É o padrão já validado no projeto.
 
-**1. Auto-unregister do SW + reload único (em `src/main.tsx`)**
+**c) Header do detalhe da demanda quebra em mobile**
+`CreativeDemandDetail.tsx` linha 112-129 — o `Select` de status (`w-48`) + botão `⋯` + título longo competem no mesmo flex sem ordem responsiva. Em mobile o status "atropela" o título.
+**Fix:** stack vertical em mobile (`flex-col sm:flex-row`), Select com `w-full sm:w-48`.
 
-Em vez de tentar manter o SW para push notifications a qualquer custo, vou **desregistrar o SW completamente** quando detectar a versão antiga ainda ativa, limpar todos os caches via `caches.keys()`, e recarregar a página **uma vez só** (com um flag em `sessionStorage` para não loop).
+**d) Botão "Voltar para o quadro" sem padding seguro**
+`CreativeDemandDetail.tsx` — em iPhone notch o botão fica colado na borda porque o `AdminLayout` usa `p-3 sm:p-4` mas o detalhe é `max-w-5xl mx-auto` sem padding extra de top em mobile.
+**Fix:** garantir `pt-2` e `safe-area-inset` no container.
 
-```ts
-// pseudo
-if ('serviceWorker' in navigator) {
-  const regs = await navigator.serviceWorker.getRegistrations();
-  for (const r of regs) await r.unregister();
-  const keys = await caches.keys();
-  await Promise.all(keys.map(k => caches.delete(k)));
-  if (!sessionStorage.getItem('linkou-sw-purged')) {
-    sessionStorage.setItem('linkou-sw-purged', '1');
-    location.reload();
-  }
-}
+---
+
+### 2. Problemas médios (irritantes mas usáveis)
+
+**e) Filtros da página Projetos**
+`src/pages/admin/Projects.tsx` linha 364-404 — em mobile o toggle "Período ativo" com `h-10 px-3 border` fica solto fora do grid de Selects. O Search ocupa 100%, depois 2 selects empilhados, depois um quadradinho do switch sozinho.
+**Fix:** envelopar tudo num `grid grid-cols-2 sm:grid-cols-2 lg:flex` e o switch ocupar uma linha cheia em mobile.
+
+**f) Cards de demanda no Kanban — botão `⋯` muito pequeno**
+`CreativeDemandKanban.tsx` — o `CreativeDemandActions` fica num canto com botão de tamanho default, sobre uma área já clicável. Em mobile dá conflito de toque (o usuário abre a demanda em vez do menu).
+**Fix:** aumentar área de toque (`h-8 w-8`), `e.stopPropagation()` reforçado, e em mobile mover para o canto inferior do card.
+
+**g) Lista (modo "Lista") trunca informação em mobile**
+`Criativos.tsx` linha 144-166 — badge de status + botão de ações + título competem na mesma linha. Em <400px o título some atrás do badge.
+**Fix:** stack vertical em mobile (badge + ações abaixo do título).
+
+**h) Modais (Dialog) sem fallback mobile no Criativos**
+`CreativeDemandFormDialog.tsx` usa `max-w-2xl max-h-[90vh] overflow-y-auto` mas **não tem `max-w-[95vw]`**. Em iPhone SE/Galaxy pequeno fica colado nas bordas. O Templates já faz isso certo (`max-w-[95vw] sm:max-w-md`).
+**Fix:** padrão `max-w-[95vw] sm:max-w-2xl` em todos os Dialogs do módulo (Criativos, novo entregável).
+
+**i) Grids 2 colunas dentro do Dialog em mobile**
+`CreativeDemandFormDialog.tsx` linhas 126/146 — `grid-cols-2` força Plataforma+Formato e Prazo+Prioridade lado a lado mesmo em 320px, espremendo os Selects.
+**Fix:** `grid-cols-1 sm:grid-cols-2`.
+
+---
+
+### 3. Problemas menores (polimento)
+
+**j)** Header do AdminCriativos: título "Demandas Criativas" com `text-2xl` + ícone + botão "Nova demanda" dão wrap estranho em 360px. Reduzir para `text-xl sm:text-2xl`.
+
+**k)** Editor de entregáveis (`CreativeDeliverableEditor.tsx`) — botões "Salvar versão / Upload / Enviar para aprovação" em mobile ficam ok porque é `flex-wrap`, mas o badge de status + dropdown ⋯ no header podem encavalar com título longo. Garantir `truncate` no título.
+
+**l)** Tabela de Clientes (`Clients.tsx`) já tem `hidden md:table-cell` — bom. Mas a coluna nome+ícone 40x40 em mobile come muito espaço; reduzir ícone para 32x32 em <sm.
+
+**m)** Sidebar mobile: ao abrir um link e fechar o menu, a animação às vezes engasga em conexões lentas porque `LazyMotion` re-mounta. Sem fix urgente — só monitorar.
+
+---
+
+### Padrão visual que vou aplicar (consistência)
+
+```text
+Filtros responsivos:
+┌───────────────────────────┐  mobile (1 col, search full)
+│ [🔍 Buscar...............] │
+│ [Cliente ▾] [Status ▾]    │  2 col
+│ [✓ Período ativo        ] │  full
+└───────────────────────────┘
+                                desktop: tudo em flex-row
+
+Kanban mobile:
+horizontal scroll (swipe lateral) — NUNCA empilhado
+colunas de 240px fixas
 ```
 
-Depois do purge, **re-registro o SW novo** em produção (mantém push notifications funcionando).
+---
 
-**2. Recovery automático para chunks faltando (em `src/App.tsx`)**
+### Arquivos que vão ser tocados
 
-Adicionar handler global para `window.addEventListener('error')` e `unhandledrejection` que detecta erros do tipo `Failed to fetch dynamically imported module` / `Loading chunk failed`. Quando acontece, limpa caches e dá `location.reload()` único — também guardado por `sessionStorage` para evitar loop.
+- `src/pages/admin/Criativos.tsx` (filtros + lista mobile + título)
+- `src/components/admin/criativos/CreativeDemandKanban.tsx` (scroll horizontal + cards mobile)
+- `src/components/admin/criativos/CreativeDemandDetail.tsx` (header responsivo + safe area)
+- `src/components/admin/criativos/CreativeDemandFormDialog.tsx` (largura mobile + grid)
+- `src/components/admin/criativos/CreativeDemandActions.tsx` (área de toque)
+- `src/components/admin/criativos/CreativeDeliverableEditor.tsx` (truncate no header)
+- `src/pages/admin/Projects.tsx` (linha de filtros)
 
-```ts
-// pseudo
-window.addEventListener('error', (e) => {
-  if (/Loading chunk|dynamically imported module/i.test(e.message)) {
-    if (!sessionStorage.getItem('linkou-chunk-reloaded')) {
-      sessionStorage.setItem('linkou-chunk-reloaded', '1');
-      caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))))
-        .finally(() => location.reload());
-    }
-  }
-});
-```
+### Fora do escopo (não vou mexer agora)
 
-Isso resolve **a tela preta** em cards novos: quando o JS antigo tenta carregar um chunk que não existe mais, em vez de quebrar silenciosamente o app recarrega limpo e busca os chunks corretos.
+- Banco / RLS / queries
+- Lógica de negócio dos Kanbans (drag & drop, status flow)
+- Sidebar e layout principal (já está mobile-friendly)
+- Páginas que já seguem o padrão (Tarefas, Leads, Templates)
 
-**3. Meta tags anti-cache no `index.html`**
+### Resultado esperado
 
-Adicionar no `<head>`:
-
-```html
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-```
-
-Isso **não** afeta os assets com hash (que devem ser cacheados eternamente), mas instrui o navegador a **revalidar `index.html`** a cada visita — que é o arquivo que aponta para os chunks corretos da build atual. Hoje seu hosting pode estar cacheando `index.html` no navegador, o que perpetua o problema.
-
-**4. Bump de versão no SW (em `public/sw.js`)**
-
-Adicionar comentário de versão `// v3` no topo. Trocar bytes do arquivo é o que faz o navegador detectar "novo SW disponível" e disparar `install`. Sem isso, o navegador acha que o SW não mudou e ignora.
-
-### Por que vai funcionar
-
-- **Usuários travados na versão antiga**: ao abrir hoje, o `main.tsx` antigo carrega → mas a próxima vez que abrirem (ou se já tiverem o `main.tsx` novo carregado), o purge dispara → reload único → versão nova.
-- **Navegadores que ainda peguem o SW antigo no primeiro load**: o handler de chunk-error captura a quebra e força reload limpo.
-- **Cards novos abrindo em tela preta**: resolvido pelo recovery de chunk error.
-- **A partir de agora**: meta tags anti-cache em `index.html` evitam que isso volte a acontecer.
-
-### Arquivos modificados
-
-- `src/main.tsx` — purge + re-registro condicional do SW
-- `src/App.tsx` — handler global de erro de chunk
-- `public/sw.js` — bump de versão (`// v3`) para forçar update detection
-- `index.html` — meta tags anti-cache no `<head>`
-
-### Sem mudanças
-
-- Banco, RLS, lógica de auth, queries, rotas, componentes do Onboarding/Criativos.
-
-### Após aplicar
-
-Você (e qualquer usuário travado) vai abrir o app **uma vez**, ver um reload automático rapidíssimo (~1s), e depois disso fica na versão nova permanentemente. Aba anônima continua funcionando igual. Push notifications continuam funcionando.
+- Kanban de Criativos navegável em qualquer celular (swipe lateral)
+- Filtros nunca quebram nem truncam em telas pequenas
+- Diálogos respeitam 95% da viewport em mobile
+- Toques precisos no `⋯` sem abrir o card por engano
+- Visual consistente com Tarefas/Leads/Projetos
 
