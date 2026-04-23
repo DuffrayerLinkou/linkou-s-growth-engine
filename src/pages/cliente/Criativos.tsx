@@ -119,7 +119,12 @@ export default function ClienteCriativos() {
         </Card>
 
         <div>
-          <h2 className="text-lg font-semibold mb-3">Entregáveis</h2>
+          <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
+            <h2 className="text-lg font-semibold">Entregáveis</h2>
+            <span className="text-xs text-muted-foreground">
+              Visível para toda a equipe do cliente · aprovação por Ponto Focal ou Gestor
+            </span>
+          </div>
           {deliverables.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">

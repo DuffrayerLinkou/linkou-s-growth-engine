@@ -31,7 +31,7 @@ interface Props {
 
 export function CreativeDeliverableViewer({ deliverable }: Props) {
   const { user } = useAuth();
-  const { canApprove, isPontoFocal } = useClientPermissions();
+  const { canApprove } = useClientPermissions();
   const qc = useQueryClient();
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -171,7 +171,7 @@ export function CreativeDeliverableViewer({ deliverable }: Props) {
             )}
             {deliverable.status === "in_approval" && !canApprove && (
               <p className="text-xs text-muted-foreground">
-                Apenas o Ponto Focal {isPontoFocal === false ? "pode aprovar" : ""} este entregável.
+                Apenas o Ponto Focal ou o Gestor podem aprovar este entregável.
               </p>
             )}
           </div>
