@@ -16,6 +16,7 @@ import { ArrowLeft, Plus, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreativeDemandActions } from "./CreativeDemandActions";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Demand {
   id: string;
@@ -139,7 +140,7 @@ export function CreativeDemandDetail({ demand, clientName, onBack, clients }: Pr
             {demand.deadline && (
               <Badge variant="outline" className="gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(demand.deadline), "dd 'de' MMM", { locale: ptBR })}
+                {format((parseDateOnly(demand.deadline) ?? new Date(0)), "dd 'de' MMM", { locale: ptBR })}
               </Badge>
             )}
           </div>

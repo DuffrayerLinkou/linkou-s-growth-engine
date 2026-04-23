@@ -5,7 +5,7 @@ import { Clock, AlertCircle, EyeOff, Route, Users, User, GripVertical } from "lu
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly } from "@/lib/utils";
 import {
   TaskStatus,
   JourneyPhase,
@@ -197,7 +197,7 @@ export function TasksKanban({ tasks, onStatusChange, onTaskClick, assigneeNames 
                                         )}
                                       >
                                         <Clock className="h-3 w-3" />
-                                        {format(new Date(task.due_date), "dd/MM", {
+                                        {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM", {
                                           locale: ptBR,
                                         })}
                                         {overdue && <AlertCircle className="h-3 w-3" />}

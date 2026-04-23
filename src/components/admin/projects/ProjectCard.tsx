@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { projectStatusLabels, projectStatusColors } from "@/lib/status-config";
+import { parseDateOnly } from "@/lib/utils";
 
 export interface ProjectCardData {
   id: string;
@@ -151,8 +152,8 @@ export function ProjectCard({ project, index, onOpen, onEdit, onDelete }: Props)
           <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {project.start_date ? format(new Date(project.start_date), "dd/MM/yy", { locale: ptBR }) : "—"}
-              {project.end_date && ` › ${format(new Date(project.end_date), "dd/MM/yy", { locale: ptBR })}`}
+              {project.start_date ? format((parseDateOnly(project.start_date) ?? new Date(0)), "dd/MM/yy", { locale: ptBR }) : "—"}
+              {project.end_date && ` › ${format((parseDateOnly(project.end_date) ?? new Date(0)), "dd/MM/yy", { locale: ptBR })}`}
             </div>
             <div className="flex items-center gap-1 font-medium text-foreground">
               <DollarSign className="h-3 w-3" />

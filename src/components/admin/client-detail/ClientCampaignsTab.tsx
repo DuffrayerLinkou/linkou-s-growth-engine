@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { platformLabels, getMetricsForChannel, computeMetrics, formatMetricValue, allMetricLabels } from "@/lib/channel-metrics-config";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Campaign {
   id: string;
@@ -138,7 +139,7 @@ export default function ClientCampaignsTab({ clientId }: { clientId: string }) {
                           {c.platform && <Badge variant="outline" className="text-xs">{platformLabels[c.platform] || c.platform}</Badge>}
                         </div>
                         <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                          {c.start_date && <span>Início: {format(new Date(c.start_date), "dd/MM/yy")}</span>}
+                          {c.start_date && <span>Início: {format((parseDateOnly(c.start_date) ?? new Date(0)), "dd/MM/yy")}</span>}
                           {c.budget && <span>Budget: {fmt(c.budget)}</span>}
                         </div>
                       </div>

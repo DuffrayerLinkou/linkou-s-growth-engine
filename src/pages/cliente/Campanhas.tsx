@@ -83,6 +83,7 @@ const statusConfig: Record<
 };
 
 import { platformLabels, allMetricLabels, formatMetricValue } from "@/lib/channel-metrics-config";
+import { parseDateOnly } from "@/lib/utils";
 
 const placementLabels: Record<string, string> = {
   feed_facebook: "Feed Facebook",
@@ -356,13 +357,13 @@ export default function ClienteCampanhas() {
                         {campaign.start_date && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
-                            Início: {format(new Date(campaign.start_date), "dd/MM/yyyy", { locale: ptBR })}
+                            Início: {format((parseDateOnly(campaign.start_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}
                           </span>
                         )}
                         {campaign.end_date && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="h-3 w-3" />
-                            Fim: {format(new Date(campaign.end_date), "dd/MM/yyyy", { locale: ptBR })}
+                            Fim: {format((parseDateOnly(campaign.end_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}
                           </span>
                         )}
                         {canViewFinancials && campaign.budget && (

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -83,7 +84,7 @@ export function ProjectTasksTab({ projectId }: { projectId: string }) {
                   {t.assigneeName}
                 </span>
               )}
-              {t.due_date && <span>Prazo: {format(new Date(t.due_date), "dd/MM/yy", { locale: ptBR })}</span>}
+              {t.due_date && <span>Prazo: {format((parseDateOnly(t.due_date) ?? new Date(0)), "dd/MM/yy", { locale: ptBR })}</span>}
             </div>
           </div>
           <Badge variant="secondary" className={statusColor[t.status || "todo"]}>

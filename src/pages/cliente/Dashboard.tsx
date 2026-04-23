@@ -43,6 +43,7 @@ import {
   statusConfig, 
   priorityConfig 
 } from "@/lib/task-config";
+import { parseDateOnly } from "@/lib/utils";
 
 // Derivar labels e cores de task-config para manter consistência
 const taskStatusLabels: Record<string, string> = Object.fromEntries(
@@ -733,7 +734,7 @@ export default function ClienteDashboard() {
                           {task.due_date && !dueDateStatus && (
                             <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-0.5">
                               <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                              {format(new Date(task.due_date), "dd/MM", { locale: ptBR })}
+                              {format((parseDateOnly(task.due_date) ?? new Date(0)), "dd/MM", { locale: ptBR })}
                             </span>
                           )}
                         </div>
@@ -908,8 +909,8 @@ export default function ClienteDashboard() {
                       {project.start_date && (
                         <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 sm:mt-2 flex items-center gap-0.5 sm:gap-1 truncate">
                           <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                          {format(new Date(project.start_date), "dd/MM/yy", { locale: ptBR })}
-                          {project.end_date && ` - ${format(new Date(project.end_date), "dd/MM/yy", { locale: ptBR })}`}
+                          {format((parseDateOnly(project.start_date) ?? new Date(0)), "dd/MM/yy", { locale: ptBR })}
+                          {project.end_date && ` - ${format((parseDateOnly(project.end_date) ?? new Date(0)), "dd/MM/yy", { locale: ptBR })}`}
                         </p>
                       )}
                     </div>

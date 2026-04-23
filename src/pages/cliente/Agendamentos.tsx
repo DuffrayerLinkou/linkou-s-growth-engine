@@ -21,6 +21,7 @@ import { format, startOfMonth, endOfMonth, isSameDay, isAfter, parseISO } from "
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { RequestAppointmentDialog } from "@/components/cliente/RequestAppointmentDialog";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -175,7 +176,7 @@ export default function ClienteAgendamentos() {
 
   // Upcoming task deadlines
   const upcomingTasks = tasks.filter(
-    (task) => isAfter(parseISO(task.due_date), now) && task.status !== "completed"
+    (task) => task.due_date && (parseDateOnly(task.due_date) ?? new Date(0)) > now && task.status !== "completed"
   );
 
   if (isLoading) {

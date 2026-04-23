@@ -13,6 +13,7 @@ import { demandStatusConfig, deliverableTypeConfig, priorityConfig, type DemandS
 import { Sparkles, Plus, Calendar, Search, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateOnly } from "@/lib/utils";
 
 interface Demand {
   id: string;
@@ -104,7 +105,7 @@ export default function ClienteCriativos() {
               {selected.deadline && (
                 <Badge variant="outline" className="gap-1">
                   <Calendar className="h-3 w-3" />
-                  {format(new Date(selected.deadline), "dd 'de' MMM", { locale: ptBR })}
+                  {format((parseDateOnly(selected.deadline) ?? new Date(0)), "dd 'de' MMM", { locale: ptBR })}
                 </Badge>
               )}
             </div>
@@ -215,7 +216,7 @@ function DemandList({ items, loading, onSelect }: { items: Demand[]; loading: bo
             {d.deadline && (
               <Badge variant="outline" className="text-[10px] gap-1">
                 <Calendar className="h-2.5 w-2.5" />
-                {format(new Date(d.deadline), "dd/MM")}
+                {format((parseDateOnly(d.deadline) ?? new Date(0)), "dd/MM")}
               </Badge>
             )}
           </div>

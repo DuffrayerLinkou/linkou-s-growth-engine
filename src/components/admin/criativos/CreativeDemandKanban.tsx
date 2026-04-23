@@ -3,6 +3,7 @@ import { demandStatusConfig, priorityConfig, type DemandStatus, type Priority } 
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { CreativeDemandActions } from "./CreativeDemandActions";
+import { parseDateOnly } from "@/lib/utils";
 
 type Demand = {
   id: string;
@@ -67,7 +68,7 @@ export function CreativeDemandKanban({ demands, clientNames, onSelect, clients }
                     {d.deadline && (
                       <Badge variant="outline" className="text-[9px] gap-1">
                         <Calendar className="h-2.5 w-2.5" />
-                        {format(new Date(d.deadline), "dd/MM")}
+                        {format((parseDateOnly(d.deadline) ?? new Date(0)), "dd/MM")}
                       </Badge>
                     )}
                   </div>

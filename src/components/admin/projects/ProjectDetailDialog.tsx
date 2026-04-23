@@ -13,6 +13,7 @@ import { ProjectTasksTab } from "./ProjectTasksTab";
 import { ProjectCampaignsTab } from "./ProjectCampaignsTab";
 import { ProjectLearningsTab } from "./ProjectLearningsTab";
 import { ProjectFilesTab } from "./ProjectFilesTab";
+import { parseDateOnly } from "@/lib/utils";
 
 interface ProjectDetail {
   id: string;
@@ -150,7 +151,7 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
                   Início
                 </div>
                 <p className="font-medium text-sm">
-                  {project.start_date ? format(new Date(project.start_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                  {project.start_date ? format((parseDateOnly(project.start_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR }) : "—"}
                 </p>
               </div>
               <div className="p-3 rounded-md border">
@@ -159,7 +160,7 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
                   Término
                 </div>
                 <p className="font-medium text-sm">
-                  {project.end_date ? format(new Date(project.end_date), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                  {project.end_date ? format((parseDateOnly(project.end_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR }) : "—"}
                 </p>
               </div>
               <div className="p-3 rounded-md border">

@@ -157,6 +157,7 @@ const statusColors: Record<string, string> = {
 };
 
 import { platformLabels, platformObjectives, getMetricsForChannel, computeMetrics } from "@/lib/channel-metrics-config";
+import { parseDateOnly } from "@/lib/utils";
 
 const platformPlacements: Record<string, { id: string; label: string }[]> = {
   meta_ads: [
@@ -646,13 +647,13 @@ export default function AdminCampaigns() {
                       {campaign.start_date ? (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(campaign.start_date), "dd/MM/yy", {
+                          {format((parseDateOnly(campaign.start_date) ?? new Date(0)), "dd/MM/yy", {
                             locale: ptBR,
                           })}
                           {campaign.end_date && (
                             <>
                               {" - "}
-                              {format(new Date(campaign.end_date), "dd/MM/yy", {
+                              {format((parseDateOnly(campaign.end_date) ?? new Date(0)), "dd/MM/yy", {
                                 locale: ptBR,
                               })}
                             </>
@@ -1310,9 +1311,9 @@ export default function AdminCampaigns() {
                   <div className="text-sm">
                     {detailCampaign.start_date ? (
                       <p>
-                        {format(new Date(detailCampaign.start_date), "dd/MM/yyyy", { locale: ptBR })}
+                        {format((parseDateOnly(detailCampaign.start_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}
                         {detailCampaign.end_date && (
-                          <> até {format(new Date(detailCampaign.end_date), "dd/MM/yyyy", { locale: ptBR })}</>
+                          <> até {format((parseDateOnly(detailCampaign.end_date) ?? new Date(0)), "dd/MM/yyyy", { locale: ptBR })}</>
                         )}
                       </p>
                     ) : (
