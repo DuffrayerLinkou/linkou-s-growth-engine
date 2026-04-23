@@ -840,6 +840,7 @@ export type Database = {
           id: string
           name: string
           phase: string
+          phase_dates: Json
           phase_diagnostico_completed_at: string | null
           phase_diagnostico_end: string | null
           phase_diagnostico_start: string | null
@@ -853,6 +854,7 @@ export type Database = {
           phase_transferencia_end: string | null
           phase_transferencia_start: string | null
           segment: string | null
+          service_type: string
           status: string | null
           updated_at: string | null
         }
@@ -862,6 +864,7 @@ export type Database = {
           id?: string
           name: string
           phase?: string
+          phase_dates?: Json
           phase_diagnostico_completed_at?: string | null
           phase_diagnostico_end?: string | null
           phase_diagnostico_start?: string | null
@@ -875,6 +878,7 @@ export type Database = {
           phase_transferencia_end?: string | null
           phase_transferencia_start?: string | null
           segment?: string | null
+          service_type?: string
           status?: string | null
           updated_at?: string | null
         }
@@ -884,6 +888,7 @@ export type Database = {
           id?: string
           name?: string
           phase?: string
+          phase_dates?: Json
           phase_diagnostico_completed_at?: string | null
           phase_diagnostico_end?: string | null
           phase_diagnostico_start?: string | null
@@ -897,6 +902,7 @@ export type Database = {
           phase_transferencia_end?: string | null
           phase_transferencia_start?: string | null
           segment?: string | null
+          service_type?: string
           status?: string | null
           updated_at?: string | null
         }
