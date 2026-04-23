@@ -311,35 +311,53 @@ export default function AdminCampaigns() {
     fetchData();
   }, []);
 
-  const openForm = (campaign?: Campaign) => {
+  const fetchFullCampaign = async (id: string): Promise<Campaign | null> => {
+    const { data, error } = await supabase
+      .from("campaigns")
+      .select("*, clients(id, name), projects:project_id(id, name)")
+      .eq("id", id)
+      .single();
+    if (error || !data) return null;
+    return {
+      ...data,
+      placements: Array.isArray((data as any).placements) ? (data as any).placements as string[] : null,
+      metrics: ((data as any).metrics && typeof (data as any).metrics === "object" && !Array.isArray((data as any).metrics))
+        ? (data as any).metrics as Record<string, unknown>
+        : null,
+    } as Campaign;
+  };
+
+  const openForm = async (campaign?: Campaign) => {
     if (campaign) {
-      setSelectedCampaign(campaign);
+      // Fetch full record (list payload is enxuto for performance)
+      const full = (await fetchFullCampaign(campaign.id)) || campaign;
+      setSelectedCampaign(full);
       setFormData({
-        client_id: campaign.client_id,
-        project_id: campaign.project_id || "none",
-        name: campaign.name,
-        description: campaign.description || "",
-        platform: campaign.platform || "",
-        campaign_type: campaign.campaign_type || "",
-        objective: campaign.objective || "",
-        objective_detail: campaign.objective_detail || "",
-        strategy: campaign.strategy || "",
-        headline: campaign.headline || "",
-        ad_copy: campaign.ad_copy || "",
-        call_to_action: campaign.call_to_action || "",
-        budget: campaign.budget?.toString() || "",
-        daily_budget: campaign.daily_budget?.toString() || "",
-        bidding_strategy: campaign.bidding_strategy || "",
-        target_cpa: campaign.target_cpa?.toString() || "",
-        target_roas: campaign.target_roas?.toString() || "",
-        start_date: campaign.start_date || "",
-        end_date: campaign.end_date || "",
-        status: campaign.status || "draft",
+        client_id: full.client_id,
+        project_id: full.project_id || "none",
+        name: full.name,
+        description: full.description || "",
+        platform: full.platform || "",
+        campaign_type: full.campaign_type || "",
+        objective: full.objective || "",
+        objective_detail: full.objective_detail || "",
+        strategy: full.strategy || "",
+        headline: full.headline || "",
+        ad_copy: full.ad_copy || "",
+        call_to_action: full.call_to_action || "",
+        budget: full.budget?.toString() || "",
+        daily_budget: full.daily_budget?.toString() || "",
+        bidding_strategy: full.bidding_strategy || "",
+        target_cpa: full.target_cpa?.toString() || "",
+        target_roas: full.target_roas?.toString() || "",
+        start_date: full.start_date || "",
+        end_date: full.end_date || "",
+        status: full.status || "draft",
       });
-      setSelectedPlacements((campaign.placements as string[]) || []);
-      setResultsText(campaign.results || "");
+      setSelectedPlacements((full.placements as string[]) || []);
+      setResultsText(full.results || "");
       // Load existing metrics into form
-      const m = campaign.metrics || {};
+      const m = full.metrics || {};
       const mForm: Record<string, string> = {};
       for (const [k, v] of Object.entries(m)) {
         mForm[k] = v != null ? String(v) : "";
