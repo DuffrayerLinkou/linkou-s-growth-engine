@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FolderKanban, Building2, Calendar, DollarSign, Pencil, Loader2, ListChecks, Megaphone, Lightbulb, FileText } from "lucide-react";
+import { FolderKanban, Building2, Calendar, DollarSign, Pencil, Loader2, ListChecks, Megaphone, Lightbulb, FileText, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -57,15 +57,24 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
       const [tasksRes, doneRes, campRes, learnRes, filesRes] = await Promise.all([
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id).eq("status", "done"),
-        supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("project_id", project.id),
+        supabase.from("campaigns").select("id").eq("project_id", project.id),
         supabase.from("learnings").select("id", { count: "exact", head: true }).eq("project_id", project.id),
         supabase.from("files").select("id", { count: "exact", head: true }).eq("project_id", project.id),
       ]);
+      const campaignIds = (campRes.data || []).map((c: any) => c.id);
+      let demandsCount = 0;
+      if (campaignIds.length > 0) {
+        const { count } = await supabase
+          .from("creative_demands")
+          .select("id", { count: "exact", head: true })
+          .in("campaign_id", campaignIds);
+        demandsCount = count || 0;
+      }
       setCounts({
         tasksTotal: tasksRes.count || 0,
         tasksDone: doneRes.count || 0,
-        campaigns: campRes.count || 0,
-        deliverables: 0,
+        campaigns: campaignIds.length,
+        deliverables: demandsCount,
         learnings: learnRes.count || 0,
         files: filesRes.count || 0,
       });
@@ -183,8 +192,9 @@ export function ProjectDetailDialog({ project, open, onOpenChange, onEdit }: Pro
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : counts && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <StatBox icon={<Megaphone className="h-4 w-4" />} label="Campanhas" value={counts.campaigns} />
+                <StatBox icon={<Sparkles className="h-4 w-4" />} label="Criativos" value={counts.deliverables} />
                 <StatBox icon={<ListChecks className="h-4 w-4" />} label="Tarefas" value={counts.tasksTotal} />
                 <StatBox icon={<Lightbulb className="h-4 w-4" />} label="Aprendizados" value={counts.learnings} />
                 <StatBox icon={<FileText className="h-4 w-4" />} label="Arquivos" value={counts.files} />

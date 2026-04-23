@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Megaphone, DollarSign } from "lucide-react";
+import { Loader2, Megaphone, DollarSign, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ interface Campaign {
 
 export function ProjectCampaignsTab({ projectId }: { projectId: string }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [demandCounts, setDemandCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,7 +26,20 @@ export function ProjectCampaignsTab({ projectId }: { projectId: string }) {
         .select("id, name, status, platform, budget, objective")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false });
-      setCampaigns((data as any) || []);
+      const list = (data as any) || [];
+      setCampaigns(list);
+      const ids = list.map((c: Campaign) => c.id);
+      if (ids.length > 0) {
+        const { data: demands } = await supabase
+          .from("creative_demands")
+          .select("campaign_id")
+          .in("campaign_id", ids);
+        const counts: Record<string, number> = {};
+        (demands || []).forEach((d: any) => {
+          counts[d.campaign_id] = (counts[d.campaign_id] || 0) + 1;
+        });
+        setDemandCounts(counts);
+      }
       setLoading(false);
     })();
   }, [projectId]);
@@ -60,7 +74,15 @@ export function ProjectCampaignsTab({ projectId }: { projectId: string }) {
             </div>
             {c.objective && <p className="text-xs text-muted-foreground line-clamp-2">{c.objective}</p>}
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-              <span className="capitalize">{c.platform || "—"}</span>
+              <span className="flex items-center gap-2">
+                <span className="capitalize">{c.platform || "—"}</span>
+                {demandCounts[c.id] > 0 && (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    {demandCounts[c.id]} criativo{demandCounts[c.id] === 1 ? "" : "s"}
+                  </Badge>
+                )}
+              </span>
               {c.budget && (
                 <span className="flex items-center gap-1 text-foreground font-medium">
                   <DollarSign className="h-3 w-3" />
