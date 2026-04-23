@@ -175,7 +175,7 @@ export default function ClienteAgendamentos() {
 
   // Upcoming task deadlines
   const upcomingTasks = tasks.filter(
-    (task) => isAfter(parseISO(task.due_date), now) && task.status !== "completed"
+    (task) => task.due_date && (parseDateOnly(task.due_date) ?? new Date(0)) > now && task.status !== "completed"
   );
 
   if (isLoading) {
