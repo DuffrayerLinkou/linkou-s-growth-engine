@@ -149,6 +149,16 @@ export function CreativeDemandDetail({ demand, clientName, onBack, clients }: Pr
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2 text-xs">
+            {campaign && (
+              <Link
+                to="/admin/campanhas"
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-primary hover:bg-primary/15 transition-colors"
+              >
+                <Megaphone className="h-3 w-3" />
+                <span className="font-medium">{campaign.name}</span>
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </Link>
+            )}
             {demand.platform && <Badge variant="secondary">{demand.platform}</Badge>}
             {demand.format && <Badge variant="secondary">{demand.format}</Badge>}
             <Badge variant="secondary" className={priorityConfig[demand.priority].color}>
