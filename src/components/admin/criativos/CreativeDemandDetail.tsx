@@ -103,15 +103,15 @@ export function CreativeDemandDetail({ demand, clientName, onBack, clients }: Pr
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">{clientName}</p>
-              <CardTitle className="text-2xl">{demand.title}</CardTitle>
-              {demand.objective && <p className="text-muted-foreground mt-1">{demand.objective}</p>}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground mb-1 truncate">{clientName}</p>
+              <CardTitle className="text-xl sm:text-2xl break-words">{demand.title}</CardTitle>
+              {demand.objective && <p className="text-muted-foreground mt-1 text-sm sm:text-base">{demand.objective}</p>}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:shrink-0">
               <Select value={demand.status} onValueChange={(v) => updateStatus.mutate(v as DemandStatus)}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="flex-1 sm:flex-none sm:w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

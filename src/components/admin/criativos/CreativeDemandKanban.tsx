@@ -29,15 +29,15 @@ const COLUMNS: DemandStatus[] = ["briefing", "in_production", "in_approval", "ad
 
 export function CreativeDemandKanban({ demands, clientNames, onSelect, clients }: Props) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+    <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-3 px-3 sm:mx-0 sm:px-0 xl:grid xl:grid-cols-6 xl:overflow-visible xl:px-0 xl:mx-0">
       {COLUMNS.map((col) => {
         const items = demands.filter((d) => d.status === col);
         const cfg = demandStatusConfig[col];
         return (
-          <div key={col} className="flex flex-col">
+          <div key={col} className="flex flex-col flex-shrink-0 w-[240px] sm:w-[260px] xl:w-auto">
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-xs font-semibold uppercase tracking-wider">{cfg.label}</p>
-              <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+              <p className="text-xs font-semibold uppercase tracking-wider truncate">{cfg.label}</p>
+              <Badge variant="outline" className="text-[10px] shrink-0 ml-2">{items.length}</Badge>
             </div>
             <div className="space-y-2 min-h-[200px] rounded-lg bg-muted/30 p-2">
               {items.map((d) => (

@@ -361,8 +361,8 @@ export default function AdminProjects() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col lg:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-3">
+        <div className="relative col-span-full lg:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar projetos ou clientes..."
@@ -395,7 +395,7 @@ export default function AdminProjects() {
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2 px-3 rounded-md border h-10">
+        <div className="flex items-center gap-2 px-3 rounded-md border h-10 col-span-full lg:col-auto justify-center sm:justify-start">
           <Switch id="active-period" checked={activePeriodOnly} onCheckedChange={setActivePeriodOnly} />
           <Label htmlFor="active-period" className="text-sm cursor-pointer whitespace-nowrap">
             Período ativo
