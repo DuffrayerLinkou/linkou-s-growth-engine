@@ -859,7 +859,10 @@ export default function ClientDetail() {
 
       // Update client phase
       const updateData: any = { phase: toPhase };
-      if (toPhase === "transferencia") {
+      // Mark autonomy when moving to the LAST phase of the client's service flow
+      const flow = getPhasesByService((client.service_type as ServiceType) || "auditoria");
+      const lastPhaseValue = flow[flow.length - 1]?.value;
+      if (toPhase === lastPhaseValue) {
         updateData.autonomy = true;
       }
 
