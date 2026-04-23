@@ -86,7 +86,10 @@ export default function ClienteTarefas() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const currentClientPhase = clientInfo?.phase as JourneyPhase || "diagnostico";
+  const currentServiceType: ServiceType = (clientInfo?.service_type as ServiceType) || "auditoria";
+  const servicePhasesList = getPhasesByService(currentServiceType);
+  const currentClientPhase = clientInfo?.phase || servicePhasesList[0]?.value || "diagnostico";
+  const currentPhaseDef = servicePhasesList.find((p) => p.value === currentClientPhase);
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["client-tasks", clientInfo?.id],
