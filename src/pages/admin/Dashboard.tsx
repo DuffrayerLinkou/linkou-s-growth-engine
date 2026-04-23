@@ -91,117 +91,49 @@ export default function AdminDashboard() {
 
   // === QUERIES ===
 
-  // KPI 1: Leads no período selecionado
-  const { data: leadsInPeriod, isLoading: loadingLeadsPeriod } = useQuery({
-    queryKey: ["leads-period", dateRange],
+  // KPIs principais consolidados em uma única RPC (período atual)
+  const { data: kpisPeriod, isLoading: loadingKpisPeriod } = useQuery({
+    queryKey: ["dashboard-kpis", dateRange],
     queryFn: async () => {
-      if (!dateRange?.from || !dateRange?.to) return 0;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", startOfDay(dateRange.from).toISOString())
-        .lte("created_at", endOfDay(dateRange.to).toISOString());
-      return count || 0;
+      if (!dateRange?.from || !dateRange?.to) return null;
+      const { data } = await supabase.rpc("get_dashboard_kpis", {
+        _from: startOfDay(dateRange.from).toISOString(),
+        _to: endOfDay(dateRange.to).toISOString(),
+      });
+      return data as Record<string, number> | null;
     },
     enabled: !!dateRange?.from && !!dateRange?.to,
   });
 
-  // Leads no período anterior (comparativo)
-  const { data: leadsPreviousPeriod } = useQuery({
-    queryKey: ["leads-period-previous", previousPeriod],
+  // KPIs do período anterior (apenas leads para comparativo)
+  const { data: kpisPrevious } = useQuery({
+    queryKey: ["dashboard-kpis-previous", previousPeriod],
     queryFn: async () => {
-      if (!previousPeriod?.from || !previousPeriod?.to) return 0;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", startOfDay(previousPeriod.from).toISOString())
-        .lte("created_at", endOfDay(previousPeriod.to).toISOString());
-      return count || 0;
+      if (!previousPeriod?.from || !previousPeriod?.to) return null;
+      const { data } = await supabase.rpc("get_dashboard_kpis", {
+        _from: startOfDay(previousPeriod.from).toISOString(),
+        _to: endOfDay(previousPeriod.to).toISOString(),
+      });
+      return data as Record<string, number> | null;
     },
     enabled: !!previousPeriod?.from && !!previousPeriod?.to,
   });
 
-  // KPI 2: Leads qualificados no período
-  const { data: qualifiedLeads, isLoading: loadingQualified } = useQuery({
-    queryKey: ["leads-qualified", dateRange],
-    queryFn: async () => {
-      if (!dateRange?.from || !dateRange?.to) return 0;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "qualified")
-        .gte("created_at", startOfDay(dateRange.from).toISOString())
-        .lte("created_at", endOfDay(dateRange.to).toISOString());
-      return count || 0;
-    },
-    enabled: !!dateRange?.from && !!dateRange?.to,
-  });
-
-  // Leads qualificados no período anterior
-  const { data: qualifiedPreviousPeriod } = useQuery({
-    queryKey: ["leads-qualified-previous", previousPeriod],
-    queryFn: async () => {
-      if (!previousPeriod?.from || !previousPeriod?.to) return 0;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "qualified")
-        .gte("created_at", startOfDay(previousPeriod.from).toISOString())
-        .lte("created_at", endOfDay(previousPeriod.to).toISOString());
-      return count || 0;
-    },
-    enabled: !!previousPeriod?.from && !!previousPeriod?.to,
-  });
-
-  // KPI 3: Clientes ativos
-  const { data: activeClients, isLoading: loadingActiveClients } = useQuery({
-    queryKey: ["clients-active"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("clients")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "ativo");
-      return count || 0;
-    },
-  });
-
-  // KPI 4: Clientes em operação guiada
-  const { data: clientsOperacao, isLoading: loadingOperacao } = useQuery({
-    queryKey: ["clients-operacao"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("clients")
-        .select("*", { count: "exact", head: true })
-        .eq("phase", "operacao_guiada");
-      return count || 0;
-    },
-  });
-
-  // KPI 5: Tarefas vencidas
-  const { data: overdueTasks, isLoading: loadingOverdueTasks } = useQuery({
-    queryKey: ["tasks-overdue"],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { count } = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true })
-        .lt("due_date", today)
-        .neq("status", "completed");
-      return count || 0;
-    },
-  });
-
-  // KPI 6: Campanhas ativas
-  const { data: activeCampaigns, isLoading: loadingActiveCampaigns } = useQuery({
-    queryKey: ["campaigns-active"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("campaigns")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "running");
-      return count || 0;
-    },
-  });
+  // Backwards-compatible aliases (sem mudar o restante do componente)
+  const leadsInPeriod = kpisPeriod?.leads_period ?? 0;
+  const loadingLeadsPeriod = loadingKpisPeriod;
+  const leadsPreviousPeriod = kpisPrevious?.leads_period ?? 0;
+  const qualifiedLeads = kpisPeriod?.leads_qualified ?? 0;
+  const loadingQualified = loadingKpisPeriod;
+  const qualifiedPreviousPeriod = kpisPrevious?.leads_qualified ?? 0;
+  const activeClients = kpisPeriod?.clients_active ?? 0;
+  const loadingActiveClients = loadingKpisPeriod;
+  const clientsOperacao = kpisPeriod?.clients_operacao ?? 0;
+  const loadingOperacao = loadingKpisPeriod;
+  const overdueTasks = kpisPeriod?.tasks_overdue ?? 0;
+  const loadingOverdueTasks = loadingKpisPeriod;
+  const activeCampaigns = kpisPeriod?.campaigns_active ?? 0;
+  const loadingActiveCampaigns = loadingKpisPeriod;
 
   // KPI 7: Agendamentos hoje
   const { data: appointmentsToday, isLoading: loadingAppointmentsToday } = useQuery({
