@@ -1,82 +1,93 @@
 
 
-## Ações básicas no Kanban de Criativos (Editar, Apagar, Mover, Duplicar)
+## Cache antigo travando navegadores logados — fix definitivo
 
-### Diagnóstico
+### Diagnóstico (causa real)
 
-Hoje no Kanban admin de Demandas Criativas (`/admin/criativos`) só dá para **clicar no card e abrir a tela de detalhe**. Faltam ações rápidas:
+A correção anterior do Service Worker está **correta no código**, mas tem um detalhe do ciclo de vida que está te travando:
 
-- **Editar** dados da demanda (título, briefing, plataforma, formato, prazo, prioridade, cliente)
-- **Apagar** demanda (com cascata para entregáveis)
-- **Mover de coluna** sem precisar abrir a tela de detalhe
-- **Duplicar** demanda (útil para campanhas similares)
+1. **SW antigo continua no controle até todas as abas fecharem.** Mesmo com `skipWaiting()` + `clients.claim()`, o navegador só promove o novo SW depois que o usuário fecha 100% das abas do domínio. Como você mantém abas abertas, **continua pegando o SW antigo** que serve `index.html` cacheado da build velha.
+2. **Tela preta ao abrir card novo:** o `index.html` velho referencia chunks JS com hash que **não existem mais** no servidor (build nova tem hashes diferentes). Resultado: `import()` de uma rota lazy falha → React quebra → tela preta. Não é bug de componente, é chunk 404.
+3. **Aba anônima funciona** porque não tem SW antigo registrado.
 
-Mesma carência existe nos **entregáveis** dentro da demanda (hoje só edita conteúdo, não dá para apagar nem duplicar).
+A correção atual depende do usuário fechar tudo. Precisamos de uma estratégia que **force a saída do SW antigo na primeira visita** e **se recupere de chunks 404**.
 
 ### O que vou implementar
 
-**1. Menu de ações rápidas no card do Kanban (`CreativeDemandKanban.tsx`)**
-- Ícone de três pontinhos no canto superior direito de cada card → `DropdownMenu` com:
-  - **Abrir** (comportamento atual, padrão ao clicar no card)
-  - **Editar** → abre dialog de edição (reaproveita o form de "Nova demanda")
-  - **Mover para…** → submenu com as 6 colunas (Briefing, Em Produção, Em Aprovação, Ajustes, Aprovado, Entregue)
-  - **Duplicar** → cria nova demanda copiando todos os campos, status volta para "briefing", título recebe "(cópia)"
-  - **Apagar** → `AlertDialog` de confirmação, depois `delete` em `creative_demands` (entregáveis caem por cascata via FK ou exclusão manual prévia)
+**1. Auto-unregister do SW + reload único (em `src/main.tsx`)**
 
-O clique no corpo do card continua abrindo o detalhe. O menu não propaga o clique.
+Em vez de tentar manter o SW para push notifications a qualquer custo, vou **desregistrar o SW completamente** quando detectar a versão antiga ainda ativa, limpar todos os caches via `caches.keys()`, e recarregar a página **uma vez só** (com um flag em `sessionStorage` para não loop).
 
-**2. Dialog de edição reutilizável (`CreativeDemandFormDialog.tsx` — novo)**
-- Extrai o formulário de "Nova demanda" (atualmente inline em `Criativos.tsx`) para um componente único que serve para **criar** e **editar**.
-- Recebe `demand?: Demand` opcional. Se vier, faz `update`; se não, `insert`.
-- Substitui o dialog inline atual em `Criativos.tsx` e é usado também pelo card do Kanban.
+```ts
+// pseudo
+if ('serviceWorker' in navigator) {
+  const regs = await navigator.serviceWorker.getRegistrations();
+  for (const r of regs) await r.unregister();
+  const keys = await caches.keys();
+  await Promise.all(keys.map(k => caches.delete(k)));
+  if (!sessionStorage.getItem('linkou-sw-purged')) {
+    sessionStorage.setItem('linkou-sw-purged', '1');
+    location.reload();
+  }
+}
+```
 
-**3. Mesmas ações na tela de detalhe (`CreativeDemandDetail.tsx`)**
-- Botão **Editar** ao lado do título → abre o mesmo dialog.
-- Botão **Apagar** (ícone lixeira, vermelho discreto) → confirmação + redireciona pra lista.
-- Para **entregáveis** (`CreativeDeliverableEditor`): adicionar menu com **Apagar entregável** e **Duplicar entregável**.
+Depois do purge, **re-registro o SW novo** em produção (mantém push notifications funcionando).
 
-**4. Mesmas ações na visão de Lista**
-- A aba "Lista" também ganha o menu de três pontinhos no canto direito de cada linha.
+**2. Recovery automático para chunks faltando (em `src/App.tsx`)**
 
-### Confirmações e segurança
+Adicionar handler global para `window.addEventListener('error')` e `unhandledrejection` que detecta erros do tipo `Failed to fetch dynamically imported module` / `Loading chunk failed`. Quando acontece, limpa caches e dá `location.reload()` único — também guardado por `sessionStorage` para evitar loop.
 
-- **Apagar** sempre passa por `AlertDialog` ("Tem certeza? Esta ação não pode ser desfeita. Os entregáveis vinculados também serão apagados.").
-- Apenas admins e account_managers conseguem editar/apagar/mover (RLS já garante isso na tabela `creative_demands`).
-- **Cliente** continua com permissão limitada do lado deles (só editam demandas próprias em status `briefing`, conforme RLS atual). Não vou tocar nas RLS.
+```ts
+// pseudo
+window.addEventListener('error', (e) => {
+  if (/Loading chunk|dynamically imported module/i.test(e.message)) {
+    if (!sessionStorage.getItem('linkou-chunk-reloaded')) {
+      sessionStorage.setItem('linkou-chunk-reloaded', '1');
+      caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))))
+        .finally(() => location.reload());
+    }
+  }
+});
+```
 
-### Arquivos
+Isso resolve **a tela preta** em cards novos: quando o JS antigo tenta carregar um chunk que não existe mais, em vez de quebrar silenciosamente o app recarrega limpo e busca os chunks corretos.
 
-**Novos:**
-- `src/components/admin/criativos/CreativeDemandFormDialog.tsx` — dialog reutilizável criar/editar
-- `src/components/admin/criativos/CreativeDemandActions.tsx` — menu dropdown reutilizável (Kanban + Lista + Detail)
+**3. Meta tags anti-cache no `index.html`**
 
-**Editados:**
-- `src/components/admin/criativos/CreativeDemandKanban.tsx` — adiciona menu de ações no card
-- `src/components/admin/criativos/CreativeDemandDetail.tsx` — botões editar/apagar + menu nos entregáveis
-- `src/components/admin/criativos/CreativeDeliverableEditor.tsx` — menu apagar/duplicar entregável
-- `src/pages/admin/Criativos.tsx` — usa o novo `CreativeDemandFormDialog` no lugar do form inline; passa callbacks de ação para Kanban/Lista
+Adicionar no `<head>`:
+
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+```
+
+Isso **não** afeta os assets com hash (que devem ser cacheados eternamente), mas instrui o navegador a **revalidar `index.html`** a cada visita — que é o arquivo que aponta para os chunks corretos da build atual. Hoje seu hosting pode estar cacheando `index.html` no navegador, o que perpetua o problema.
+
+**4. Bump de versão no SW (em `public/sw.js`)**
+
+Adicionar comentário de versão `// v3` no topo. Trocar bytes do arquivo é o que faz o navegador detectar "novo SW disponível" e disparar `install`. Sem isso, o navegador acha que o SW não mudou e ignora.
+
+### Por que vai funcionar
+
+- **Usuários travados na versão antiga**: ao abrir hoje, o `main.tsx` antigo carrega → mas a próxima vez que abrirem (ou se já tiverem o `main.tsx` novo carregado), o purge dispara → reload único → versão nova.
+- **Navegadores que ainda peguem o SW antigo no primeiro load**: o handler de chunk-error captura a quebra e força reload limpo.
+- **Cards novos abrindo em tela preta**: resolvido pelo recovery de chunk error.
+- **A partir de agora**: meta tags anti-cache em `index.html` evitam que isso volte a acontecer.
+
+### Arquivos modificados
+
+- `src/main.tsx` — purge + re-registro condicional do SW
+- `src/App.tsx` — handler global de erro de chunk
+- `public/sw.js` — bump de versão (`// v3`) para forçar update detection
+- `index.html` — meta tags anti-cache no `<head>`
 
 ### Sem mudanças
 
-- Banco de dados (tabelas, colunas, RLS).
-- Painel do cliente (`src/pages/cliente/Criativos.tsx`) — fora do escopo deste pedido. Posso adicionar depois se você quiser.
+- Banco, RLS, lógica de auth, queries, rotas, componentes do Onboarding/Criativos.
 
-### Resultado visual
+### Após aplicar
 
-```text
-┌─ Card Kanban ─────────────┐
-│ DRA REGEANE         ⋯    │ ← novo menu
-│ Vídeo 01 – Hook Pré...   │
-│ [Alta]  📅 23/04         │
-└───────────────────────────┘
-       ↓ clicando ⋯
-       ┌────────────────┐
-       │ Abrir          │
-       │ Editar         │
-       │ Mover para  ▶  │
-       │ Duplicar       │
-       │ ─────────      │
-       │ Apagar    🗑   │
-       └────────────────┘
-```
+Você (e qualquer usuário travado) vai abrir o app **uma vez**, ver um reload automático rapidíssimo (~1s), e depois disso fica na versão nova permanentemente. Aba anônima continua funcionando igual. Push notifications continuam funcionando.
 
