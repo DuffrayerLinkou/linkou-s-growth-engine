@@ -9,7 +9,7 @@ export function useClientPermissions() {
   return {
     userType,
     isPontoFocal,
-    canApprove: isPontoFocal,
+    canApprove: isPontoFocal || userType === "manager",
     canUploadFiles: isPontoFocal || userType === "manager",
     canViewFinancials: userType === "manager" || isPontoFocal,
     canEditMetrics: isPontoFocal,
