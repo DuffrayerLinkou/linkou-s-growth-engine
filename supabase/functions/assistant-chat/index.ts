@@ -2215,7 +2215,7 @@ serve(async (req) => {
 
     {
       // Step 1: Non-streaming call with tools to check for tool_calls
-      const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const firstResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -2228,7 +2228,14 @@ serve(async (req) => {
           tool_choice: "auto",
           stream: false,
         }),
+      }, 60000).catch((e) => {
+        console.error("AI gateway fetch error (step1):", e);
+        return null as unknown as Response;
       });
+
+      if (!firstResponse) {
+        return sseFromText("⚠️ A IA demorou demais para responder. Tente novamente em alguns segundos.");
+      }
 
       if (!firstResponse.ok) {
         if (firstResponse.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }, 429);
@@ -2316,14 +2323,15 @@ serve(async (req) => {
           }
         }
 
-        // Step 2: Stream the final response with tool results
+        // Step 2: Stream the final response with tool results.
+        // Importante: NÃO enviar tools nessa etapa (evita loops e respostas vazias).
         const finalMessages = [
           ...allMessages,
           choice.message, // assistant message with tool_calls
           ...toolMessages,
         ];
 
-        const streamResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const streamResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -2333,13 +2341,39 @@ serve(async (req) => {
             model: "google/gemini-3-flash-preview",
             messages: finalMessages,
             stream: true,
+            tool_choice: "none",
           }),
+        }, 60000).catch((e) => {
+          console.error("AI gateway fetch error (step2):", e);
+          return null as unknown as Response;
         });
 
-        if (!streamResponse.ok) {
-          const t = await streamResponse.text();
-          console.error("AI gateway error (step2):", streamResponse.status, t);
-          return json({ error: "Erro ao processar confirmação" }, 500);
+        // Fallback determinístico: se o modelo falhar/vier vazio, montamos a confirmação
+        // a partir do resultado real das tools executadas. Assim o usuário NUNCA fica sem retorno.
+        const buildFallbackSummary = () => {
+          const lines: string[] = [];
+          for (const tm of toolMessages) {
+            try {
+              const parsed = JSON.parse(tm.content);
+              const ok = parsed?.success ? "✅" : "⚠️";
+              const msg = String(parsed?.message || "").slice(0, 600);
+              if (msg) lines.push(`${ok} ${msg}`);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (lines.length === 0) {
+            return "Ação processada, mas não consegui montar uma confirmação detalhada agora. Tente perguntar novamente.";
+          }
+          return lines.join("\n\n");
+        };
+
+        if (!streamResponse || !streamResponse.ok) {
+          if (streamResponse) {
+            const t = await streamResponse.text().catch(() => "");
+            console.error("AI gateway error (step2):", streamResponse.status, t);
+          }
+          return sseFromText(buildFallbackSummary());
         }
 
         return new Response(streamResponse.body, {
@@ -2349,11 +2383,10 @@ serve(async (req) => {
 
       // No tool calls → the model responded with text. Stream it back.
       // Since we already have the full response, we convert it to an SSE stream.
-      const content = choice?.message?.content || "Sem resposta.";
-      const ssePayload = `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`;
-      return new Response(ssePayload, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      const content =
+        choice?.message?.content ||
+        "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos.";
+      return sseFromText(content);
     }
   } catch (e) {
     console.error("assistant-chat error:", e);
