@@ -1494,6 +1494,61 @@ async function executeTool(
         return { success: true, message: msg };
       }
 
+      case "bulk_create_keywords": {
+        const items = Array.isArray(args.items) ? (args.items as Array<Record<string, unknown>>) : [];
+        if (items.length === 0) return { success: false, message: "items é obrigatório (array de keywords)." };
+        if (items.length > 50) return { success: false, message: "Máx. 50 keywords por chamada." };
+        const rows: Array<Record<string, unknown>> = [];
+        for (const it of items) {
+          const term = (it.term as string)?.trim();
+          if (!term) continue;
+          const row: Record<string, unknown> = {
+            client_id: clientId,
+            term,
+            intent: (it.intent as string) || "informational",
+            status: (it.status as string) || "target",
+            created_by: userId,
+          };
+          for (const k of ["search_volume", "difficulty", "cpc", "target_url", "cluster_id", "notes"]) {
+            if (it[k] !== undefined && it[k] !== null && it[k] !== "") row[k] = it[k];
+          }
+          if (Array.isArray(it.tags)) row.tags = it.tags;
+          rows.push(row);
+        }
+        if (rows.length === 0) return { success: false, message: "Nenhum item válido (term faltando)." };
+        const { data, error } = await db.from("keywords").insert(rows).select("id, term");
+        if (error) throw error;
+        const created = (data || []) as Array<{ id: string; term: string }>;
+        return { success: true, message: `${created.length} keyword(s) cadastrada(s):\n${created.map((k) => `- \`${String(k.id).slice(0,8)}\` ${k.term}`).join("\n")}` };
+      }
+
+      case "delete_keyword": {
+        const keywordId = args.keyword_id as string;
+        if (!keywordId) return { success: false, message: "keyword_id é obrigatório." };
+        const mode2 = (args.mode as string) || "archive";
+        if (mode2 === "hard") {
+          const { error } = await db.from("keywords").delete().eq("id", keywordId).eq("client_id", clientId);
+          if (error) throw error;
+          return { success: true, message: `Keyword \`${keywordId.slice(0, 8)}\` excluída definitivamente.` };
+        }
+        const { error } = await db.from("keywords").update({ status: "archived" }).eq("id", keywordId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Keyword \`${keywordId.slice(0, 8)}\` arquivada (status=archived). Histórico preservado.` };
+      }
+
+      case "update_keyword_cluster": {
+        const clusterId = args.cluster_id as string;
+        if (!clusterId) return { success: false, message: "cluster_id é obrigatório." };
+        const payload: Record<string, unknown> = {};
+        for (const key of ["name", "intent", "pillar_url", "description"]) {
+          if (args[key] !== undefined && args[key] !== null) payload[key] = args[key];
+        }
+        if (Object.keys(payload).length === 0) return { success: false, message: "Nenhum campo para atualizar." };
+        const { error } = await db.from("keyword_clusters").update(payload).eq("id", clusterId).eq("client_id", clientId);
+        if (error) throw error;
+        return { success: true, message: `Cluster \`${clusterId.slice(0, 8)}\` atualizado (${Object.keys(payload).join(", ")}).` };
+      }
+
       case "search_documents": {
         const query = (args.query as string)?.trim();
         if (!query) return { success: false, message: "Forneça uma query para buscar." };
