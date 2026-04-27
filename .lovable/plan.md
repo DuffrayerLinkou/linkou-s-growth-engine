@@ -1,86 +1,47 @@
-# Linkouzinho: planilhas/apresentações + controle total de Palavras-Chave
+Identifiquei dois problemas principais no Linkouzinho interno:
 
-## O que vai mudar (visão do usuário)
+1. Em alguns retornos do Lovable AI, a segunda chamada de confirmação ainda tenta chamar uma ferramenta (`tool_calls`) mesmo sem ferramentas habilitadas nessa etapa. O frontend hoje ignora esse tipo de evento porque não vem texto (`delta.content`), então parece que ele “carrega e não responde”.
+2. Algumas ações que ele afirma executar não existem nas ferramentas atuais. Exemplo visto no histórico: envio de e-mail transacional. Ele respondeu como se tivesse enviado, mas `assistant-chat` não tem ferramenta de envio de e-mail. Isso precisa ser bloqueado ou implementado corretamente.
 
-**1. Linkouzinho lê planilhas e apresentações dos clientes**
-Hoje o bot já indexa PDF, DOCX, TXT, MD, CSV, JSON, HTML. Vai passar a indexar também **XLSX/XLS** (Excel) e **PPTX** (PowerPoint) — os dois formatos que mais aparecem nos arquivos dos clientes (planilhas de métricas, relatórios, decks de planejamento).
+## Plano de correção
 
-Na página `/cliente/arquivos` (e na visão admin equivalente), o botão "🧠 Tornar pesquisável pelo Linkouzinho" passa a aparecer para esses dois formatos novos.
+### 1. Tornar o chat à prova de resposta vazia
+- No frontend (`LinkouzinhoInternal.tsx`), detectar quando a stream termina sem nenhum texto útil.
+- Mostrar uma mensagem amigável em vez de ficar sem retorno, por exemplo: “Não consegui finalizar essa ação. Tente novamente ou detalhe melhor o pedido.”
+- Tratar eventos de stream que chegam como `tool_calls` inesperados, para não sumirem silenciosamente.
+- Corrigir o aviso de React sobre `ref` no `ScrollArea`, separando o ref da viewport/scroll do ref do componente.
 
-**2. Linkouzinho ganha controle total da seção Palavras-Chave**
-O bot vai poder, a pedido do usuário em linguagem natural:
-- **Listar/buscar** keywords do cliente (com filtros: status, intent, cluster, faixa de volume, faixa de dificuldade, posição atual)
-- **Criar** keywords novas (uma ou em lote)
-- **Atualizar** keywords existentes (status, intent, posição, URL alvo, cluster, tags, notas)
-- **Arquivar/excluir** keywords
-- **Criar/editar clusters** (pilares de conteúdo)
-- **Registrar rankings** (snapshot de posição numa data)
-- **Analisar e gerar insights**: identificar oportunidades (alto volume + baixa dificuldade), quick-wins (posição 11–20 que dá pra empurrar pro top 10), keywords em queda, gaps de cluster, canibalizações (duas keywords mirando a mesma URL), distribuição de intent
+### 2. Corrigir o fluxo de ferramentas no backend
+- Em `assistant-chat`, na etapa final depois de executar ferramentas, forçar o modelo a responder apenas com texto, sem novas chamadas de ferramenta.
+- Se mesmo assim vier resposta sem conteúdo, retornar uma confirmação determinística baseada no resultado das ferramentas executadas.
+- Adicionar timeouts/abort control nas chamadas para Lovable AI e embeddings para evitar espera infinita.
+- Padronizar erros 402/429/500 com mensagens claras para o usuário.
 
-Tudo respeitando RLS: cliente só mexe nas próprias, admin/account_manager mexe em qualquer um.
+### 3. Evitar falsas execuções
+- Ajustar o prompt do Linkouzinho para nunca dizer que executou algo se não houve ferramenta real executada com sucesso.
+- Quando o pedido exigir uma ferramenta inexistente (como “enviar e-mail”), ele deve responder que ainda não tem essa ação disponível, em vez de simular.
+- Registrar falhas em `client_actions` com mensagem curta e rastreável.
 
-## Como vai funcionar
+### 4. Opcional, mas recomendado: adicionar ferramenta real de e-mail transacional
+Como vocês já têm Resend, `notify-email` e templates, posso adicionar uma ferramenta segura no `assistant-chat` para disparar avisos operacionais, começando por:
+- `send_campaign_approval_email`
+- Busca destinatários do cliente: ponto focal, managers e usuários vinculados.
+- Usa layout padrão Linkou via `notify-email`/template existente.
+- Permite ao Linkouzinho dizer “enviei” somente quando a função confirmar sucesso.
 
-### Parte 1 — XLSX e PPTX no RAG
+### 5. Validação
+- Testar os casos que hoje travam:
+  - pedido de preencher palavras-chave a partir de uma planilha;
+  - pedido que tenta ler arquivo/documento;
+  - pedido de ação não suportada;
+  - pedido com ferramenta executada e confirmação final.
+- Conferir logs da Edge Function `assistant-chat` após as chamadas.
 
-Estender `supabase/functions/ingest-document/index.ts`:
+## Arquivos previstos
+- `supabase/functions/assistant-chat/index.ts`
+- `src/components/LinkouzinhoInternal.tsx`
+- Possivelmente `supabase/functions/notify-email/index.ts` se formos adicionar o disparo real de e-mail
+- Memória operacional do projeto para registrar que o Linkouzinho não deve simular execução de ações sem ferramenta real
 
-- **XLSX/XLS**: usar `xlsx` (SheetJS) via esm.sh. Para cada aba, converter pra texto formatado: `### Aba: <nome>` seguido das linhas como TSV (`coluna1\tcoluna2\t...`). Limita a 5000 linhas por aba pra não estourar embedding. Mantém cabeçalho legível pro modelo entender o que é cada coluna.
-- **PPTX**: usar `jszip` (PPTX é um zip de XMLs) e extrair texto de `ppt/slides/slide*.xml` com regex simples em `<a:t>...</a:t>`. Cada slide vira um bloco `### Slide N: <título>\n<conteúdo>`.
-
-Frontend (`src/pages/cliente/Arquivos.tsx` e onde mais for necessário): adicionar `xlsx`, `xls`, `pptx` na lista de formatos indexáveis (`isIndexable`).
-
-Sem migration nesta parte — a tabela `document_chunks` já guarda texto puro.
-
-### Parte 2 — Keywords no Linkouzinho
-
-**Tools novas no `supabase/functions/assistant-chat/index.ts`** (todas com `client_id` resolvido pelo `current_client_id` da conversa, e gravando em `client_actions`):
-
-| Tool | O que faz |
-|---|---|
-| `list_keywords` | Lista com filtros (status, intent, cluster_id, min_volume, max_difficulty, position_range, search_term). Retorna até 100. |
-| `get_keyword` | Detalhe + histórico de rankings de uma keyword. |
-| `create_keyword` | Cria 1 keyword. Campos: term (obrigatório), intent, search_volume, difficulty, cpc, target_url, cluster_id, status, tags, notes. |
-| `bulk_create_keywords` | Cria várias de uma vez (até 50). |
-| `update_keyword` | Atualiza campos de uma keyword. |
-| `delete_keyword` | Remove (ou arquiva, conforme `mode`). |
-| `list_clusters` | Lista clusters do cliente. |
-| `create_cluster` | Cria cluster (name, description, intent, pillar_url). |
-| `update_cluster` | Atualiza cluster. |
-| `record_ranking` | Insere snapshot em `keyword_rankings` (keyword_id, position, source, notes). |
-| `analyze_keywords` | Roda análise agregada e devolve insights estruturados: top oportunidades, quick-wins, em queda, canibalizações, distribuição de intent, gaps de cluster. Pode opcionalmente gravar como `insight` na tabela `insights` se `save_as_insight: true`. |
-
-**System prompt do bot** (admin e cliente): adicionar bloco "🔑 Palavras-Chave do cliente" com resumo (total, top 10, oportunidades, distribuição de intent, últimas 5 mexidas em `client_actions` com `action_type` começando em `keyword_`). Carregado em paralelo com os outros 15 contextos já existentes.
-
-**Permissões**: as tools usam o JWT do usuário (cliente do bot vê/mexe só nas próprias keywords; admin/AM mexe em qualquer cliente alvo). Já está coberto pelas RLS existentes em `keywords`, `keyword_clusters`, `keyword_rankings`.
-
-**Sem migration** — schema de keywords já está completo.
-
-### Parte 3 — Análise de oportunidades (lógica do `analyze_keywords`)
-
-Uma única consulta agregada no banco (rápida) classifica cada keyword em buckets:
-- **Oportunidade**: `search_volume >= 500` AND `difficulty < 40` AND (`current_position` NULL OR > 20)
-- **Quick-win**: `current_position` BETWEEN 11 AND 20 AND `search_volume >= 100`
-- **Em queda**: comparar última posição com a média das 3 anteriores em `keyword_rankings` — queda de 5+ posições
-- **Canibalização**: agrupar por `target_url` onde aparecem 2+ keywords com mesma intent
-- **Gap de cluster**: clusters com menos de 3 keywords ativas
-
-Retorna JSON estruturado pro bot interpretar e responder em linguagem natural no mesmo turno.
-
-## Arquivos afetados
-
-- `supabase/functions/ingest-document/index.ts` — adicionar branches XLSX e PPTX
-- `supabase/functions/assistant-chat/index.ts` — adicionar 11 tools de keywords + bloco de contexto no system prompt
-- `src/pages/cliente/Arquivos.tsx` — incluir xlsx/xls/pptx nos formatos indexáveis
-- `.lovable/memory/features/linkouzinho-operational-memory.md` — registrar Sprint 4
-
-## Fora do escopo
-
-- UI nova (a seção `/cliente/keywords` e `/admin/keywords` já existem e continuam idênticas — o bot só passa a operar via chat)
-- Integração com Google Search Console (pode ficar pra depois, como combinado)
-- OCR em PDFs escaneados ou imagens dentro de PPTX
-- Coleta automática de volume/dificuldade via API externa (DataForSEO, etc.)
-
-## Sem alterações em
-
-RLS, layout, identidade visual, rotas, permissões existentes, regras de negócio das outras seções.
+## Resultado esperado
+O Linkouzinho deve sempre dar retorno claro: ou executa e confirma, ou explica por que não conseguiu. Ele não deve mais ficar apenas carregando, nem afirmar que fez uma ação que não foi executada.

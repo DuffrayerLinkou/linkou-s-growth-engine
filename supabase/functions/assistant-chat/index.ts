@@ -18,6 +18,25 @@ function asArr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
 }
 
+// fetch com timeout para evitar travas na chamada do Lovable AI Gateway
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 45000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Converte um texto pronto em uma stream SSE compatível com o frontend
+function sseFromText(text: string): Response {
+  const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`;
+  return new Response(payload, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
+}
+
 // ── Tool definitions (admin only) ──────────────────────────────────────
 const adminTools = [
   {
@@ -2114,7 +2133,8 @@ serve(async (req) => {
         `4. NUNCA invente dados. Use apenas o contexto fornecido.\n` +
         `5. Sempre termine com UM próximo passo claro e executável.\n` +
         `6. Foco obsessivo em impacto real: leads, qualificação, vendas, CPL, ROAS.\n` +
-        `7. Em ambiguidade, assuma ESTRATEGISTA (mais útil por padrão).\n\n` +
+        `7. Em ambiguidade, assuma ESTRATEGISTA (mais útil por padrão).\n` +
+        `8. NUNCA afirme que executou uma ação se não houve uma tool call real bem-sucedida nesta resposta. Se o usuário pedir algo que NÃO existe nas ferramentas listadas (ex: enviar e-mail, disparar WhatsApp, publicar campanha em plataforma externa), diga claramente: "ainda não tenho essa ação disponível por aqui — registre como tarefa que eu crio agora" e ofereça criar a tarefa via create_task.\n\n` +
         `## Ferramentas disponíveis (use principalmente no modo EXECUTOR)\n` +
         `Quando a ação for clara e acionável, EXECUTE imediatamente via tool call:\n` +
         `- **create_appointment**: Agendar reuniões/calls.\n` +
@@ -2196,7 +2216,7 @@ serve(async (req) => {
 
     {
       // Step 1: Non-streaming call with tools to check for tool_calls
-      const firstResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const firstResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -2209,7 +2229,14 @@ serve(async (req) => {
           tool_choice: "auto",
           stream: false,
         }),
+      }, 60000).catch((e) => {
+        console.error("AI gateway fetch error (step1):", e);
+        return null as unknown as Response;
       });
+
+      if (!firstResponse) {
+        return sseFromText("⚠️ A IA demorou demais para responder. Tente novamente em alguns segundos.");
+      }
 
       if (!firstResponse.ok) {
         if (firstResponse.status === 429) return json({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }, 429);
@@ -2297,14 +2324,15 @@ serve(async (req) => {
           }
         }
 
-        // Step 2: Stream the final response with tool results
+        // Step 2: Stream the final response with tool results.
+        // Importante: NÃO enviar tools nessa etapa (evita loops e respostas vazias).
         const finalMessages = [
           ...allMessages,
           choice.message, // assistant message with tool_calls
           ...toolMessages,
         ];
 
-        const streamResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const streamResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -2314,13 +2342,39 @@ serve(async (req) => {
             model: "google/gemini-3-flash-preview",
             messages: finalMessages,
             stream: true,
+            tool_choice: "none",
           }),
+        }, 60000).catch((e) => {
+          console.error("AI gateway fetch error (step2):", e);
+          return null as unknown as Response;
         });
 
-        if (!streamResponse.ok) {
-          const t = await streamResponse.text();
-          console.error("AI gateway error (step2):", streamResponse.status, t);
-          return json({ error: "Erro ao processar confirmação" }, 500);
+        // Fallback determinístico: se o modelo falhar/vier vazio, montamos a confirmação
+        // a partir do resultado real das tools executadas. Assim o usuário NUNCA fica sem retorno.
+        const buildFallbackSummary = () => {
+          const lines: string[] = [];
+          for (const tm of toolMessages) {
+            try {
+              const parsed = JSON.parse(tm.content);
+              const ok = parsed?.success ? "✅" : "⚠️";
+              const msg = String(parsed?.message || "").slice(0, 600);
+              if (msg) lines.push(`${ok} ${msg}`);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (lines.length === 0) {
+            return "Ação processada, mas não consegui montar uma confirmação detalhada agora. Tente perguntar novamente.";
+          }
+          return lines.join("\n\n");
+        };
+
+        if (!streamResponse || !streamResponse.ok) {
+          if (streamResponse) {
+            const t = await streamResponse.text().catch(() => "");
+            console.error("AI gateway error (step2):", streamResponse.status, t);
+          }
+          return sseFromText(buildFallbackSummary());
         }
 
         return new Response(streamResponse.body, {
@@ -2330,11 +2384,10 @@ serve(async (req) => {
 
       // No tool calls → the model responded with text. Stream it back.
       // Since we already have the full response, we convert it to an SSE stream.
-      const content = choice?.message?.content || "Sem resposta.";
-      const ssePayload = `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`;
-      return new Response(ssePayload, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      const content =
+        choice?.message?.content ||
+        "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos.";
+      return sseFromText(content);
     }
   } catch (e) {
     console.error("assistant-chat error:", e);

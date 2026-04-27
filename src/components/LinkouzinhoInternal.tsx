@@ -187,6 +187,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
         }
 
         if (!resp.body) throw new Error("No response body");
+        let receivedAnyContent = false;
 
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
@@ -223,6 +224,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
               const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
               if (delta) {
                 assistantContent += delta;
+                receivedAnyContent = true;
                 updateAssistant(assistantContent);
               }
             } catch {
@@ -245,10 +247,19 @@ export function LinkouzinhoInternal({ mode }: Props) {
               const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
               if (delta) {
                 assistantContent += delta;
+                receivedAnyContent = true;
                 updateAssistant(assistantContent);
               }
             } catch {}
           }
+        }
+
+        // Salvaguarda final: se a stream terminou sem nenhum texto, mostramos um aviso
+        // claro em vez de deixar o chat "carregando" silenciosamente.
+        if (!receivedAnyContent) {
+          updateAssistant(
+            "⚠️ Não recebi resposta dessa vez. A IA pode ter sobrecarregado. Tente reenviar a mensagem ou reformular o pedido."
+          );
         }
       } catch (e: any) {
         setMessages((prev) => [
@@ -358,7 +369,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
           )}
 
           {/* Messages */}
-          <ScrollArea className="flex-1 px-3 py-3" ref={scrollRef as any}>
+          <ScrollArea className="flex-1 px-3 py-3">
             <div ref={scrollRef}>
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-6">
