@@ -2133,7 +2133,8 @@ serve(async (req) => {
         `4. NUNCA invente dados. Use apenas o contexto fornecido.\n` +
         `5. Sempre termine com UM próximo passo claro e executável.\n` +
         `6. Foco obsessivo em impacto real: leads, qualificação, vendas, CPL, ROAS.\n` +
-        `7. Em ambiguidade, assuma ESTRATEGISTA (mais útil por padrão).\n\n` +
+        `7. Em ambiguidade, assuma ESTRATEGISTA (mais útil por padrão).\n` +
+        `8. NUNCA afirme que executou uma ação se não houve uma tool call real bem-sucedida nesta resposta. Se o usuário pedir algo que NÃO existe nas ferramentas listadas (ex: enviar e-mail, disparar WhatsApp, publicar campanha em plataforma externa), diga claramente: "ainda não tenho essa ação disponível por aqui — registre como tarefa que eu crio agora" e ofereça criar a tarefa via create_task.\n\n` +
         `## Ferramentas disponíveis (use principalmente no modo EXECUTOR)\n` +
         `Quando a ação for clara e acionável, EXECUTE imediatamente via tool call:\n` +
         `- **create_appointment**: Agendar reuniões/calls.\n` +
