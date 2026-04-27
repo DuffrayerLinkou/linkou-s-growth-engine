@@ -784,6 +784,21 @@ const clientTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_documents",
+      description: "Busca semântica nos arquivos JÁ INDEXADOS do cliente (PDF, DOCX, TXT, MD, CSV, JSON, HTML, XLSX/XLS e PPTX). Use quando o cliente perguntar sobre conteúdo de algum arquivo, planilha ou apresentação que ele subiu. Retorna apenas os trechos relevantes.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Pergunta ou tópico (ex: 'qual a meta de leads do mês', 'cláusulas de rescisão')" },
+          top_k: { type: "number", description: "Máximo de trechos. Padrão 5, máximo 10." },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
