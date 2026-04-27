@@ -96,7 +96,64 @@ async function extractText(blob: Blob, mime: string, fileName: string): Promise<
     }
   }
 
-  throw new Error(`Formato não suportado para indexação: ${mime || "desconhecido"} (${fileName}). Suportados: PDF, TXT, MD, CSV, JSON, HTML, DOCX.`);
+  if (/\.(xlsx|xls)$/i.test(lowerName) || lowerMime.includes("spreadsheetml") || lowerMime.includes("ms-excel")) {
+    try {
+      const arrayBuf = await blob.arrayBuffer();
+      const xlsxMod: any = await import("https://esm.sh/xlsx@0.18.5?target=deno");
+      const wb = xlsxMod.read(new Uint8Array(arrayBuf), { type: "array" });
+      const parts: string[] = [];
+      const MAX_ROWS_PER_SHEET = 5000;
+      for (const sheetName of wb.SheetNames) {
+        const sheet = wb.Sheets[sheetName];
+        if (!sheet) continue;
+        // CSV-like (tab-separated) preserving header context
+        const tsv: string = xlsxMod.utils.sheet_to_csv(sheet, { FS: "\t", blankrows: false });
+        const lines = tsv.split("\n");
+        const truncated = lines.length > MAX_ROWS_PER_SHEET;
+        const limited = truncated ? lines.slice(0, MAX_ROWS_PER_SHEET) : lines;
+        parts.push(`### Aba: ${sheetName}\n${limited.join("\n")}${truncated ? `\n[... truncado em ${MAX_ROWS_PER_SHEET} linhas de ${lines.length} ...]` : ""}`);
+      }
+      return parts.join("\n\n").trim();
+    } catch (e) {
+      throw new Error(`XLSX parse failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  if (/\.pptx$/i.test(lowerName) || lowerMime.includes("presentationml")) {
+    try {
+      const arrayBuf = await blob.arrayBuffer();
+      const jszipMod: any = await import("https://esm.sh/jszip@3.10.1?target=deno");
+      const JSZipCtor = jszipMod.default || jszipMod;
+      const zip = await JSZipCtor.loadAsync(new Uint8Array(arrayBuf));
+      // Collect slide XMLs and sort by numeric index
+      const slideEntries: Array<{ idx: number; path: string }> = [];
+      zip.forEach((path: string) => {
+        const m = path.match(/^ppt\/slides\/slide(\d+)\.xml$/);
+        if (m) slideEntries.push({ idx: parseInt(m[1], 10), path });
+      });
+      slideEntries.sort((a, b) => a.idx - b.idx);
+      if (slideEntries.length === 0) return "";
+      const parts: string[] = [];
+      for (const { idx, path } of slideEntries) {
+        const xml: string = await zip.file(path).async("string");
+        // Extract <a:t>...</a:t> text runs
+        const matches = xml.match(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g) || [];
+        const texts = matches
+          .map((m) => m.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'"))
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (texts.length === 0) continue;
+        const title = texts[0];
+        const body = texts.slice(1).join("\n");
+        parts.push(`### Slide ${idx}: ${title}${body ? `\n${body}` : ""}`);
+      }
+      return parts.join("\n\n").trim();
+    } catch (e) {
+      throw new Error(`PPTX parse failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  throw new Error(`Formato não suportado para indexação: ${mime || "desconhecido"} (${fileName}). Suportados: PDF, TXT, MD, CSV, JSON, HTML, DOCX, XLSX, PPTX.`);
 }
 
 // ─── Embedding generation ─────────────────────────────────────────────

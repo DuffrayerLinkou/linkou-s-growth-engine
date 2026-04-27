@@ -257,6 +257,8 @@ export default function ClienteArquivos() {
     if (mime.includes("pdf") || ext === "pdf") return true;
     if (mime.startsWith("text/") || ["txt", "md", "csv", "json", "log", "xml", "html", "htm"].includes(ext)) return true;
     if (ext === "docx" || mime.includes("wordprocessingml")) return true;
+    if (["xlsx", "xls"].includes(ext) || mime.includes("spreadsheetml") || mime.includes("ms-excel")) return true;
+    if (ext === "pptx" || mime.includes("presentationml")) return true;
     return false;
   };
 
