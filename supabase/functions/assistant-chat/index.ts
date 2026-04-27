@@ -2124,13 +2124,15 @@ serve(async (req) => {
         `## 🔑 Palavras-chave & SEO\n` +
         `- **list_keywords**: lê keywords + clusters do cliente (use ANTES de update/record_ranking pra obter o UUID).\n` +
         `- **create_keyword** / **update_keyword**: gerencia termo, intenção, posição, vínculos com cluster/campanha/tarefa.\n` +
-        `- **create_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
+        `- **bulk_create_keywords**: cadastra várias de uma vez (até 50) — use quando o usuário ditar lista.\n` +
+        `- **delete_keyword**: arquiva (padrão, preserva histórico) ou exclui definitivamente (mode='hard').\n` +
+        `- **create_keyword_cluster** / **update_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
         `- **record_keyword_ranking**: registra ponto histórico de posição (alimenta sparkline) E atualiza current_position.\n` +
         `- **analyze_keyword_opportunities**: cruza volume × dificuldade × posição → quick wins, candidatas a artigo, candidatas a Ads, gaps por cluster.\n` +
         `- ⚠️ NUNCA invente volume/dificuldade/CPC — se o admin não informar, deixe nulo e oriente importar de Semrush/Ahrefs/Keyword Planner via /admin/keywords.\n\n` +
         `- **read_file**: Lê o conteúdo de um PDF/TXT/MD/CSV/JSON do cliente. Use APENAS quando pedido explicitamente ("analisa o PDF", "resume o briefing", "lê esse arquivo"). Identifique pelo \`id\` da lista de Arquivos do contexto (preferencial) ou pelo nome.\n\n` +
         `## 🔍 Busca documental (RAG)\n` +
-        `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente. Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
+        `- **search_documents**: busca semântica nos arquivos JÁ INDEXADOS do cliente (PDF, DOCX, TXT, MD, CSV, JSON, HTML, **XLSX/XLS** e **PPTX**). Use quando o usuário perguntar sobre conteúdo de arquivos/briefings/contratos/planilhas/decks OU pedir resumo de um tópico que pode estar nos documentos. Mais econômico que read_file (retorna só os trechos relevantes). NÃO chame se a resposta já está no contexto operacional acima.\n\n` +
         `## Memória de longo prazo (use com critério)\n` +
         `- **log_decision**: registre quando o usuário FECHAR uma decisão relevante (não use em conversas casuais).\n` +
         `- **record_insight**: no MODO AUDITOR, ao identificar oportunidade/risco/diagnóstico com evidência real, persista para validação posterior.\n` +
@@ -2152,6 +2154,17 @@ serve(async (req) => {
         `Você pode CRIAR uma nova demanda criativa quando o cliente pedir produção de conteúdo (vídeo, copy, post, arte, enxoval). Use a tool **request_creative_demand** com título, formato, plataforma e prazo. Se faltar informação básica (formato/prazo), faça UMA pergunta curta antes.\n` +
         `⚠️ NUNCA aprove ou rejeite entregáveis pelo chat — a aprovação é exclusiva do Ponto Focal via UI. Se o cliente pedir aprovação, oriente: "abra a demanda em /cliente/criativos para aprovar com seu clique (preserva auditoria)".\n` +
         `Você pode listar e resumir o status das demandas existentes a partir do contexto acima.\n\n` +
+        `## 🔑 Palavras-chave & SEO (controle total)\n` +
+        `Você pode operar a seção de Palavras-Chave do cliente em /cliente/keywords sob pedido. Quando o cliente pedir, use as tools:\n` +
+        `- **list_keywords**: mostra termos monitorados (use ANTES de update/record/delete pra pegar o UUID curto).\n` +
+        `- **create_keyword** / **bulk_create_keywords**: cadastra um termo ou uma lista (até 50). NUNCA invente volume/dificuldade/CPC — só preencha se o cliente disser; caso contrário deixe nulo.\n` +
+        `- **update_keyword**: muda status, intenção, posição, URL alvo, cluster, tags, notas.\n` +
+        `- **delete_keyword**: padrão arquiva (preserva histórico). Só use mode='hard' se o cliente pedir 'apaga de vez'.\n` +
+        `- **create_keyword_cluster** / **update_keyword_cluster**: organiza em pillars (1 pillar + N satélites).\n` +
+        `- **record_keyword_ranking**: registra posição nova ('a keyword X subiu pra Y') — alimenta o gráfico histórico.\n` +
+        `- **analyze_keyword_opportunities**: roda análise completa — quick wins, candidatas a blog, candidatas a Google Ads, gaps por cluster. Use quando o cliente pedir 'analisa minhas palavras-chave', 'onde focar', 'quick wins', 'oportunidades de SEO'.\n\n` +
+        `## 🔍 Busca em arquivos (RAG)\n` +
+        `- **search_documents**: busca semântica nos arquivos do cliente já indexados (PDF, DOCX, TXT, CSV, **planilhas XLSX/XLS** e **apresentações PPTX** inclusive). Use quando o cliente perguntar sobre o conteúdo de algum arquivo, planilha de métricas ou deck/apresentação que ele subiu. Para indexar um arquivo novo, oriente abrir /cliente/arquivos e clicar em "🧠 Tornar pesquisável pelo Linkouzinho".\n\n` +
         `${context}` +
         `Responda APENAS com base nos dados acima. Se não tiver dados suficientes, diga claramente.`;
     }
