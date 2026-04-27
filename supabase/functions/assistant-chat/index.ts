@@ -718,6 +718,72 @@ const clientTools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "bulk_create_keywords",
+      description: "Cria várias palavras-chave de uma vez (até 50) para o cliente atual. Use quando o usuário ditar uma lista de termos pra cadastrar de uma vez. Aceita só term obrigatório por item; demais campos opcionais.",
+      parameters: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            description: "Lista de keywords (máx 50)",
+            items: {
+              type: "object",
+              properties: {
+                term: { type: "string" },
+                intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"] },
+                search_volume: { type: "number" },
+                difficulty: { type: "number" },
+                cpc: { type: "number" },
+                target_url: { type: "string" },
+                cluster_id: { type: "string" },
+                status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"] },
+                tags: { type: "array", items: { type: "string" } },
+                notes: { type: "string" },
+              },
+              required: ["term"],
+            },
+          },
+        },
+        required: ["items"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_keyword",
+      description: "Remove ou arquiva uma palavra-chave do cliente atual. Use mode='archive' (padrão, recomendado — preserva histórico) ou mode='hard' para excluir definitivamente (apenas se o usuário pedir 'apaga de vez').",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword_id: { type: "string", description: "UUID da keyword" },
+          mode: { type: "string", enum: ["archive", "hard"], description: "Padrão: archive" },
+        },
+        required: ["keyword_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_keyword_cluster",
+      description: "Atualiza um cluster/pillar SEO existente (nome, intenção, URL pillar, descrição).",
+      parameters: {
+        type: "object",
+        properties: {
+          cluster_id: { type: "string", description: "UUID do cluster" },
+          name: { type: "string" },
+          intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"] },
+          pillar_url: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["cluster_id"],
+      },
+    },
+  },
 ];
 // ── Tool executors ─────────────────────────────────────────────────────
 async function executeTool(
