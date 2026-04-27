@@ -31,3 +31,10 @@ Carrega 15 fontes em paralelo (cliente + campanhas + métricas 6mo + plano + bri
 - UI em `src/pages/cliente/Arquivos.tsx`: botão "🧠 Tornar pesquisável pelo Linkouzinho" por arquivo (apenas formatos indexáveis: PDF/TXT/MD/CSV/JSON/HTML/DOCX), badge "Indexado · re-indexar" quando já tem chunks, query `indexed-files` lista IDs com chunks.
 
 Sprint 3 (UI `/admin/insights` listando insights com aprovação + notificações de alta urgência + UI de toggle `can_be_used_by_ai` por arquivo) ainda pendente.
+
+**Sprint 4 — RAG estendido + Keywords no modo cliente:**
+- `ingest-document` agora indexa também **XLSX/XLS** (via `xlsx@0.18.5` SheetJS — cada aba vira `### Aba: <nome>` em TSV, máx 5000 linhas/aba) e **PPTX** (via `jszip@3.10.1` extraindo `<a:t>` de `ppt/slides/slide*.xml`, cada slide vira `### Slide N: <título>\n<corpo>`).
+- `Arquivos.tsx` `isIndexable` aceita xlsx/xls/pptx.
+- `assistant-chat` ganhou 3 tools novas: `bulk_create_keywords` (até 50), `delete_keyword` (mode archive/hard), `update_keyword_cluster`.
+- Allowlist de `mode === "client"` agora inclui TODAS as tools de keywords (`list_keywords`, `create_keyword`, `bulk_create_keywords`, `update_keyword`, `delete_keyword`, `create_keyword_cluster`, `update_keyword_cluster`, `record_keyword_ranking`, `analyze_keyword_opportunities`) e `search_documents`. Cliente passa a operar `/cliente/keywords` por chat.
+- System prompt do modo client documenta as tools de SEO + busca documental.
