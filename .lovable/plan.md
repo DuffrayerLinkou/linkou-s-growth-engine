@@ -1,118 +1,86 @@
+# Linkouzinho: planilhas/apresentações + controle total de Palavras-Chave
 
+## O que vai mudar (visão do usuário)
 
-## Auditoria de performance e otimização geral
+**1. Linkouzinho lê planilhas e apresentações dos clientes**
+Hoje o bot já indexa PDF, DOCX, TXT, MD, CSV, JSON, HTML. Vai passar a indexar também **XLSX/XLS** (Excel) e **PPTX** (PowerPoint) — os dois formatos que mais aparecem nos arquivos dos clientes (planilhas de métricas, relatórios, decks de planejamento).
 
-### Diagnóstico (o que está pesando)
+Na página `/cliente/arquivos` (e na visão admin equivalente), o botão "🧠 Tornar pesquisável pelo Linkouzinho" passa a aparecer para esses dois formatos novos.
 
-Após auditar Campanhas, Projetos, Dashboard e camada compartilhada (Auth, Layout, NotificationBell), identifiquei 6 causas que se somam para a lentidão atual:
+**2. Linkouzinho ganha controle total da seção Palavras-Chave**
+O bot vai poder, a pedido do usuário em linguagem natural:
+- **Listar/buscar** keywords do cliente (com filtros: status, intent, cluster, faixa de volume, faixa de dificuldade, posição atual)
+- **Criar** keywords novas (uma ou em lote)
+- **Atualizar** keywords existentes (status, intent, posição, URL alvo, cluster, tags, notas)
+- **Arquivar/excluir** keywords
+- **Criar/editar clusters** (pilares de conteúdo)
+- **Registrar rankings** (snapshot de posição numa data)
+- **Analisar e gerar insights**: identificar oportunidades (alto volume + baixa dificuldade), quick-wins (posição 11–20 que dá pra empurrar pro top 10), keywords em queda, gaps de cluster, canibalizações (duas keywords mirando a mesma URL), distribuição de intent
 
-1. **`SELECT *` em listas grandes** — `Admin → Campanhas` traz **todos os 30+ campos** de cada campanha (incluindo `strategy`, `ad_copy`, `targeting`, `metrics`, `placements`) só para renderizar uma tabela com 6 colunas.
-2. **Queries não filtradas no Admin Projetos** — busca **todas as `tasks`, `campaigns`, `learnings`, `creative_demands` do banco** para calcular contadores no card. À medida que os dados crescem, cada abertura da tela puxa mais e mais linhas (e bate no limite de 1000 do Supabase, escondendo dados).
-3. **Sem cache (React Query)** em Admin Campanhas, Admin Projetos, Cliente Projetos, Cliente Campanhas — cada navegação refaz **todas** as queries do zero, mesmo que o usuário tenha entrado na tela há 10 segundos.
-4. **Dashboard admin com ~20 queries paralelas independentes** — cada KPI dispara um `count(*)` separado. Com filtro de período ativo, são ~15 round-trips simultâneos que travam o backend nos primeiros segundos.
-5. **Sem paginação** em Campanhas, Projetos, Tarefas, Leads, Criativos — quando passar de 1000 registros, queries começam a truncar silenciosamente.
-6. **Animações em cascata** (`delay: index * 0.04` no `ProjectCard`/cards) adicionam até 1-2 s de latência percebida com muitos cards, mesmo com dados já carregados.
+Tudo respeitando RLS: cliente só mexe nas próprias, admin/account_manager mexe em qualquer um.
 
-Sintomas extras menores: `NotificationBell` tem `refetchInterval: 60s` + realtime que invalida o cache em cada INSERT (duplica fetch); `console` mostra warning de `forwardRef` faltando no `PWAInstallPrompt` (não é gargalo, mas é ruído).
+## Como vai funcionar
 
----
+### Parte 1 — XLSX e PPTX no RAG
 
-### O que vamos fazer
+Estender `supabase/functions/ingest-document/index.ts`:
 
-**Sem mudar nenhuma funcionalidade nem visual.** Apenas otimizações invisíveis ao usuário.
+- **XLSX/XLS**: usar `xlsx` (SheetJS) via esm.sh. Para cada aba, converter pra texto formatado: `### Aba: <nome>` seguido das linhas como TSV (`coluna1\tcoluna2\t...`). Limita a 5000 linhas por aba pra não estourar embedding. Mantém cabeçalho legível pro modelo entender o que é cada coluna.
+- **PPTX**: usar `jszip` (PPTX é um zip de XMLs) e extrair texto de `ppt/slides/slide*.xml` com regex simples em `<a:t>...</a:t>`. Cada slide vira um bloco `### Slide N: <título>\n<conteúdo>`.
 
-#### 1. Otimizar queries de listas (impacto alto)
+Frontend (`src/pages/cliente/Arquivos.tsx` e onde mais for necessário): adicionar `xlsx`, `xls`, `pptx` na lista de formatos indexáveis (`isIndexable`).
 
-- **Admin Campanhas**: trocar `select("*")` por uma lista enxuta (`id, name, status, platform, budget, start_date, end_date, approved_by_ponto_focal, client_id, project_id, clients(id,name), projects:project_id(id,name)`). Carregar campos pesados (`strategy`, `ad_copy`, `targeting`, `metrics`, `results`) **apenas quando o admin abrir Editar/Detalhe** da campanha (lazy fetch by id).
-- **Admin Projetos**: substituir as 4 queries soltas (`tasks`, `campaigns`, `learnings`, `creative_demands`) por **uma RPC `get_project_stats()`** no Supabase que devolve `project_id, tasks_total, tasks_done, campaigns_count, deliverables_count, learnings_count` já agregados via SQL. Reduz de ~4-6 round-trips + processamento client-side para 1 round-trip pré-agregado.
-- **Cliente Projetos**: mesma RPC, com parâmetro `client_id`.
-- Adicionar `LIMIT 100` + ordenação por `created_at desc` em todas as listas longas; adicionar paginação básica ("Carregar mais") quando passar do limite.
+Sem migration nesta parte — a tabela `document_chunks` já guarda texto puro.
 
-#### 2. Adotar React Query nas telas que ainda usam `useState/useEffect`
+### Parte 2 — Keywords no Linkouzinho
 
-Migrar Admin Campanhas, Admin Projetos, Cliente Projetos, Cliente Campanhas e Cliente Tarefas para `useQuery`, aproveitando o `staleTime: 5min` já configurado em `App.tsx`. Resultado: navegar entre telas vira instantâneo enquanto o cache está fresco, e refetch acontece em background.
+**Tools novas no `supabase/functions/assistant-chat/index.ts`** (todas com `client_id` resolvido pelo `current_client_id` da conversa, e gravando em `client_actions`):
 
-#### 3. Reduzir queries do Dashboard admin
+| Tool | O que faz |
+|---|---|
+| `list_keywords` | Lista com filtros (status, intent, cluster_id, min_volume, max_difficulty, position_range, search_term). Retorna até 100. |
+| `get_keyword` | Detalhe + histórico de rankings de uma keyword. |
+| `create_keyword` | Cria 1 keyword. Campos: term (obrigatório), intent, search_volume, difficulty, cpc, target_url, cluster_id, status, tags, notes. |
+| `bulk_create_keywords` | Cria várias de uma vez (até 50). |
+| `update_keyword` | Atualiza campos de uma keyword. |
+| `delete_keyword` | Remove (ou arquiva, conforme `mode`). |
+| `list_clusters` | Lista clusters do cliente. |
+| `create_cluster` | Cria cluster (name, description, intent, pillar_url). |
+| `update_cluster` | Atualiza cluster. |
+| `record_ranking` | Insere snapshot em `keyword_rankings` (keyword_id, position, source, notes). |
+| `analyze_keywords` | Roda análise agregada e devolve insights estruturados: top oportunidades, quick-wins, em queda, canibalizações, distribuição de intent, gaps de cluster. Pode opcionalmente gravar como `insight` na tabela `insights` se `save_as_insight: true`. |
 
-Consolidar os ~12 `count(*)` independentes em **2-3 RPCs agregadoras** (`get_dashboard_kpis(date_from, date_to)` e `get_dashboard_alerts()`). Mantém o mesmo visual e os mesmos números — só reduz a tempestade de chamadas.
+**System prompt do bot** (admin e cliente): adicionar bloco "🔑 Palavras-Chave do cliente" com resumo (total, top 10, oportunidades, distribuição de intent, últimas 5 mexidas em `client_actions` com `action_type` começando em `keyword_`). Carregado em paralelo com os outros 15 contextos já existentes.
 
-#### 4. Aliviar rendering
+**Permissões**: as tools usam o JWT do usuário (cliente do bot vê/mexe só nas próprias keywords; admin/AM mexe em qualquer cliente alvo). Já está coberto pelas RLS existentes em `keywords`, `keyword_clusters`, `keyword_rankings`.
 
-- Remover o `delay: index * 0.04` dos cards (Project, Lead, Demand) — manter o fade/slide, mas todos animam juntos.
-- Memorizar listas filtradas com `useMemo` em Campanhas/Projetos (hoje refiltra a cada keystroke).
+**Sem migration** — schema de keywords já está completo.
 
-#### 5. Limpezas finais (baixo risco, alto polimento)
+### Parte 3 — Análise de oportunidades (lógica do `analyze_keywords`)
 
-- `NotificationBell`: trocar o `invalidateQueries` do realtime por um `setQueryData` que faz `prepend` do INSERT recebido (sem refetch redundante). Manter o `refetchInterval` mas subir para 2 min.
-- Corrigir o warning `Function components cannot be given refs` no `PWAInstallPrompt` adicionando `forwardRef`.
-- Adicionar índices SQL nas colunas mais consultadas que ainda não têm: `tasks(client_id, project_id, status)`, `campaigns(client_id, project_id, status)`, `creative_demands(campaign_id)`, `learnings(project_id, client_id)`, `notifications(user_id, read, created_at desc)`.
+Uma única consulta agregada no banco (rápida) classifica cada keyword em buckets:
+- **Oportunidade**: `search_volume >= 500` AND `difficulty < 40` AND (`current_position` NULL OR > 20)
+- **Quick-win**: `current_position` BETWEEN 11 AND 20 AND `search_volume >= 100`
+- **Em queda**: comparar última posição com a média das 3 anteriores em `keyword_rankings` — queda de 5+ posições
+- **Canibalização**: agrupar por `target_url` onde aparecem 2+ keywords com mesma intent
+- **Gap de cluster**: clusters com menos de 3 keywords ativas
 
----
+Retorna JSON estruturado pro bot interpretar e responder em linguagem natural no mesmo turno.
 
-### Como você vai sentir
+## Arquivos afetados
 
-- **Campanhas**: payload baixa de ~300-800 KB para ~30-80 KB. Tela carrega em <1 s mesmo com 200+ campanhas.
-- **Projetos (admin e cliente)**: 6 queries → 2 queries. Tempo de abertura cai ~70%.
-- **Dashboard**: 15+ chamadas → 3-4 chamadas. Spinner some bem mais rápido.
-- **Navegação entre telas**: vira instantâneo dentro da janela de cache (5 min), porque tudo passa a viver em React Query.
-- **Listas grandes**: param de truncar silenciosamente ao passar de 1000 itens.
+- `supabase/functions/ingest-document/index.ts` — adicionar branches XLSX e PPTX
+- `supabase/functions/assistant-chat/index.ts` — adicionar 11 tools de keywords + bloco de contexto no system prompt
+- `src/pages/cliente/Arquivos.tsx` — incluir xlsx/xls/pptx nos formatos indexáveis
+- `.lovable/memory/features/linkouzinho-operational-memory.md` — registrar Sprint 4
 
-Tudo invisível: nenhuma rota muda, nenhum botão muda, nenhuma permissão muda.
+## Fora do escopo
 
----
+- UI nova (a seção `/cliente/keywords` e `/admin/keywords` já existem e continuam idênticas — o bot só passa a operar via chat)
+- Integração com Google Search Console (pode ficar pra depois, como combinado)
+- OCR em PDFs escaneados ou imagens dentro de PPTX
+- Coleta automática de volume/dificuldade via API externa (DataForSEO, etc.)
 
-### Detalhes técnicos
+## Sem alterações em
 
-**Migração SQL (idempotente)**:
-```sql
--- RPC agregadora de projetos
-CREATE OR REPLACE FUNCTION public.get_project_stats(_client_id uuid DEFAULT NULL)
-RETURNS TABLE(project_id uuid, tasks_total int, tasks_done int,
-              campaigns_count int, deliverables_count int, learnings_count int)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT p.id,
-    COALESCE((SELECT count(*)::int FROM tasks t WHERE t.project_id = p.id), 0),
-    COALESCE((SELECT count(*)::int FROM tasks t WHERE t.project_id = p.id AND t.status='done'), 0),
-    COALESCE((SELECT count(*)::int FROM campaigns c WHERE c.project_id = p.id), 0),
-    COALESCE((SELECT count(DISTINCT cd.id)::int FROM creative_demands cd
-              JOIN campaigns c ON c.id = cd.campaign_id WHERE c.project_id = p.id), 0),
-    COALESCE((SELECT count(*)::int FROM learnings l WHERE l.project_id = p.id), 0)
-  FROM projects p
-  WHERE _client_id IS NULL OR p.client_id = _client_id;
-$$;
-
--- Índices em falta
-CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_client_status ON tasks(client_id, status);
-CREATE INDEX IF NOT EXISTS idx_campaigns_project ON campaigns(project_id);
-CREATE INDEX IF NOT EXISTS idx_creative_demands_campaign ON creative_demands(campaign_id);
-CREATE INDEX IF NOT EXISTS idx_learnings_project ON learnings(project_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_read_date
-  ON notifications(user_id, read, created_at DESC);
-
--- RPC dashboard (versão resumida)
-CREATE OR REPLACE FUNCTION public.get_dashboard_kpis(_from timestamptz, _to timestamptz)
-RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT jsonb_build_object(
-    'leads_period', (SELECT count(*) FROM leads WHERE created_at BETWEEN _from AND _to),
-    'leads_qualified', (SELECT count(*) FROM leads WHERE status='qualified' AND created_at BETWEEN _from AND _to),
-    'clients_active', (SELECT count(*) FROM clients WHERE status='ativo'),
-    'clients_operacao', (SELECT count(*) FROM clients WHERE phase='operacao_guiada'),
-    'tasks_overdue', (SELECT count(*) FROM tasks WHERE due_date < CURRENT_DATE AND status <> 'completed'),
-    'campaigns_active', (SELECT count(*) FROM campaigns WHERE status='running')
-  );
-$$;
-```
-
-**Arquivos editados** (resumo, sem mexer no visual):
-- `src/pages/admin/Campaigns.tsx` — payload enxuto + lazy detail + React Query
-- `src/pages/admin/Projects.tsx` — usar RPC, React Query
-- `src/pages/cliente/Projetos.tsx` — usar RPC, React Query
-- `src/pages/cliente/Campanhas.tsx`, `src/pages/cliente/Tarefas.tsx` — React Query
-- `src/pages/admin/Dashboard.tsx` — consolidar em RPC
-- `src/components/NotificationBell.tsx` — `setQueryData` no realtime, intervalo 120 s
-- `src/components/admin/projects/ProjectCard.tsx` — remover delay incremental
-- `src/components/PWAInstallPrompt.tsx` — `forwardRef` para silenciar warning
-
-Sem alterações em RLS, rotas, layouts, UI, permissões ou regras de negócio.
-
+RLS, layout, identidade visual, rotas, permissões existentes, regras de negócio das outras seções.
