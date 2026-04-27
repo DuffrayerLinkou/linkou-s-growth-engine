@@ -18,6 +18,25 @@ function asArr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
 }
 
+// fetch com timeout para evitar travas na chamada do Lovable AI Gateway
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 45000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Converte um texto pronto em uma stream SSE compatível com o frontend
+function sseFromText(text: string): Response {
+  const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`;
+  return new Response(payload, {
+    headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+  });
+}
+
 // ── Tool definitions (admin only) ──────────────────────────────────────
 const adminTools = [
   {
