@@ -797,7 +797,22 @@ async function executeTool(
   try {
     // Client-mode allowlist: bloqueia qualquer tool fora do conjunto permitido
     if (mode === "client") {
-      const allowed = new Set(["request_creative_demand", "set_conversation_state"]);
+      const allowed = new Set([
+        "request_creative_demand",
+        "set_conversation_state",
+        // SEO / Palavras-chave (cliente pode operar nas próprias)
+        "list_keywords",
+        "create_keyword",
+        "bulk_create_keywords",
+        "update_keyword",
+        "delete_keyword",
+        "create_keyword_cluster",
+        "update_keyword_cluster",
+        "record_keyword_ranking",
+        "analyze_keyword_opportunities",
+        // RAG documental (cliente já podia ler arquivos próprios)
+        "search_documents",
+      ]);
       if (!allowed.has(toolName)) {
         return { success: false, message: "Ação restrita à equipe interna." };
       }
