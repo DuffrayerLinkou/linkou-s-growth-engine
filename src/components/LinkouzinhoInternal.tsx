@@ -369,7 +369,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
           )}
 
           {/* Messages */}
-          <ScrollArea className="flex-1 px-3 py-3" ref={scrollRef as any}>
+          <ScrollArea className="flex-1 px-3 py-3">
             <div ref={scrollRef}>
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-6">
