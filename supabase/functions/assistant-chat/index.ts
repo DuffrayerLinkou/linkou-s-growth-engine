@@ -632,6 +632,41 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "import_keywords_from_document",
+      description: "Importa palavras-chave em massa direto de uma planilha (CSV/XLSX/XLS) já enviada para os arquivos do cliente atual. Use SEMPRE que o admin pedir 'preenche as palavras-chave a partir da planilha X', 'importa o ubersuggest', 'puxa as keywords do arquivo Y'. Faz o pipeline completo: baixa do storage → parseia colunas (Keyword/Volume/Difficulty/CPC) → cria/reusa cluster opcional → deduplica contra o que já existe → insere em lote. Não consome embeddings/RAG (lê a tabela bruta), então funciona mesmo se o arquivo NÃO estiver indexado. Retorna resumo com contagem importada/duplicada/inválida e top 5 por volume.",
+      parameters: {
+        type: "object",
+        properties: {
+          file_id: { type: "string", description: "UUID exato do arquivo (preferencial, vem do contexto de Arquivos)" },
+          file_name: { type: "string", description: "Nome ou parte do nome do arquivo (busca aproximada, case-insensitive). Use quando file_id não está disponível." },
+          cluster_name: { type: "string", description: "Se informado, cria (ou reusa) um cluster com esse nome e vincula todas as keywords importadas." },
+          cluster_id: { type: "string", description: "UUID de um cluster existente para vincular (alternativa a cluster_name)." },
+          default_intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção padrão se a planilha não tiver coluna de intenção. Padrão: informational." },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"], description: "Status atribuído às keywords. Padrão: target." },
+          tags: { type: "array", items: { type: "string" }, description: "Tags aplicadas a todas as keywords (ex: ['ubersuggest', 'previdenciario'])." },
+          limit: { type: "number", description: "Máximo de keywords a importar da planilha. Padrão 200, máximo 500." },
+          min_volume: { type: "number", description: "Filtro opcional: ignora termos com volume mensal abaixo desse número." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "index_client_files",
+      description: "Indexa (torna pesquisáveis pelo Linkouzinho) arquivos do cliente atual chamando a Edge Function `ingest-document`. Use quando o admin pedir 'indexa as planilhas do cliente', 'torna esses PDFs pesquisáveis', 'prepara os arquivos pro RAG'. NÃO use para extrair palavras-chave de planilhas — para isso use `import_keywords_from_document` (lê direto, sem embedding).",
+      parameters: {
+        type: "object",
+        properties: {
+          file_ids: { type: "array", items: { type: "string" }, description: "UUIDs dos arquivos a indexar. Se omitido, indexa todos os PDF/DOCX/CSV/XLSX/PPTX do cliente que ainda não têm chunks." },
+          force: { type: "boolean", description: "Se true, reindexar mesmo que já tenha chunks. Padrão: false." },
+        },
+      },
+    },
+  },
 ];
 
 // Memory & state management tools (admin only)
