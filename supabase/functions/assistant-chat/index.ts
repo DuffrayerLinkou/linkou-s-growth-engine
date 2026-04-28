@@ -37,6 +37,86 @@ function sseFromText(text: string): Response {
   });
 }
 
+// Lê uma stream SSE da Lovable AI e devolve { text, hadError }.
+// hadError = true quando o provedor sinaliza finish_reason=error / MALFORMED_FUNCTION_CALL
+// ou quando o stream termina sem nenhum delta de texto.
+async function readSSEContent(resp: Response): Promise<{ text: string; hadError: boolean }> {
+  if (!resp.body) return { text: "", hadError: true };
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let sawErrorFinish = false;
+
+  const handleLine = (rawLine: string) => {
+    let line = rawLine;
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (!line || line.startsWith(":")) return;
+    if (!line.startsWith("data: ")) return;
+    const jsonStr = line.slice(6).trim();
+    if (jsonStr === "[DONE]") return;
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const choice = parsed?.choices?.[0];
+      const delta = choice?.delta?.content as string | undefined;
+      if (delta) text += delta;
+      const finish = choice?.finish_reason || choice?.native_finish_reason;
+      if (
+        finish === "error" ||
+        finish === "MALFORMED_FUNCTION_CALL" ||
+        finish === "content_filter"
+      ) {
+        sawErrorFinish = true;
+      }
+    } catch {
+      // ignore partial JSON
+    }
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, nl);
+        buffer = buffer.slice(nl + 1);
+        handleLine(line);
+      }
+    }
+    if (buffer.trim()) {
+      for (const raw of buffer.split("\n")) handleLine(raw);
+    }
+  } catch (e) {
+    console.error("readSSEContent error:", e);
+    return { text, hadError: true };
+  }
+
+  return { text, hadError: sawErrorFinish || text.trim().length === 0 };
+}
+
+// Sanitiza o histórico que vai pro modelo: remove mensagens assistentes vazias
+// ou claramente truncadas, evitando que respostas quebradas anteriores
+// disparem novos MALFORMED_FUNCTION_CALL.
+function sanitizeHistory(messages: Array<{ role: string; content: string }>) {
+  return messages
+    .filter((m) => m && typeof m.content === "string")
+    .map((m) => ({
+      role: m.role,
+      content: m.content.length > 8000 ? m.content.slice(0, 8000) + "…" : m.content,
+    }))
+    .filter((m) => {
+      if (m.role !== "assistant") return true;
+      const c = m.content.trim();
+      if (c.length === 0) return false;
+      // descarta a mensagem de erro padrão do front pra não contaminar contexto
+      if (c.startsWith("⚠️ Não recebi resposta")) return false;
+      if (c.startsWith("❌")) return false;
+      return true;
+    });
+}
+
 // ── Tool definitions (admin only) ──────────────────────────────────────
 const adminTools = [
   {

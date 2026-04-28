@@ -1,47 +1,55 @@
-Identifiquei dois problemas principais no Linkouzinho interno:
-
-1. Em alguns retornos do Lovable AI, a segunda chamada de confirmação ainda tenta chamar uma ferramenta (`tool_calls`) mesmo sem ferramentas habilitadas nessa etapa. O frontend hoje ignora esse tipo de evento porque não vem texto (`delta.content`), então parece que ele “carrega e não responde”.
-2. Algumas ações que ele afirma executar não existem nas ferramentas atuais. Exemplo visto no histórico: envio de e-mail transacional. Ele respondeu como se tivesse enviado, mas `assistant-chat` não tem ferramenta de envio de e-mail. Isso precisa ser bloqueado ou implementado corretamente.
+Você não sobrecarregou o Linkouzinho. O que está acontecendo é um problema técnico no fluxo dele: a Edge Function retorna status 200, mas a stream vem com `finish_reason: MALFORMED_FUNCTION_CALL` e `content: ""`. Como não chega texto real, o frontend mostra a mensagem genérica de “IA pode ter sobrecarregado”. Também vi no histórico que ele tentou continuar uma ação de e-mail sem ter uma ferramenta real de envio habilitada, o que aumenta a chance de chamada malformada.
 
 ## Plano de correção
 
-### 1. Tornar o chat à prova de resposta vazia
-- No frontend (`LinkouzinhoInternal.tsx`), detectar quando a stream termina sem nenhum texto útil.
-- Mostrar uma mensagem amigável em vez de ficar sem retorno, por exemplo: “Não consegui finalizar essa ação. Tente novamente ou detalhe melhor o pedido.”
-- Tratar eventos de stream que chegam como `tool_calls` inesperados, para não sumirem silenciosamente.
-- Corrigir o aviso de React sobre `ref` no `ScrollArea`, separando o ref da viewport/scroll do ref do componente.
+### 1. Impedir resposta vazia no backend
+- Em `assistant-chat`, substituir o repasse cru da stream final por um wrapper de SSE.
+- Esse wrapper vai monitorar se chegou algum conteúdo útil.
+- Se a IA retornar `MALFORMED_FUNCTION_CALL`, `finish_reason: error`, ou terminar sem texto, o backend não deixará isso chegar vazio ao chat.
+- Em vez disso, retornará uma mensagem operacional baseada no resultado real das ferramentas executadas, por exemplo:
+  - tarefa criada com sucesso;
+  - e-mail enviado com sucesso;
+  - ação não executada e motivo claro.
 
-### 2. Corrigir o fluxo de ferramentas no backend
-- Em `assistant-chat`, na etapa final depois de executar ferramentas, forçar o modelo a responder apenas com texto, sem novas chamadas de ferramenta.
-- Se mesmo assim vier resposta sem conteúdo, retornar uma confirmação determinística baseada no resultado das ferramentas executadas.
-- Adicionar timeouts/abort control nas chamadas para Lovable AI e embeddings para evitar espera infinita.
-- Padronizar erros 402/429/500 com mensagens claras para o usuário.
+### 2. Criar fallback operacional de verdade
+- Reforçar o fallback determinístico já existente para cobrir também streams que começam corretamente, mas terminam sem conteúdo.
+- Quando houver tool executada, a resposta final será montada a partir do resultado da tool, sem depender de uma segunda chamada à IA.
+- Quando não houver tool executada, retornar uma orientação clara: “não consegui concluir essa resposta; nenhuma ação foi executada”.
 
-### 3. Evitar falsas execuções
-- Ajustar o prompt do Linkouzinho para nunca dizer que executou algo se não houve ferramenta real executada com sucesso.
-- Quando o pedido exigir uma ferramenta inexistente (como “enviar e-mail”), ele deve responder que ainda não tem essa ação disponível, em vez de simular.
-- Registrar falhas em `client_actions` com mensagem curta e rastreável.
+### 3. Reduzir risco de contexto quebrado
+- Sanitizar o histórico enviado ao modelo:
+  - limitar mensagens muito longas;
+  - remover mensagens assistentes claramente incompletas/vazias;
+  - reduzir o histórico operacional enviado para evitar que uma resposta interrompida contamine a próxima chamada.
+- Isso mantém memória suficiente sem arrastar respostas quebradas como a que aparece no log terminando em “Missão cumprida por”.
 
-### 4. Opcional, mas recomendado: adicionar ferramenta real de e-mail transacional
-Como vocês já têm Resend, `notify-email` e templates, posso adicionar uma ferramenta segura no `assistant-chat` para disparar avisos operacionais, começando por:
-- `send_campaign_approval_email`
-- Busca destinatários do cliente: ponto focal, managers e usuários vinculados.
-- Usa layout padrão Linkou via `notify-email`/template existente.
-- Permite ao Linkouzinho dizer “enviei” somente quando a função confirmar sucesso.
+### 4. Tornar o Linkouzinho operacional para e-mail transacional
+- Adicionar uma ferramenta real no `assistant-chat`: `send_campaign_approval_email`.
+- Essa ferramenta só poderá ser usada por admin/equipe interna.
+- Ela buscará campanhas em `pending_approval` do cliente atual e enviará aviso pelo fluxo existente de e-mail transacional.
+- Usará o template já existente de “campanha aguardando aprovação”.
+- O Linkouzinho só poderá dizer “enviei” se a ferramenta retornar sucesso.
 
-### 5. Validação
-- Testar os casos que hoje travam:
-  - pedido de preencher palavras-chave a partir de uma planilha;
-  - pedido que tenta ler arquivo/documento;
-  - pedido de ação não suportada;
-  - pedido com ferramenta executada e confirmação final.
-- Conferir logs da Edge Function `assistant-chat` após as chamadas.
+### 5. Melhorar destinatários do aviso
+- Ajustar o envio para alcançar corretamente:
+  - ponto focal;
+  - gestores do cliente;
+  - opcionalmente usuários vinculados ao cliente quando o pedido disser “todos os usuários”.
+- Evitar envio duplicado para o mesmo e-mail.
+- Retornar ao chat quantos destinatários receberam o aviso e quais campanhas foram incluídas.
+
+### 6. Melhorar o feedback no frontend
+- Trocar a mensagem atual de “IA pode ter sobrecarregado” por algo menos confuso e mais acionável.
+- Exemplo:
+  - “Não recebi uma resposta válida da IA. Nenhuma ação foi confirmada. Tente novamente ou peça uma ação mais específica.”
+- Se o backend enviar erro estruturado ou fallback operacional, mostrar esse texto diretamente.
 
 ## Arquivos previstos
 - `supabase/functions/assistant-chat/index.ts`
+- `supabase/functions/notify-email/index.ts` se for necessário ampliar o evento de campanha para mais destinatários
+- `supabase/functions/_shared/email-templates.ts` se precisarmos de um template agregado para várias campanhas
 - `src/components/LinkouzinhoInternal.tsx`
-- Possivelmente `supabase/functions/notify-email/index.ts` se formos adicionar o disparo real de e-mail
-- Memória operacional do projeto para registrar que o Linkouzinho não deve simular execução de ações sem ferramenta real
+- Memória operacional do Linkouzinho para registrar que respostas vazias/erro de tool call devem sempre virar retorno operacional claro
 
 ## Resultado esperado
-O Linkouzinho deve sempre dar retorno claro: ou executa e confirma, ou explica por que não conseguiu. Ele não deve mais ficar apenas carregando, nem afirmar que fez uma ação que não foi executada.
+O Linkouzinho deve parar de responder frequentemente com “não recebi resposta”. Mesmo quando a IA falhar, ele vai retornar algo útil e rastreável. E para ações como avisar o ponto focal sobre campanhas aguardando aprovação, ele terá uma ferramenta real: envia o e-mail, registra a ação e confirma somente se realmente executou.
