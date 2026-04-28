@@ -632,6 +632,41 @@ const adminTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "import_keywords_from_document",
+      description: "Importa palavras-chave em massa direto de uma planilha (CSV/XLSX/XLS) já enviada para os arquivos do cliente atual. Use SEMPRE que o admin pedir 'preenche as palavras-chave a partir da planilha X', 'importa o ubersuggest', 'puxa as keywords do arquivo Y'. Faz o pipeline completo: baixa do storage → parseia colunas (Keyword/Volume/Difficulty/CPC) → cria/reusa cluster opcional → deduplica contra o que já existe → insere em lote. Não consome embeddings/RAG (lê a tabela bruta), então funciona mesmo se o arquivo NÃO estiver indexado. Retorna resumo com contagem importada/duplicada/inválida e top 5 por volume.",
+      parameters: {
+        type: "object",
+        properties: {
+          file_id: { type: "string", description: "UUID exato do arquivo (preferencial, vem do contexto de Arquivos)" },
+          file_name: { type: "string", description: "Nome ou parte do nome do arquivo (busca aproximada, case-insensitive). Use quando file_id não está disponível." },
+          cluster_name: { type: "string", description: "Se informado, cria (ou reusa) um cluster com esse nome e vincula todas as keywords importadas." },
+          cluster_id: { type: "string", description: "UUID de um cluster existente para vincular (alternativa a cluster_name)." },
+          default_intent: { type: "string", enum: ["informational", "navigational", "transactional", "commercial"], description: "Intenção padrão se a planilha não tiver coluna de intenção. Padrão: informational." },
+          status: { type: "string", enum: ["target", "ranking", "opportunity", "archived"], description: "Status atribuído às keywords. Padrão: target." },
+          tags: { type: "array", items: { type: "string" }, description: "Tags aplicadas a todas as keywords (ex: ['ubersuggest', 'previdenciario'])." },
+          limit: { type: "number", description: "Máximo de keywords a importar da planilha. Padrão 200, máximo 500." },
+          min_volume: { type: "number", description: "Filtro opcional: ignora termos com volume mensal abaixo desse número." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "index_client_files",
+      description: "Indexa (torna pesquisáveis pelo Linkouzinho) arquivos do cliente atual chamando a Edge Function `ingest-document`. Use quando o admin pedir 'indexa as planilhas do cliente', 'torna esses PDFs pesquisáveis', 'prepara os arquivos pro RAG'. NÃO use para extrair palavras-chave de planilhas — para isso use `import_keywords_from_document` (lê direto, sem embedding).",
+      parameters: {
+        type: "object",
+        properties: {
+          file_ids: { type: "array", items: { type: "string" }, description: "UUIDs dos arquivos a indexar. Se omitido, indexa todos os PDF/DOCX/CSV/XLSX/PPTX do cliente que ainda não têm chunks." },
+          force: { type: "boolean", description: "Se true, reindexar mesmo que já tenha chunks. Padrão: false." },
+        },
+      },
+    },
+  },
 ];
 
 // Memory & state management tools (admin only)
@@ -842,13 +877,13 @@ const clientTools = [
     type: "function",
     function: {
       name: "bulk_create_keywords",
-      description: "Cria várias palavras-chave de uma vez (até 50) para o cliente atual. Use quando o usuário ditar uma lista de termos pra cadastrar de uma vez. Aceita só term obrigatório por item; demais campos opcionais.",
+      description: "Cria várias palavras-chave de uma vez (até 200) para o cliente atual. Use quando o usuário ditar uma lista de termos pra cadastrar de uma vez. Aceita só term obrigatório por item; demais campos opcionais. Para importar a partir de uma planilha (CSV/XLSX) já enviada nos arquivos do cliente, prefira `import_keywords_from_document` — é muito mais econômico e mantém volume/dificuldade/CPC.",
       parameters: {
         type: "object",
         properties: {
           items: {
             type: "array",
-            description: "Lista de keywords (máx 50)",
+            description: "Lista de keywords (máx 200)",
             items: {
               type: "object",
               properties: {
@@ -1831,6 +1866,276 @@ async function executeTool(
         };
       }
 
+      case "import_keywords_from_document": {
+        if (mode === "client") {
+          return { success: false, message: "Ação restrita à equipe interna." };
+        }
+        const fileId = (args.file_id as string) || null;
+        const fileName = (args.file_name as string) || null;
+        if (!fileId && !fileName) {
+          return { success: false, message: "Informe file_id ou file_name para localizar a planilha." };
+        }
+
+        // 1. Localizar o arquivo do cliente atual
+        let fq = db.from("files").select("id, name, file_path, mime_type").eq("client_id", clientId);
+        if (fileId) fq = fq.eq("id", fileId);
+        else fq = fq.ilike("name", `%${fileName}%`);
+        const { data: fileRow, error: fErr } = await fq.order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (fErr) throw fErr;
+        if (!fileRow) {
+          return { success: false, message: `Arquivo não encontrado para ${fileId ? `id=${fileId}` : `nome ~ "${fileName}"`}.` };
+        }
+
+        const lname = (fileRow.name as string).toLowerCase();
+        const mime = ((fileRow.mime_type as string | null) || "").toLowerCase();
+        const isCsv = mime.includes("csv") || /\.csv$/i.test(lname);
+        const isXlsx = /\.(xlsx|xls)$/i.test(lname) || mime.includes("spreadsheetml") || mime.includes("ms-excel");
+        if (!isCsv && !isXlsx) {
+          return { success: false, message: `"${fileRow.name}" não é planilha (CSV/XLSX/XLS). Para outros formatos use search_documents.` };
+        }
+
+        // 2. Baixar do storage
+        const { data: blob, error: dlErr } = await db.storage.from("client-files").download(fileRow.file_path as string);
+        if (dlErr || !blob) {
+          return { success: false, message: `Falha ao baixar planilha: ${dlErr?.message || "sem dados"}` };
+        }
+
+        // 3. Parsear linhas → array de objetos {coluna: valor}
+        let rows: Array<Record<string, string>> = [];
+        try {
+          if (isCsv) {
+            const text = await blob.text();
+            // Detect separator (CSV vírgula, vírgula+aspas, ou TSV; PT-BR muitas vezes usa ';')
+            const firstLine = text.split(/\r?\n/, 1)[0] || "";
+            const sep = firstLine.includes(";") && !firstLine.includes(",") ? ";"
+              : firstLine.includes("\t") ? "\t"
+              : ",";
+            const xlsxMod: any = await import("https://esm.sh/xlsx@0.18.5?target=deno");
+            const wb = xlsxMod.read(text, { type: "string", FS: sep });
+            const sheetName = wb.SheetNames[0];
+            const sheet = wb.Sheets[sheetName];
+            rows = xlsxMod.utils.sheet_to_json(sheet, { defval: "", raw: false }) as Array<Record<string, string>>;
+          } else {
+            const arrayBuf = await blob.arrayBuffer();
+            const xlsxMod: any = await import("https://esm.sh/xlsx@0.18.5?target=deno");
+            const wb = xlsxMod.read(new Uint8Array(arrayBuf), { type: "array" });
+            // Concatena TODAS as abas (Ubersuggest exporta uma por aba às vezes)
+            for (const sn of wb.SheetNames) {
+              const sheet = wb.Sheets[sn];
+              if (!sheet) continue;
+              const part = xlsxMod.utils.sheet_to_json(sheet, { defval: "", raw: false }) as Array<Record<string, string>>;
+              rows = rows.concat(part);
+            }
+          }
+        } catch (e) {
+          return { success: false, message: `Falha ao parsear planilha: ${e instanceof Error ? e.message : String(e)}` };
+        }
+
+        if (rows.length === 0) {
+          return { success: false, message: `Planilha "${fileRow.name}" parece vazia ou sem cabeçalho reconhecível.` };
+        }
+
+        // 4. Detectar colunas tolerantes (PT/EN, com acentos)
+        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const headers = Object.keys(rows[0]);
+        const findCol = (candidates: string[]): string | null => {
+          for (const h of headers) {
+            const n = norm(h);
+            if (candidates.some((c) => n === c || n.includes(c))) return h;
+          }
+          return null;
+        };
+        const termCol = findCol(["keyword", "palavra-chave", "palavra chave", "palavra", "termo", "term", "query"]);
+        const volCol = findCol(["volume de busca", "search volume", "volume", "vol", "buscas mensais", "monthly search"]);
+        const difCol = findCol(["dificuldade", "difficulty", "kd", "sd", "seo difficulty"]);
+        const cpcCol = findCol(["cpc", "custo por clique", "cost per click"]);
+        const intentCol = findCol(["intent", "intencao", "intenção", "search intent"]);
+        const urlCol = findCol(["url", "ranking url", "target url", "landing"]);
+
+        if (!termCol) {
+          return { success: false, message: `Não encontrei coluna de termo/keyword. Cabeçalhos: ${headers.slice(0, 8).join(", ")}` };
+        }
+
+        const limit = Math.min(Math.max(Number(args.limit) || 200, 1), 500);
+        const minVolume = Number(args.min_volume);
+        const defaultIntent = (args.default_intent as string) || "informational";
+        const status = (args.status as string) || "target";
+        const tagsArr = Array.isArray(args.tags) ? args.tags as string[] : null;
+
+        const parseNum = (v: unknown): number | null => {
+          if (v === null || v === undefined || v === "") return null;
+          const s = String(v).replace(/\./g, "").replace(",", ".").replace(/[^\d.\-]/g, "");
+          const n = Number(s);
+          return Number.isFinite(n) ? n : null;
+        };
+        const validIntent = (v: unknown): string => {
+          const s = norm(String(v || ""));
+          if (s.includes("trans")) return "transactional";
+          if (s.includes("comer") || s.includes("commer")) return "commercial";
+          if (s.includes("nav")) return "navigational";
+          if (s.includes("info")) return "informational";
+          return defaultIntent;
+        };
+
+        // 5. Resolver cluster (criar ou usar existente)
+        let clusterId = (args.cluster_id as string) || null;
+        const clusterName = (args.cluster_name as string)?.trim();
+        if (!clusterId && clusterName) {
+          const { data: existing } = await db.from("keyword_clusters")
+            .select("id").eq("client_id", clientId).ilike("name", clusterName).limit(1).maybeSingle();
+          if (existing?.id) {
+            clusterId = existing.id as string;
+          } else {
+            const { data: newC, error: cErr } = await db.from("keyword_clusters")
+              .insert({ client_id: clientId, name: clusterName, intent: defaultIntent, created_by: userId })
+              .select("id").single();
+            if (cErr) throw cErr;
+            clusterId = newC.id as string;
+          }
+        }
+
+        // 6. Buscar termos já cadastrados para deduplicar (case-insensitive)
+        const { data: existingKws } = await db.from("keywords")
+          .select("term").eq("client_id", clientId);
+        const existingSet = new Set((existingKws || []).map((k: any) => norm(String(k.term))));
+
+        // 7. Construir payload
+        const seenInBatch = new Set<string>();
+        let invalid = 0, dupes = 0, filtered = 0;
+        const payloads: Array<Record<string, unknown>> = [];
+        for (const row of rows) {
+          if (payloads.length >= limit) break;
+          const term = String(row[termCol] || "").trim();
+          if (!term || term.length > 200) { invalid++; continue; }
+          const key = norm(term);
+          if (existingSet.has(key) || seenInBatch.has(key)) { dupes++; continue; }
+          const vol = volCol ? parseNum(row[volCol]) : null;
+          if (Number.isFinite(minVolume) && vol !== null && vol < minVolume) { filtered++; continue; }
+          const dif = difCol ? parseNum(row[difCol]) : null;
+          const cpc = cpcCol ? parseNum(row[cpcCol]) : null;
+          const intent = intentCol ? validIntent(row[intentCol]) : defaultIntent;
+          const url = urlCol ? String(row[urlCol] || "").trim() || null : null;
+          const p: Record<string, unknown> = {
+            client_id: clientId,
+            term,
+            intent,
+            status,
+            created_by: userId,
+          };
+          if (vol !== null) p.search_volume = Math.round(vol);
+          if (dif !== null) p.difficulty = Math.round(dif);
+          if (cpc !== null) p.cpc = Math.round(cpc * 100) / 100;
+          if (url) p.target_url = url;
+          if (clusterId) p.cluster_id = clusterId;
+          if (tagsArr && tagsArr.length > 0) p.tags = tagsArr;
+          payloads.push(p);
+          seenInBatch.add(key);
+        }
+
+        if (payloads.length === 0) {
+          return { success: false, message: `Nada para importar. Total linhas=${rows.length}, duplicadas=${dupes}, inválidas=${invalid}, filtradas por volume mínimo=${filtered}.` };
+        }
+
+        // 8. Insert em lotes de 100 (Supabase aceita maiores, mas dá margem)
+        let imported = 0;
+        const top5 = [...payloads].sort((a, b) => Number(b.search_volume || 0) - Number(a.search_volume || 0)).slice(0, 5);
+        for (let i = 0; i < payloads.length; i += 100) {
+          const chunk = payloads.slice(i, i + 100);
+          const { error: iErr } = await db.from("keywords").insert(chunk);
+          if (iErr) {
+            return { success: false, message: `Importei ${imported} keywords antes do erro: ${iErr.message}` };
+          }
+          imported += chunk.length;
+        }
+
+        const top5Str = top5.map((k) => `• ${k.term} (vol=${k.search_volume ?? "?"}, dif=${k.difficulty ?? "?"})`).join("\n");
+        return {
+          success: true,
+          message: `✅ Importei ${imported} keyword(s) de "${fileRow.name}"${clusterId ? ` no cluster \`${String(clusterId).slice(0, 8)}\`${clusterName ? ` (${clusterName})` : ""}` : ""}.\n` +
+            `📊 Resumo: total linhas=${rows.length}, duplicadas ignoradas=${dupes}, inválidas=${invalid}${Number.isFinite(minVolume) ? `, filtradas por volume<${minVolume}=${filtered}` : ""}.\n` +
+            `🏆 Top 5 por volume:\n${top5Str}`,
+        };
+      }
+
+      case "index_client_files": {
+        if (mode === "client") {
+          return { success: false, message: "Ação restrita à equipe interna." };
+        }
+        const force = !!args.force;
+        let targetIds = Array.isArray(args.file_ids) ? args.file_ids as string[] : null;
+
+        // Resolver arquivos: se não vieram ids, pega tudo que é indexável e ainda não tem chunks
+        let fq = db.from("files")
+          .select("id, name, mime_type")
+          .eq("client_id", clientId);
+        if (targetIds && targetIds.length > 0) {
+          fq = fq.in("id", targetIds);
+        }
+        const { data: candidates, error: cErr } = await fq;
+        if (cErr) throw cErr;
+
+        const indexable = (candidates || []).filter((f: any) => {
+          const n = (f.name || "").toLowerCase();
+          const m = (f.mime_type || "").toLowerCase();
+          return /\.(pdf|docx?|xlsx?|pptx?|csv|txt|md|json|html?|xml)$/i.test(n)
+            || m.includes("pdf") || m.includes("officedocument") || m.includes("csv") || m.includes("text/")
+            || m.includes("spreadsheetml") || m.includes("ms-excel");
+        });
+
+        if (indexable.length === 0) {
+          return { success: false, message: "Nenhum arquivo indexável encontrado para esse cliente." };
+        }
+
+        // Filtrar os que já têm chunks (a menos que force=true)
+        let toIndex = indexable;
+        if (!force) {
+          const ids = indexable.map((f: any) => f.id);
+          const { data: existingChunks } = await db.from("document_chunks")
+            .select("file_id")
+            .in("file_id", ids);
+          const indexed = new Set((existingChunks || []).map((c: any) => c.file_id));
+          toIndex = indexable.filter((f: any) => !indexed.has(f.id));
+        }
+
+        if (toIndex.length === 0) {
+          return { success: true, message: `Todos os ${indexable.length} arquivos já estão indexados. Use force=true se quiser reindexar.` };
+        }
+
+        // Disparar ingest-document por arquivo (sequencial, retorna resumo)
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const results: Array<{ name: string; ok: boolean; msg?: string }> = [];
+        for (const f of toIndex) {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/ingest-document`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({ file_id: f.id }),
+            });
+            if (res.ok) {
+              results.push({ name: f.name, ok: true });
+            } else {
+              const t = await res.text();
+              results.push({ name: f.name, ok: false, msg: `${res.status}: ${t.slice(0, 120)}` });
+            }
+          } catch (e) {
+            results.push({ name: f.name, ok: false, msg: e instanceof Error ? e.message : String(e) });
+          }
+        }
+        const okCount = results.filter((r) => r.ok).length;
+        const errCount = results.length - okCount;
+        let msg = `🧠 Indexados ${okCount}/${results.length} arquivos.`;
+        if (errCount > 0) {
+          msg += `\nFalhas:\n${results.filter((r) => !r.ok).map((r) => `• ${r.name}: ${r.msg}`).join("\n")}`;
+        } else {
+          msg += `\nAgora dá pra usar search_documents nesses arquivos.`;
+        }
+        return { success: okCount > 0, message: msg };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -2340,7 +2645,9 @@ serve(async (req) => {
         `## 🔑 Palavras-chave & SEO\n` +
         `- **list_keywords**: lê keywords + clusters do cliente (use ANTES de update/record_ranking pra obter o UUID).\n` +
         `- **create_keyword** / **update_keyword**: gerencia termo, intenção, posição, vínculos com cluster/campanha/tarefa.\n` +
-        `- **bulk_create_keywords**: cadastra várias de uma vez (até 50) — use quando o usuário ditar lista.\n` +
+        `- **bulk_create_keywords**: cadastra várias de uma vez (até 200) — use quando o usuário DITAR uma lista textual.\n` +
+        `- **import_keywords_from_document**: 🚀 PIPELINE COMPLETO a partir de planilha (CSV/XLSX) já enviada nos arquivos do cliente. Use SEMPRE que o admin pedir 'preenche as palavras-chave da planilha X', 'importa o ubersuggest', 'puxa keywords do arquivo Y'. Aceita cluster_name (cria/reusa), default_intent, status, tags, limit, min_volume. Lê a planilha bruta (não precisa de RAG/indexação), deduplica automaticamente, retorna resumo com top 5 por volume. PREFIRA esta tool em vez de search_documents+bulk_create_keywords quando o objetivo é popular keywords.\n` +
+        `- **index_client_files**: torna arquivos pesquisáveis pelo Linkouzinho (alimenta search_documents). Use só se o admin pedir 'indexa os arquivos' ou se você precisar de search_documents textual em algo ainda não indexado.\n` +
         `- **delete_keyword**: arquiva (padrão, preserva histórico) ou exclui definitivamente (mode='hard').\n` +
         `- **create_keyword_cluster** / **update_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
         `- **record_keyword_ranking**: registra ponto histórico de posição (alimenta sparkline) E atualiza current_position.\n` +
