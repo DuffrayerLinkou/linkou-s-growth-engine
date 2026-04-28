@@ -842,13 +842,13 @@ const clientTools = [
     type: "function",
     function: {
       name: "bulk_create_keywords",
-      description: "Cria várias palavras-chave de uma vez (até 50) para o cliente atual. Use quando o usuário ditar uma lista de termos pra cadastrar de uma vez. Aceita só term obrigatório por item; demais campos opcionais.",
+      description: "Cria várias palavras-chave de uma vez (até 200) para o cliente atual. Use quando o usuário ditar uma lista de termos pra cadastrar de uma vez. Aceita só term obrigatório por item; demais campos opcionais. Para importar a partir de uma planilha (CSV/XLSX) já enviada nos arquivos do cliente, prefira `import_keywords_from_document` — é muito mais econômico e mantém volume/dificuldade/CPC.",
       parameters: {
         type: "object",
         properties: {
           items: {
             type: "array",
-            description: "Lista de keywords (máx 50)",
+            description: "Lista de keywords (máx 200)",
             items: {
               type: "object",
               properties: {
