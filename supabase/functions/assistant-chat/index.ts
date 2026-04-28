@@ -1751,6 +1751,86 @@ async function executeTool(
         return { success: true, message: formatted };
       }
 
+      case "send_campaign_approval_email": {
+        if (mode === "client") {
+          return { success: false, message: "Ação restrita à equipe interna." };
+        }
+        // 1. Selecionar campanhas
+        let campaignsQuery = db
+          .from("campaigns")
+          .select("id, name, approved_by_ponto_focal, status")
+          .eq("client_id", clientId);
+        const ids = Array.isArray(args.campaign_ids) ? (args.campaign_ids as string[]) : null;
+        if (ids && ids.length > 0) {
+          campaignsQuery = campaignsQuery.in("id", ids);
+        } else {
+          campaignsQuery = campaignsQuery
+            .eq("status", "pending_approval")
+            .eq("approved_by_ponto_focal", false);
+        }
+        const { data: camps, error: campErr } = await campaignsQuery;
+        if (campErr) throw campErr;
+        const targetCamps = (camps || []).filter((c: any) => !c.approved_by_ponto_focal);
+        if (targetCamps.length === 0) {
+          return { success: false, message: "Nenhuma campanha pendente de aprovação encontrada para este cliente." };
+        }
+
+        // 2. Resolver destinatários: ponto focal + gestores (+ todos os usuários se pedido)
+        const includeAll = args.include_all_client_users === true;
+        const profileSelect = "email, full_name, ponto_focal, user_type";
+        let profilesQuery = db.from("profiles").select(profileSelect).eq("client_id", clientId);
+        if (!includeAll) {
+          profilesQuery = profilesQuery.or("ponto_focal.eq.true,user_type.eq.manager");
+        }
+        const { data: profiles, error: profErr } = await profilesQuery;
+        if (profErr) throw profErr;
+        const recipientSet = new Set<string>();
+        for (const p of (profiles || []) as any[]) {
+          if (p?.email) recipientSet.add(String(p.email).toLowerCase());
+        }
+        if (recipientSet.size === 0) {
+          return { success: false, message: "Não encontrei e-mails de Ponto Focal/Gestor cadastrados para este cliente. Cadastre os usuários antes." };
+        }
+
+        // 3. Disparar via notify-email para cada campanha (template oficial já existente)
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sendOne = async (campaignName: string) => {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/notify-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+              },
+              body: JSON.stringify({
+                event_type: "campaign_pending_approval",
+                client_id: clientId,
+                campaign_name: campaignName,
+              }),
+            });
+            return res.ok;
+          } catch (e) {
+            console.error("notify-email failed:", e);
+            return false;
+          }
+        };
+        let okCount = 0;
+        for (const c of targetCamps as any[]) {
+          const ok = await sendOne(c.name);
+          if (ok) okCount += 1;
+        }
+        if (okCount === 0) {
+          return { success: false, message: "Falha ao disparar os e-mails de aprovação. Verifique os logs do notify-email." };
+        }
+        const campNames = targetCamps.map((c: any) => `• ${c.name}`).join("\n");
+        return {
+          success: true,
+          message: `📧 E-mail enviado para ${recipientSet.size} destinatário(s) (Ponto Focal/Gestor${includeAll ? " + usuários do cliente" : ""}) avisando sobre ${okCount}/${targetCamps.length} campanha(s) aguardando aprovação:\n${campNames}`,
+        };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
