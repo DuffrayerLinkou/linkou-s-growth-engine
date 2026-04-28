@@ -639,6 +639,27 @@ const memoryTools = [
   {
     type: "function",
     function: {
+      name: "send_campaign_approval_email",
+      description: "Dispara um e-mail transacional avisando o Ponto Focal e os Gestores do cliente atual de que existem campanhas aguardando aprovação. Usa o template oficial 'campanha pendente de aprovação'. Use quando o admin pedir 'avisa o cliente por e-mail', 'manda e-mail das campanhas pendentes', 'notifica o ponto focal por e-mail das aprovações'. NÃO inventa template — usa o já existente.",
+      parameters: {
+        type: "object",
+        properties: {
+          campaign_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "UUIDs específicos de campanhas para incluir. Se omitido, pega todas as campanhas do cliente em status 'pending_approval' não aprovadas pelo Ponto Focal.",
+          },
+          include_all_client_users: {
+            type: "boolean",
+            description: "Se true, envia também para todos os usuários vinculados ao cliente (não só pontos focais e gestores). Padrão: false.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "log_decision",
       description: "Registra uma decisão estratégica/operacional importante tomada (com ou sem o bot) na memória de longo prazo do cliente. Use quando o usuário fechar uma escolha relevante: 'vamos pausar a campanha X', 'decidimos focar em Meta', 'aprovamos a alocação 60/40'. Não use para conversas casuais.",
       parameters: {
