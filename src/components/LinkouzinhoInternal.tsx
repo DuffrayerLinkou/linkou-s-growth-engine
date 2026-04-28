@@ -258,7 +258,7 @@ export function LinkouzinhoInternal({ mode }: Props) {
         // claro em vez de deixar o chat "carregando" silenciosamente.
         if (!receivedAnyContent) {
           updateAssistant(
-            "⚠️ Não recebi resposta dessa vez. A IA pode ter sobrecarregado. Tente reenviar a mensagem ou reformular o pedido."
+            "⚠️ Não recebi uma resposta válida da IA agora. Nenhuma ação foi confirmada. Tente reenviar ou reformular o pedido com mais detalhe."
           );
         }
       } catch (e: any) {

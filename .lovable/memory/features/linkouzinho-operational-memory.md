@@ -38,3 +38,10 @@ Sprint 3 (UI `/admin/insights` listando insights com aprovação + notificaçõe
 - `assistant-chat` ganhou 3 tools novas: `bulk_create_keywords` (até 50), `delete_keyword` (mode archive/hard), `update_keyword_cluster`.
 - Allowlist de `mode === "client"` agora inclui TODAS as tools de keywords (`list_keywords`, `create_keyword`, `bulk_create_keywords`, `update_keyword`, `delete_keyword`, `create_keyword_cluster`, `update_keyword_cluster`, `record_keyword_ranking`, `analyze_keyword_opportunities`) e `search_documents`. Cliente passa a operar `/cliente/keywords` por chat.
 - System prompt do modo client documenta as tools de SEO + busca documental.
+
+**Sprint 5 — Robustez de stream + e-mail transacional real:**
+- `assistant-chat` etapa pós-tool agora roda em modo NÃO-stream e detecta `finish_reason: error` / `MALFORMED_FUNCTION_CALL` / `content_filter` / texto vazio, caindo num fallback determinístico montado a partir do resultado real das tools. O usuário nunca recebe resposta vazia.
+- `sanitizeHistory()` antes de chamar o gateway: descarta mensagens assistentes vazias/truncadas e as mensagens de erro do front (`⚠️ …`, `❌ …`), evitando que respostas anteriores quebradas disparem novo MALFORMED_FUNCTION_CALL no próximo turno. Histórico reduzido pra 16 últimas mensagens, cada uma capada em 8000 chars.
+- Nova tool `send_campaign_approval_email` (admin only): busca campanhas em `pending_approval` (ou IDs específicos), resolve destinatários (Ponto Focal + Manager por padrão; opcional `include_all_client_users`), dispara via Edge Function `notify-email` evento `campaign_pending_approval` com o template oficial `campaignPendingApprovalEmail`. Sucesso só se ao menos um envio for OK.
+- Regra #8 do system prompt: avisos de aprovação por e-mail DEVEM usar `send_campaign_approval_email`; demais ações externas (WhatsApp, publicação em plataforma) viram `create_task`.
+- Frontend: mensagem de fallback mais clara — "Não recebi uma resposta válida da IA. Nenhuma ação foi confirmada."

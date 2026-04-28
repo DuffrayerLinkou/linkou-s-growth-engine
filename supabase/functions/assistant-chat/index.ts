@@ -37,6 +37,86 @@ function sseFromText(text: string): Response {
   });
 }
 
+// Lê uma stream SSE da Lovable AI e devolve { text, hadError }.
+// hadError = true quando o provedor sinaliza finish_reason=error / MALFORMED_FUNCTION_CALL
+// ou quando o stream termina sem nenhum delta de texto.
+async function readSSEContent(resp: Response): Promise<{ text: string; hadError: boolean }> {
+  if (!resp.body) return { text: "", hadError: true };
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let sawErrorFinish = false;
+
+  const handleLine = (rawLine: string) => {
+    let line = rawLine;
+    if (line.endsWith("\r")) line = line.slice(0, -1);
+    if (!line || line.startsWith(":")) return;
+    if (!line.startsWith("data: ")) return;
+    const jsonStr = line.slice(6).trim();
+    if (jsonStr === "[DONE]") return;
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const choice = parsed?.choices?.[0];
+      const delta = choice?.delta?.content as string | undefined;
+      if (delta) text += delta;
+      const finish = choice?.finish_reason || choice?.native_finish_reason;
+      if (
+        finish === "error" ||
+        finish === "MALFORMED_FUNCTION_CALL" ||
+        finish === "content_filter"
+      ) {
+        sawErrorFinish = true;
+      }
+    } catch {
+      // ignore partial JSON
+    }
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, nl);
+        buffer = buffer.slice(nl + 1);
+        handleLine(line);
+      }
+    }
+    if (buffer.trim()) {
+      for (const raw of buffer.split("\n")) handleLine(raw);
+    }
+  } catch (e) {
+    console.error("readSSEContent error:", e);
+    return { text, hadError: true };
+  }
+
+  return { text, hadError: sawErrorFinish || text.trim().length === 0 };
+}
+
+// Sanitiza o histórico que vai pro modelo: remove mensagens assistentes vazias
+// ou claramente truncadas, evitando que respostas quebradas anteriores
+// disparem novos MALFORMED_FUNCTION_CALL.
+function sanitizeHistory(messages: Array<{ role: string; content: string }>) {
+  return messages
+    .filter((m) => m && typeof m.content === "string")
+    .map((m) => ({
+      role: m.role,
+      content: m.content.length > 8000 ? m.content.slice(0, 8000) + "…" : m.content,
+    }))
+    .filter((m) => {
+      if (m.role !== "assistant") return true;
+      const c = m.content.trim();
+      if (c.length === 0) return false;
+      // descarta a mensagem de erro padrão do front pra não contaminar contexto
+      if (c.startsWith("⚠️ Não recebi resposta")) return false;
+      if (c.startsWith("❌")) return false;
+      return true;
+    });
+}
+
 // ── Tool definitions (admin only) ──────────────────────────────────────
 const adminTools = [
   {
@@ -556,6 +636,27 @@ const adminTools = [
 
 // Memory & state management tools (admin only)
 const memoryTools = [
+  {
+    type: "function",
+    function: {
+      name: "send_campaign_approval_email",
+      description: "Dispara um e-mail transacional avisando o Ponto Focal e os Gestores do cliente atual de que existem campanhas aguardando aprovação. Usa o template oficial 'campanha pendente de aprovação'. Use quando o admin pedir 'avisa o cliente por e-mail', 'manda e-mail das campanhas pendentes', 'notifica o ponto focal por e-mail das aprovações'. NÃO inventa template — usa o já existente.",
+      parameters: {
+        type: "object",
+        properties: {
+          campaign_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "UUIDs específicos de campanhas para incluir. Se omitido, pega todas as campanhas do cliente em status 'pending_approval' não aprovadas pelo Ponto Focal.",
+          },
+          include_all_client_users: {
+            type: "boolean",
+            description: "Se true, envia também para todos os usuários vinculados ao cliente (não só pontos focais e gestores). Padrão: false.",
+          },
+        },
+      },
+    },
+  },
   {
     type: "function",
     function: {
@@ -1650,6 +1751,86 @@ async function executeTool(
         return { success: true, message: formatted };
       }
 
+      case "send_campaign_approval_email": {
+        if (mode === "client") {
+          return { success: false, message: "Ação restrita à equipe interna." };
+        }
+        // 1. Selecionar campanhas
+        let campaignsQuery = db
+          .from("campaigns")
+          .select("id, name, approved_by_ponto_focal, status")
+          .eq("client_id", clientId);
+        const ids = Array.isArray(args.campaign_ids) ? (args.campaign_ids as string[]) : null;
+        if (ids && ids.length > 0) {
+          campaignsQuery = campaignsQuery.in("id", ids);
+        } else {
+          campaignsQuery = campaignsQuery
+            .eq("status", "pending_approval")
+            .eq("approved_by_ponto_focal", false);
+        }
+        const { data: camps, error: campErr } = await campaignsQuery;
+        if (campErr) throw campErr;
+        const targetCamps = (camps || []).filter((c: any) => !c.approved_by_ponto_focal);
+        if (targetCamps.length === 0) {
+          return { success: false, message: "Nenhuma campanha pendente de aprovação encontrada para este cliente." };
+        }
+
+        // 2. Resolver destinatários: ponto focal + gestores (+ todos os usuários se pedido)
+        const includeAll = args.include_all_client_users === true;
+        const profileSelect = "email, full_name, ponto_focal, user_type";
+        let profilesQuery = db.from("profiles").select(profileSelect).eq("client_id", clientId);
+        if (!includeAll) {
+          profilesQuery = profilesQuery.or("ponto_focal.eq.true,user_type.eq.manager");
+        }
+        const { data: profiles, error: profErr } = await profilesQuery;
+        if (profErr) throw profErr;
+        const recipientSet = new Set<string>();
+        for (const p of (profiles || []) as any[]) {
+          if (p?.email) recipientSet.add(String(p.email).toLowerCase());
+        }
+        if (recipientSet.size === 0) {
+          return { success: false, message: "Não encontrei e-mails de Ponto Focal/Gestor cadastrados para este cliente. Cadastre os usuários antes." };
+        }
+
+        // 3. Disparar via notify-email para cada campanha (template oficial já existente)
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sendOne = async (campaignName: string) => {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/notify-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+              },
+              body: JSON.stringify({
+                event_type: "campaign_pending_approval",
+                client_id: clientId,
+                campaign_name: campaignName,
+              }),
+            });
+            return res.ok;
+          } catch (e) {
+            console.error("notify-email failed:", e);
+            return false;
+          }
+        };
+        let okCount = 0;
+        for (const c of targetCamps as any[]) {
+          const ok = await sendOne(c.name);
+          if (ok) okCount += 1;
+        }
+        if (okCount === 0) {
+          return { success: false, message: "Falha ao disparar os e-mails de aprovação. Verifique os logs do notify-email." };
+        }
+        const campNames = targetCamps.map((c: any) => `• ${c.name}`).join("\n");
+        return {
+          success: true,
+          message: `📧 E-mail enviado para ${recipientSet.size} destinatário(s) (Ponto Focal/Gestor${includeAll ? " + usuários do cliente" : ""}) avisando sobre ${okCount}/${targetCamps.length} campanha(s) aguardando aprovação:\n${campNames}`,
+        };
+      }
+
       default:
         return { success: false, message: `Tool "${toolName}" não reconhecida.` };
     }
@@ -2134,7 +2315,7 @@ serve(async (req) => {
         `5. Sempre termine com UM próximo passo claro e executável.\n` +
         `6. Foco obsessivo em impacto real: leads, qualificação, vendas, CPL, ROAS.\n` +
         `7. Em ambiguidade, assuma ESTRATEGISTA (mais útil por padrão).\n` +
-        `8. NUNCA afirme que executou uma ação se não houve uma tool call real bem-sucedida nesta resposta. Se o usuário pedir algo que NÃO existe nas ferramentas listadas (ex: enviar e-mail, disparar WhatsApp, publicar campanha em plataforma externa), diga claramente: "ainda não tenho essa ação disponível por aqui — registre como tarefa que eu crio agora" e ofereça criar a tarefa via create_task.\n\n` +
+        `8. NUNCA afirme que executou uma ação se não houve uma tool call real bem-sucedida nesta resposta. Para AVISO POR E-MAIL DE CAMPANHAS AGUARDANDO APROVAÇÃO use a tool send_campaign_approval_email (template oficial). Para WhatsApp, publicação em plataforma externa, ou qualquer ação fora das tools listadas, diga claramente: "ainda não tenho essa ação disponível por aqui — registre como tarefa que eu crio agora" e ofereça criar via create_task.\n\n` +
         `## Ferramentas disponíveis (use principalmente no modo EXECUTOR)\n` +
         `Quando a ação for clara e acionável, EXECUTE imediatamente via tool call:\n` +
         `- **create_appointment**: Agendar reuniões/calls.\n` +
@@ -2206,7 +2387,7 @@ serve(async (req) => {
 
     const allMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.slice(-20),
+      ...sanitizeHistory(messages).slice(-16),
     ];
 
     // ── Decide: tool calling (admin) or direct streaming ───────────────
@@ -2341,7 +2522,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
             messages: finalMessages,
-            stream: true,
+            stream: false,
             tool_choice: "none",
           }),
         }, 60000).catch((e) => {
@@ -2377,9 +2558,25 @@ serve(async (req) => {
           return sseFromText(buildFallbackSummary());
         }
 
-        return new Response(streamResponse.body, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
+        // Lê resposta não-stream e cai no fallback se vier vazia / com erro de tool
+        let finalText = "";
+        try {
+          const data = await streamResponse.json();
+          finalText = data?.choices?.[0]?.message?.content || "";
+          const fr = data?.choices?.[0]?.finish_reason || data?.choices?.[0]?.native_finish_reason;
+          if (
+            !finalText.trim() ||
+            fr === "error" ||
+            fr === "MALFORMED_FUNCTION_CALL" ||
+            fr === "content_filter"
+          ) {
+            finalText = buildFallbackSummary();
+          }
+        } catch (e) {
+          console.error("step2 parse error:", e);
+          finalText = buildFallbackSummary();
+        }
+        return sseFromText(finalText);
       }
 
       // No tool calls → the model responded with text. Stream it back.
@@ -2387,7 +2584,12 @@ serve(async (req) => {
       const content =
         choice?.message?.content ||
         "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos.";
-      return sseFromText(content);
+      const fr0 = choice?.finish_reason || choice?.native_finish_reason;
+      const safe =
+        !content?.trim() || fr0 === "error" || fr0 === "MALFORMED_FUNCTION_CALL" || fr0 === "content_filter"
+          ? "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos."
+          : content;
+      return sseFromText(safe);
     }
   } catch (e) {
     console.error("assistant-chat error:", e);
