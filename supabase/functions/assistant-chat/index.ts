@@ -2645,7 +2645,9 @@ serve(async (req) => {
         `## 🔑 Palavras-chave & SEO\n` +
         `- **list_keywords**: lê keywords + clusters do cliente (use ANTES de update/record_ranking pra obter o UUID).\n` +
         `- **create_keyword** / **update_keyword**: gerencia termo, intenção, posição, vínculos com cluster/campanha/tarefa.\n` +
-        `- **bulk_create_keywords**: cadastra várias de uma vez (até 50) — use quando o usuário ditar lista.\n` +
+        `- **bulk_create_keywords**: cadastra várias de uma vez (até 200) — use quando o usuário DITAR uma lista textual.\n` +
+        `- **import_keywords_from_document**: 🚀 PIPELINE COMPLETO a partir de planilha (CSV/XLSX) já enviada nos arquivos do cliente. Use SEMPRE que o admin pedir 'preenche as palavras-chave da planilha X', 'importa o ubersuggest', 'puxa keywords do arquivo Y'. Aceita cluster_name (cria/reusa), default_intent, status, tags, limit, min_volume. Lê a planilha bruta (não precisa de RAG/indexação), deduplica automaticamente, retorna resumo com top 5 por volume. PREFIRA esta tool em vez de search_documents+bulk_create_keywords quando o objetivo é popular keywords.\n` +
+        `- **index_client_files**: torna arquivos pesquisáveis pelo Linkouzinho (alimenta search_documents). Use só se o admin pedir 'indexa os arquivos' ou se você precisar de search_documents textual em algo ainda não indexado.\n` +
         `- **delete_keyword**: arquiva (padrão, preserva histórico) ou exclui definitivamente (mode='hard').\n` +
         `- **create_keyword_cluster** / **update_keyword_cluster**: agrupa em pillars de conteúdo (1 cluster = 1 pillar + N satélites).\n` +
         `- **record_keyword_ranking**: registra ponto histórico de posição (alimenta sparkline) E atualiza current_position.\n` +
