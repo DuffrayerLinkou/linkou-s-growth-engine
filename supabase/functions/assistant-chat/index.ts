@@ -2387,7 +2387,7 @@ serve(async (req) => {
 
     const allMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.slice(-20),
+      ...sanitizeHistory(messages).slice(-16),
     ];
 
     // ── Decide: tool calling (admin) or direct streaming ───────────────
@@ -2522,7 +2522,7 @@ serve(async (req) => {
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
             messages: finalMessages,
-            stream: true,
+            stream: false,
             tool_choice: "none",
           }),
         }, 60000).catch((e) => {
@@ -2558,9 +2558,25 @@ serve(async (req) => {
           return sseFromText(buildFallbackSummary());
         }
 
-        return new Response(streamResponse.body, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
+        // Lê resposta não-stream e cai no fallback se vier vazia / com erro de tool
+        let finalText = "";
+        try {
+          const data = await streamResponse.json();
+          finalText = data?.choices?.[0]?.message?.content || "";
+          const fr = data?.choices?.[0]?.finish_reason || data?.choices?.[0]?.native_finish_reason;
+          if (
+            !finalText.trim() ||
+            fr === "error" ||
+            fr === "MALFORMED_FUNCTION_CALL" ||
+            fr === "content_filter"
+          ) {
+            finalText = buildFallbackSummary();
+          }
+        } catch (e) {
+          console.error("step2 parse error:", e);
+          finalText = buildFallbackSummary();
+        }
+        return sseFromText(finalText);
       }
 
       // No tool calls → the model responded with text. Stream it back.
@@ -2568,7 +2584,12 @@ serve(async (req) => {
       const content =
         choice?.message?.content ||
         "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos.";
-      return sseFromText(content);
+      const fr0 = choice?.finish_reason || choice?.native_finish_reason;
+      const safe =
+        !content?.trim() || fr0 === "error" || fr0 === "MALFORMED_FUNCTION_CALL" || fr0 === "content_filter"
+          ? "Não consegui gerar uma resposta dessa vez. Tente reformular o pedido ou enviar de novo em alguns segundos."
+          : content;
+      return sseFromText(safe);
     }
   } catch (e) {
     console.error("assistant-chat error:", e);
